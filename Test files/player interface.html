@@ -16,7 +16,7 @@
 	let curTab = 0;
 	let shipNum = 5;
 
-	let roles = [0, 1, 2];
+	let roles = [0, 1, 2, 3];
 
 	let crew = ["Alfred", "Bert", "Cassidy"];
 
@@ -61,7 +61,7 @@
 		// load the role tabs
 		for(let i = 0; i < roles.length; i++) {
 			let roleNum = roles[i];
-			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" onClick="loadTab(this.id)" id="label' + i + '"><img src="pirate_flag.jpg"/><span>' + roleDict[roleNum] + '</span></span>';
+			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" style="z-index:' + (5-i) + ';" onClick="loadTab(this.id)" id="label' + i + '"><img src="pirate_flag.jpg"/><span>' + roleDict[roleNum] + '</span></span>';
 		}
 
 		// load the role interfaces
@@ -116,8 +116,45 @@
 				let curRotation = 40;
 
 				// Load arrow (and attach event listener for rotating/touching/clicking)
+				// IMPORTANT: Also stops the movement if the mouse moves _OUT_ of the arrow image, which might be too harsh.
+				// TO DO: Snap to angles (North, NorthEast, East, etc.)
 				// TO DO
-				domString += '<img src="pirate_flag.jpg" onmousedown="compassStart(event)" ontouchstart="compassStart(event)" onmouseup="compassEnd(event)" ontouchend="compassEnd(event)" style="max-width:100%;transform:rotate(' + curRotation + 'deg);" id="firstMate-compassArrow" />';
+				domString += '<img src="pirate_flag.jpg" onmousedown="compassStart(event)" ontouchstart="compassStart(event)" onmouseup="compassEnd(event)" ontouchend="compassEnd(event)" onmouseout="compassEnd(event)" style="max-width:100%;transform:rotate(' + curRotation + 'deg);" id="firstMate-compassArrow" />';
+
+				break;
+
+			// Cartographer
+			case 2:
+				// Put canvas here
+				// TO DO
+
+				// Load map (or at least, the part we could possibly view)
+				// TO DO
+
+				// Load our window into the map (start it centered on the ship)
+				// TO DO
+
+				// Add slide/drag events to move this "window/view" around the map
+				// TO DO
+
+				// Add an upgrade button underneath
+				// TO DO
+
+				break;
+
+			// Sailor
+			case 3:
+				// Load background image of ship (from the side)
+				// TO DO
+
+				// Load vertical slider (and light up amount of crew/speed)
+				// TO DO
+
+				// Load horizontal slider (and light up amount of peddles)
+				// TO DO
+
+				// Add upgrade button underneath
+				// TO DO
 
 				break;
 		}
@@ -128,6 +165,9 @@
 	// start listening (and reacting to) mouse movements
 	function compassStart(ev) {
 		document.addEventListener('mousemove', compassMove);
+
+		// already register a mouse move
+		compassMove(ev);
 	}
 
 	// stop listening (and reacting to) mouse movements

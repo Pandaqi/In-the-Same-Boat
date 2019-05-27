@@ -1,4 +1,4 @@
-body {
+body, html {
 	margin:0;
 	padding:0;
 	width:100%;
@@ -85,6 +85,8 @@ h1 {
     align-items:center;
 
     position:relative; /* just for z-index */
+    z-index:10;
+    box-shadow: 0px 3px 3px black;
 }
 
 #shipInfo > img {
@@ -112,6 +114,10 @@ h1 {
 
     background-color:#3C2718;
     color:#B78F6F; /* lighter version of LightBrown */
+
+    position:relative;
+    z-index:9;
+    box-shadow: 0px 3px 3px black;
 }
 
 .shipResourceGroup {
@@ -146,6 +152,10 @@ h1 {
     font-family: 'Pirata One', cursive;
 
     background-color:blue;
+
+    position:relative;
+    z-index:8;
+    box-shadow: 0px 5px 5px rgba(0,0,0,0.75);
 }
 
 .shipRoleGroup {
@@ -165,10 +175,12 @@ h1 {
 
     cursor:pointer;
     overflow:hidden;
+
+    box-shadow: 3px 0px 3px rgba(0,0,0,0.5);
 }
 
 .shipRoleGroup:hover {
-    background-color:red;
+    background-color:yellow;
 }
 
 .shipRoleGroup > img {
@@ -177,7 +189,9 @@ h1 {
 }
 
 .tabSelected {
-    background-color:green;
+    background-color:#8b0000;
+    color:#FFAAAA;
+    padding-top:20px;
 }
 
 /*** 
@@ -189,11 +203,16 @@ h1 {
 #shipInterface {
     padding:20px;
     background-color:#956F4E;
+
+    position:relative;
+    z-index:7;
 }
 
 .roleInterface {
     display:none;
     position: relative;
+
+    height:100%;
 }
 
 /*** 
