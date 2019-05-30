@@ -1,0 +1,43 @@
+{
+  "name": "trampolinedraak",
+  "version": "0.1.0",
+  "description": "Trying to recreate Jackbox Games",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --progress --colors",
+    "dev": "nodemon server/index.js --exec babel-node",
+    "start": "nodemon server/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pandaqi/Trampolinedraak.git"
+  },
+  "keywords": [
+    "Node.js",
+    "Socket.io",
+    "Phaser.js"
+  ],
+  "author": "Tiamo Pastoor",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Pandaqi/Trampolinedraak/issues"
+  },
+  "homepage": "https://github.com/Pandaqi/Trampolinedraak#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "babel-register": "^6.26.0",
+    "html-webpack-plugin": "^2.30.1",
+    "uglifyjs-webpack-plugin": "^1.1.6",
+    "webpack": "^3.10.0"
+  },
+  "dependencies": {
+    "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
+    "express": "^4.16.2",
+    "socket.io": "^2.0.4",
+    "nodemon": "^1.14.10"
+  }
+}

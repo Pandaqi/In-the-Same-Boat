@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width,height=device-height" />
+	<title>Player Interface</title>
+	<link rel="stylesheet" type="text/css" href="stylesheet.css">
+
+	<!-- Pirata font (headings, titles, buttons) -->
+	<link href="https://fonts.googleapis.com/css?family=Pirata+One&display=swap" rel="stylesheet"> 
+
+	<!-- Open Sans font (for  body text) -->
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet"> 
+
+	<script type="text/javascript">
+	let curTab = 0;
+	let shipNum = 5;
+
+	let roles = [0, 1, 2, 3];
+
+	let crew = ["Alfred", "Bert", "Cassidy"];
+
+	// this function checks if the page has loaded
+	// only once all elements are loaded, can we start binding JavaScript functions and do other stuff
+	document.addEventListener('readystatechange', event => {
+
+		//same as:  document.addEventListener("DOMContentLoaded"...   // same as  jQuery.ready
+	    if (event.target.readyState === "interactive") {      
+	        console.log("All HTML DOM elements are accessible");
+	    }
+
+	    if (event.target.readyState === "complete") {
+	        console.log("Now external resources are loaded too, like css,src etc... ");
+
+	        initializeInterface();
+	    }
+	});
+
+	/***
+	 * ROLES INDEXATION:
+	 * 0 => Captain
+	 * 1 => First Mate
+	 * 2 => Cartographer
+	 * 3 => Sailor
+	 * 4 => Weaponeer
+	 ***/
+	let roleDict = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+
+	/*** 
+	 *
+	 * Initializes all the "dynamic parts" of the interface
+	 *  => The style (based on ship color)
+	 *  => The tabs and role interfaces (based on which roles this player controls)
+	 *
+	 **/
+	function initializeInterface() {
+		// set interface styles to the right ship number
+		document.getElementById('healthBar').classList.add('shipColor'+shipNum);
+		document.getElementById('shipInfo').classList.add('shipColor'+shipNum);
+
+		// load the role tabs
+		for(let i = 0; i < roles.length; i++) {
+			let roleNum = roles[i];
+			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" style="z-index:' + (5-i) + ';" onClick="loadTab(this.id)" id="label' + i + '"><img src="pirate_flag.jpg"/><span class="shipRoleTitle">' + roleDict[roleNum] + '</span></span>';
+		}
+
+		// load the role interfaces
+		for(let i = 0; i < roles.length; i++) {
+			let roleNum = roles[i];
+			document.getElementById('shipInterface').innerHTML += '<div class="roleInterface" id="tab' + i + '">' + loadRoleInterface(roleNum) + '</div>';
+		}
+
+		// load the current tab (usually the first?)
+		loadTab("label"+curTab);
+	}
+
+	/*** 
+	 *
+	 * For loading the interface for a specific role
+	 *
+	 * @num => number of the role
+	 **/
+	function loadRoleInterface(num) {
+		var domString = '';
+
+		switch(num) {
+			// Captain
+			case 0:
+				//domString += '<h1>Messages</h1>';
+
+				// Load current set of tasks
+				// Don't forget divider at the end
+				// TO DO
+				domString += '<span class="captain-task"><p>A ship is nearby. Attack?</p><p><button class="taskButton">FIRE!</button></p></span>';
+
+				domString += '<span class="captain-task"><p>You have discovered a mysterious island! What will you name it?</p><p><input type="text" /><button class="taskButton">SUBMIT</button></p></span>'
+
+				// Load crew
+				// Display their name
+				// Show two buttons: let them off board, throw them off board
+				domString += '<h1>Crew</h1><p>Click <em>leave</em> to let the crew member (peacefully) leave the boat. Click <em>throw</em> to throw them off the ship.</p>';
+				for(let i = 0; i < crew.length; i++) {
+					domString += '<div class="captain-crewMember"><span>' + crew[i] + '</span><button>LEAVE</button><button>THROW</button></div>';
+				}
+				break;
+
+			// First Mate
+			case 1:
+				// Load compass
+				// TO DO
+				domString += '<img src="pirate_flag.jpg" style="max-width:100%;position:absolute;" />';
+
+				// Load current ship rotation
+				// (This means an image of a basic ship layout, rotated to the current angle of the ship)
+				// TO DO
+				let curRotation = 40;
+
+				// Load arrow (and attach event listener for rotating/touching/clicking)
+				// IMPORTANT: Also stops the movement if the mouse moves _OUT_ of the arrow image, which might be too harsh.
+				// TO DO: Snap to angles (North, NorthEast, East, etc.)
+				// TO DO
+				domString += '<img src="pirate_flag.jpg" onmousedown="compassStart(event)" ontouchstart="compassStart(event)" onmouseup="compassEnd(event)" ontouchend="compassEnd(event)" onmouseout="compassEnd(event)" style="max-width:100%;transform:rotate(' + curRotation + 'deg);" id="firstMate-compassArrow" />';
+
+				break;
+
+			// Cartographer
+			case 2:
+				// Put canvas here
+				// TO DO
+
+				// Load map (or at least, the part we could possibly view)
+				// TO DO
+
+				// Load our window into the map (start it centered on the ship)
+				// TO DO
+
+				// Add slide/drag events to move this "window/view" around the map
+				// TO DO
+
+				// Add an upgrade button underneath
+				// TO DO
+
+				break;
+
+			// Sailor
+			case 3:
+				// Load background image of ship (from the side)
+				// TO DO
+
+				// Load vertical slider (and light up amount of crew/speed)
+				// TO DO
+
+				// Load horizontal slider (and light up amount of peddles)
+				// TO DO
+
+				// Add upgrade button underneath
+				// TO DO
+
+				break;
+		}
+
+		return domString;
+	}
+
+	// start listening (and reacting to) mouse movements
+	function compassStart(ev) {
+		document.addEventListener('mousemove', compassMove);
+
+		// already register a mouse move
+		compassMove(ev);
+	}
+
+	// stop listening (and reacting to) mouse movements
+	function compassEnd(ev) {
+		document.removeEventListener('mousemove', compassMove);
+
+		// TO DO
+		// Send signal that we updated the compass!
+	}
+
+	// react to mouse movements (whil mouse is held down/compass is being touched)
+	function compassMove(ev) {
+		// rotate compass to match angle between mouse and center of compass
+
+		// find center of compass
+		var image1 = document.getElementById("firstMate-compassArrow");
+	    var rect1 = image1.getBoundingClientRect();
+        var cx = rect1.left + rect1.width * 0.5;    
+        var cy = rect1.top + rect1.height * 0.5;
+
+        // find mouse position
+        var px = ev.pageX;
+        var py = ev.pageY;
+
+        var vec = [px - cx, py - cy];
+        var angle = Math.atan2(vec[1], vec[0]) * 180 / Math.PI;
+
+        document.getElementById('firstMate-compassArrow').style.transform = 'rotate(' + angle + 'deg)';
+	}
+
+	/*** 
+	 *
+	 * For switching tabs (unloads previous tab+interface, loads the selected one)
+	 *
+	 * @eventID => id of the clicked tab, in the form of "label"+number
+	 *
+	 **/
+	function loadTab(eventID) {
+		let num = eventID.charAt(5); // get number from id
+
+		console.log("Loading tab " + num);
+
+		// remove old selected tab
+		document.getElementById("tab" + curTab).style.display = 'none';
+		document.getElementById("label" + curTab).classList.remove('tabSelected');
+
+		// load new selected tab
+		document.getElementById("tab" + num).style.display = 'block';
+		document.getElementById("label"+ num).classList.add('tabSelected');
+
+		// update current tab number
+		curTab = num;
+	}
+	</script>
+</head>
+<body>
+
+<!-- This is the background of the shipInfo -->
+<!-- It displays the current health of the ship (full width = 100%) -->
+<!-- Its color is also the same as the ship color -->
+<div id="healthBar">
+	
+</div>
+
+<!-- The shipInfo contains the name of the ship and its flag -->
+<div id="shipInfo">
+	<img src="pirate_flag.jpg" /> The Black Pearl
+</div>
+
+<!-- The shipResources contains an overview of the ship's resources and their current numbers -->
+<!-- These resources are: crew, gold, wood, gun powder -->
+<div id="shipResources">
+	<!-- Crew -->
+	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>20</span></span>
+
+	<!-- Gold -->
+	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>10</span></span>
+
+	<!-- Wood -->
+	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>32</span></span>
+
+	<!-- Gun Powder -->
+	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>-4</span></span>
+</div>
+
+<!-- The shipRoles part contains the roles (and their buttons) -->
+<!-- It's a tabbed structure: clicking on a tab will load the interface for that role -->
+<!-- Only one interface (for a single role) is displayed at a time -->
+<div id="shipRoles">
+
+</div>
+
+<!-- The shipInterface part contains the actual interface for the selected role -->
+<!-- All interfaces are loaded simultaneously, but only a single one is displayed -->
+<!-- (The other roles have display:none; which automatically disables most events/javascript for them) -->
+<!-- (Switching between tabs is controlled via JavaScript) -->
+<div id="shipInterface">
+
+</div>
+
+</body>
+</html>

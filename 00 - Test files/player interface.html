@@ -20,6 +20,8 @@
 
 	let crew = ["Alfred", "Bert", "Cassidy"];
 
+	let resources = [20,10,4,8];
+
 	// this function checks if the page has loaded
 	// only once all elements are loaded, can we start binding JavaScript functions and do other stuff
 	document.addEventListener('readystatechange', event => {
@@ -44,7 +46,7 @@
 	 * 3 => Sailor
 	 * 4 => Weaponeer
 	 ***/
-	let roleDict = ['Captain', 'First Mate', 'Carto&shy;grapher', 'Sailor', 'Weapon Specialist'];
+	let roleDict = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
 
 	/*** 
 	 *
@@ -61,13 +63,7 @@
 		// load the role tabs
 		for(let i = 0; i < roles.length; i++) {
 			let roleNum = roles[i];
-			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" style="z-index:' + (5-i) + ';" onClick="loadTab(this.id)" id="label' + i + '"><img src="pirate_flag.jpg"/><span>' + roleDict[roleNum] + '</span></span>';
-		}
-
-		// load the role interfaces
-		for(let i = 0; i < roles.length; i++) {
-			let roleNum = roles[i];
-			document.getElementById('shipInterface').innerHTML += '<div class="roleInterface" id="tab' + i + '">' + loadRoleInterface(roleNum) + '</div>';
+			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" style="z-index:' + (5-i) + ';" onClick="loadTab(this.id)" id="label' + i + '"><img src="pirate_flag.jpg"/><span class="shipRoleTitle">' + roleDict[roleNum] + '</span></span>';
 		}
 
 		// load the current tab (usually the first?)
@@ -94,6 +90,15 @@
 				domString += '<span class="captain-task"><p>A ship is nearby. Attack?</p><p><button class="taskButton">FIRE!</button></p></span>';
 
 				domString += '<span class="captain-task"><p>You have discovered a mysterious island! What will you name it?</p><p><input type="text" /><button class="taskButton">SUBMIT</button></p></span>'
+
+				// Load resources
+				domString += '<h1>Resources</h1>';
+
+				domString += '<div id="shipResources">\
+				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceCrew">' + resources[0] + '</span></span>\
+				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceGold">' + resources[1] + '</span></span>\
+				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceWood">' + resources[2] + '</span></span>\
+				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceGuns">' + resources[3] + '</span></span></div>';
 
 				// Load crew
 				// Display their name
@@ -210,13 +215,14 @@
 
 		console.log("Loading tab " + num);
 
-		// remove old selected tab
-		document.getElementById("tab" + curTab).style.display = 'none';
+		// disable old selected tab
 		document.getElementById("label" + curTab).classList.remove('tabSelected');
 
-		// load new selected tab
-		document.getElementById("tab" + num).style.display = 'block';
+		// enable new selected tab
 		document.getElementById("label"+ num).classList.add('tabSelected');
+
+		// load the corresponding interface ("roles[num]")
+		document.getElementById('shipInterface').innerHTML = '<div class="roleInterface" id="tab' + num  + '">' + loadRoleInterface(roles[num]) + '</div>';
 
 		// update current tab number
 		curTab = num;
@@ -235,22 +241,6 @@
 <!-- The shipInfo contains the name of the ship and its flag -->
 <div id="shipInfo">
 	<img src="pirate_flag.jpg" /> The Black Pearl
-</div>
-
-<!-- The shipResources contains an overview of the ship's resources and their current numbers -->
-<!-- These resources are: crew, gold, wood, gun powder -->
-<div id="shipResources">
-	<!-- Crew -->
-	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>20</span></span>
-
-	<!-- Gold -->
-	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>10</span></span>
-
-	<!-- Wood -->
-	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>32</span></span>
-
-	<!-- Gun Powder -->
-	<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span>-4</span></span>
 </div>
 
 <!-- The shipRoles part contains the roles (and their buttons) -->

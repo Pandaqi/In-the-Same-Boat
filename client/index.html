@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>In the Same Boat</title>
+    <link rel="stylesheet" type="text/css" href="/assets/stylesheet.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Pirata font (headings, titles, buttons) -->
+    <link href="https://fonts.googleapis.com/css?family=Pirata+One&display=swap" rel="stylesheet"> 
+
+    <!-- Open Sans font (for  body text) -->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet"> 
+  </head>
+  <body>
+    <!-- <script src="../vendor/phaser.min.js"></script> -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser-ce/2.11.1/phaser.js"></script> 
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+    
+    <!-- <script src="https://trampolinedraak.herokuapp.com/socket.io/socket.io.js"></script> -->
+
+    <!-- The game canvas will be a child of this node -->
+    <div id="canvas-container">
+    </div>
+
+    <div id="overlay">
+      <!-- This node contains the GUI overlay (for joining/creating/watching rooms) -->
+      <div id="main">
+        <span id="err-message"></span>
+        <button class="taskButton" id="createRoomBtn">Create Game</button>
+        <hr/>
+        <input type="text" class="joinInput" placeholder="room code"/>
+        <input type="text" class="joinInput" placeholder="username" />
+        <button class="taskButton" id="joinRoomBtn">Join Game</button>
+        <hr/>
+        <input type="text" class="joinInput" placeholder="room code"/>
+        <button class="taskButton" id="watchRoomBtn">Watch Room</button>
+      </div>
+
+      <!-- This node is used for the controller overlay -->
+      <div id="main-controller">
+      </div>
+    </div>
+  </body>
+</html>

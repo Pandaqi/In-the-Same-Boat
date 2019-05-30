@@ -1,0 +1,309 @@
+body, html {
+	margin:0;
+	padding:0;
+	width:100%;
+	height:100%;
+	background-color:#000;
+}
+
+p {
+    font-family: 'Open Sans', sans-serif;
+    margin:0px;
+}
+
+h1 {
+    margin-top:20px;
+    margin-bottom:0px;
+}
+
+/*** 
+ * 
+ * Rules for different ship colors
+ *
+ * 0 = Red
+ * 1 = Green
+ * 2 = Blue
+ *
+ * 3 = Purple
+ * 4 = Yellow
+ * 5 = Lightblue
+ *
+ ***/
+.shipColor0 {
+    color: #FFAAAA;
+    background-color: #8B0000;
+}
+
+.shipColor1 {
+    color: #AAFFAA;
+    background-color: #008B00;
+}
+
+.shipColor2 {
+    color: #AAAAFF;
+    background-color: #00008B;
+}
+
+.shipColor3 {
+    color:#FFAAFF;
+    background-color:#8B008B;
+}
+
+.shipColor4 {
+    color:#FFFFAA;
+    background-color:#8B8B00;
+}
+
+.shipColor5 {
+    color:#AAFFFF;
+    background-color:#008B8B;
+}
+
+/*** 
+ * 
+ * Rules for the ship info display (including healthbar behind it)
+ *
+ ***/
+
+#healthBar {
+    display:block;
+    position:absolute;
+    width:100%;
+    height:50px;
+    z-index:10;
+}
+
+#shipInfo {
+    background-color:transparent;
+    font-size:20px;
+    font-family: 'Pirata One', cursive;
+    height:30px;
+    padding:10px;
+
+    display:flex;
+    flex-direction:row;
+    justify-content: center;
+    align-items:center;
+
+    position:relative; /* just for z-index */
+    z-index:10;
+    box-shadow: 0px 3px 3px black;
+}
+
+#shipInfo > img {
+    max-height:100%;
+    margin-right:10px;
+}
+
+/*** 
+ * 
+ * Rules for the ship resource list
+ *
+ ***/
+
+#shipResources {
+    height:30px;
+    padding:10px;
+
+    font-size:20px;
+    font-family: 'Pirata One', cursive;
+
+    display:flex;
+    flex-direction:row;
+    justify-content: space-between;
+    align-items:center;
+
+    background-color:#3C2718;
+    color:#B78F6F; /* lighter version of LightBrown */
+
+    position:relative;
+    z-index:9;
+    box-shadow: 0px 3px 3px black;
+}
+
+.shipResourceGroup {
+    height:30px;
+
+    display:flex;
+    flex-direction:row;
+    justify-content: flex-start;
+    align-items:center;
+}
+
+.shipResourceGroup > img {
+    max-height:100%;
+    margin-right:10px;
+}
+
+/*** 
+ * 
+ * Rules for the tabbed roles list
+ *
+ ***/
+
+#shipRoles {
+    display: flex;
+    flex-direction:row;
+    justify-content:space-evenly;
+    align-items:center;
+
+    height:50px;
+
+    font-size:20px;
+    font-family: 'Pirata One', cursive;
+
+    background-color:darkorange;
+
+    position:relative;
+    z-index:8;
+    box-shadow: 0px 5px 5px rgba(0,0,0,0.75);
+}
+
+.shipRoleGroup {
+    height:30px;
+    padding:10px;
+
+    display:flex;
+    flex-direction:row;
+    justify-content: flex-start;
+    align-items:center;
+
+    /* border-right:2px solid orange; */
+
+    cursor:pointer;
+    overflow:hidden;
+
+    box-shadow: 3px 0px 3px rgba(0,0,0,0.5);
+}
+
+.shipRoleGroup:hover {
+    background-color:yellow;
+}
+
+.shipRoleGroup > img {
+    max-height:100%;
+    margin-right:10px;
+}
+
+.shipRoleGroup .shipRoleTitle {
+    display:none;
+}
+
+.tabSelected {
+    background-color:#8b0000;
+    color:#FFAAAA;
+    padding-top:20px;
+}
+
+.tabSelected .shipRoleTitle {
+    display:block;
+}
+
+/*** 
+ * 
+ * Rules for individual role interfaces
+ *
+ ***/
+
+#shipInterface {
+    padding:20px;
+    background-color:#956F4E;
+
+    position:relative;
+    z-index:7;
+}
+
+.roleInterface {
+    position: relative;
+    height:100%;
+}
+
+/*** 
+ * 
+ * Rules for the CAPTAIN interface
+ *
+ ***/
+.captain-crewMember {
+    width:100%;
+    padding:10px;
+    box-sizing:border-box;
+
+    background-color:rgba(0,0,0,0.5);
+
+    font-family: 'Pirata One', cursive;
+    color:white;
+
+    display:flex;
+    margin-top:5px;
+}
+
+.captain-crewMember span {
+    width:100%;
+}
+
+.captain-crewMember button {
+    font-family:inherit;
+    background-color:#431B13; /* rgba(60, 0, 0, 0.5); */
+    color:#CCC;
+    border:none;
+    margin-left:5px;
+    cursor:pointer;
+}
+
+.captain-crewMember button:hover {
+    color:#FFF;
+    background-color:#891B13; /*rgba(200, 0, 0, 0.5);*/
+}
+
+.captain-task {
+    display:block;
+    background-color:rgba(0,0,0,0.5);
+    padding:10px;
+    margin-bottom:5px;
+    /* color:white; */
+}
+
+.taskButton {
+    font-family: 'Pirata One', cursive;
+    color:#CCC;
+    border:none;
+    cursor:pointer;
+    width:100%;
+    padding:10px;
+    background-color:#431B13;
+    font-size:24px;
+    margin-top:5px;
+}
+
+.taskButton:hover {
+    color:#FFF;
+    background-color:#891B13;
+}
+
+input[type="text"] {
+    width:100%;
+    font-family: 'Pirata One', cursive;
+    padding:5px;
+    box-sizing:border-box;
+    margin-top:5px;
+}
+
+
+ /* Pirate theme color palette 
+
+#1c8bc1     (28,139,193)
+    #ddd417     (221,212,23)
+    #760a0a     (118,10,10)
+    #5e2a0e     (94,42,14)
+    #000000
+
+ */
+
+ /* Pirate theme color palette 
+
+Dark brown: #3C2718;
+Light brown: #956F4E;
+Yellow-greenish: #D2CF55;
+More greenish: #BEA51A;
+
+ */
