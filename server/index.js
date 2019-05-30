@@ -145,6 +145,8 @@ io.on('connection', socket => {
           vip: vip,  
           profile: null, 
           room: room,
+          myShip: -1,
+          myRoles: [],
         }
         curRoom.players[socket.id] = playerObject
 
@@ -397,12 +399,14 @@ io.on('connection', socket => {
     curRoom.mapSeed = Math.random();
 
     // Distribute roles
-    let boatDistribution = determineBoatDistribution(curRoom.playerCount);
+    createPlayerShips(curRoom);
 
-
+    // Make the game started (in the eyes of the server)
     curRoom.gameStarted = true;
 
-    // Inform all players about this change (which should switch them to the next state)
+    // Switch to the preparation phase
+    // This should send the correct roles to each player (as a preSignal)
+    // And then switch to the preparation state
     gotoNextState(room, 'Prep', true)
   })
 
@@ -421,22 +425,14 @@ io.on('connection', socket => {
 
       // update the waiting screen
       sendSignal(room, true, 'player-updated-profile', curPlayer)
-    } else if (state.type == "ingame") {
+    } else if (state.type == "ship") {
+      // TO DO
       // save the drawing for this player
-      rooms[room].players[socket.id].drawing = state.dataURI
-
-      // notify the game monitors
-      // (only send the player that is done, not the whole playerlist)
-      sendSignal(room, true, 'player-done', curPlayer)
-
-      // update drawings counter
-      curRoom.drawingsSubmitted++;
-
-      // If all drawings have been submitted, start the next state automatically
-      // This can be because all users have submitted, OR because the autofetch by the server is complete
-      if(curRoom.drawingsSubmitted == curRoom.playerCount) {
-        gotoNextState(room, 'Guessing', true)
-      }
+      rooms[room].players[socket.id].drawing = state.dataURI    
+    } else if(state.type == "flag") {
+      // TO DO
+    } else if(state.type == "monster") {
+      // TO DO
     }
     
   })
@@ -479,7 +475,15 @@ io.on('connection', socket => {
     switch(nextState) {
       // If the next state is the preperation state (first of the game, before actual gameplay starts)
       case 'Prep':
-        // inform (only the monitors) of some extra info, such as player count
+        // inform all players of their ship and roles
+        // TO DO: Figure out a way to use pre-signals for sending more than one thing
+          // Well, actually, I think this will work out. The preparation phase is only used once in the game, and it SHOULD send almost everything you need
+          // We can change it to an object, and when the signal is received, it just loops over the object and saves all the variables it received!
+        for(let playerID in curRoom.players) {
+          sendSignal(room, false, 'pre-signal', {}, true, true, playerID);
+        }
+
+        // inform the monitors of the map
         sendSignal(room, true, 'pre-signal', ['playerCount', rooms[room].playerCount], true)
 
         // just set the timer
@@ -521,13 +525,11 @@ io.on('connection', socket => {
       curRoom.timerEnd = new Date(new Date().getTime() + timer*1000)  
     }
 
-    // if we're certain that the next state should start, notify both Monitors and Controllers
-    if(certain) {
-      curRoom.gameState = nextState
+    // finally, actually start the next state, and notify both Monitors and Controllers
+    curRoom.gameState = nextState
 
-      sendSignal(room, true, 'next-state', { nextState: nextState, timer: timer }, false, false)
-      sendSignal(room, false, 'next-state', { nextState: nextState, timer: timer }, false, false)
-    }
+    sendSignal(room, true, 'next-state', { nextState: nextState, timer: timer }, false, false)
+    sendSignal(room, false, 'next-state', { nextState: nextState, timer: timer }, false, false)
   }
 })
 
@@ -588,7 +590,7 @@ function sendSignal(room, monitor, label, info, preSignal = false, storeSignal =
 
 
 
-function determineBoatDistribution(num) {
+function createPlayerShips(room) {
   // TO DO: with many players, there might be more players per boat than there are roles. 
   //         => Perform a check for this. 
 
@@ -601,29 +603,77 @@ function determineBoatDistribution(num) {
 
   // Example: 6 players. sqrt(6) = 2. #boats = 2 +- 1, so it can be 2 or 3 boats.
   // Example: 10 players. sqrt(10) = 3. #boats = 3 +- 2, so it can be between 2 and 5 boats.
+  const num = room.playerCount;
   let numberBoats = Math.round(Math.sqrt(num)) + Math.round( (Math.random()-0.5)*Math.sqrt(num) )
   if(numberBoats < 2) {
     numberBoats = 2;
   }
 
+  if(num == 1) {
+    numberBoats = 1;
+  }
+
+  /* 
+    Create a ship object for each ship
+    Each ship object has:
+    => list of players
+    => coordinates (tile => x,y)
+    => orientation (number from 0 to 7; 0 is pointing to the right)
+    => resources 
+    => health 
+   */
+  room.playerShips = [];
+  for(let i = 0; i < numberBoats; i++) {
+    room.playerShips.push({ players: [], resources: [0,0,0,0], x: 0, y: 0, orientation: 0, health: 100 });
+  }
+
+  /*
   // create 0-filled array of the right length (number of boats)
   let distr = [] 
   distr.length = numberBoats; 
   distr.fill(0);
+  */
 
   // now we loop over it and determine player distribution
-  let tempCount = 0;
   let curBoat = 0;
-  while(tempCount < num) {
-    // add it to the boat
-    distr[curBoat]++;
+  const keys = Object.keys(room.players)
+  for (const key of keys) {
+    // add this player to the current boat
+    room.playerShips[curBoat].players.push(key);
 
-    //increase counter (so we know when the loop should end)
-    tempCount++;
+    // also inform the player this is his boat
+    room.players[key].myShip = curBoat;
 
+    console.log("Player " + key + " will be on ship number " + curBoat);
+    
     // switch to the next boat
     curBoat = (curBoat + 1) % numberBoats;
   }
 
-  return distr;
+  console.log("These players are on ship 0: " + room.playerShips[0].players);
+
+  // now we distribute roles for each ship.
+  // for each boat ...
+  for(let i = 0; i < numberBoats; i++) {
+    let fullRoleList = [0,1,2,3,4];
+    let playersOnShip = room.playerShips[i].players.length;
+
+    let curPlayer = 0;
+    // ... loop through all players, 
+    // and give them one role at a time, 
+    // until no more roles are left
+    while(fullRoleList.length > 0) {
+      let tempKey = room.playerShips[i].players[curPlayer];
+
+      console.log("Going once; player " + tempKey);
+      console.log(fullRoleList);
+
+
+      room.players[tempKey].myRoles.push(fullRoleList.splice(0,1));
+
+      curPlayer = (curPlayer + 1) % playersOnShip;
+    }
+  }
+
+  console.log(room.playerShips);
 }

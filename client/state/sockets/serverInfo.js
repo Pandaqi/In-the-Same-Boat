@@ -1,7 +1,7 @@
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 const serverInfo = {
-  SERVER_IP: /*'http://localhost:8000',*/ 'https://trampolinedraak.herokuapp.com',
+  SERVER_IP: 'http://localhost:8000', /*'https://trampolinedraak.herokuapp.com',*/
   socket: null,
   server: null,
   roomCode: '',
@@ -10,17 +10,6 @@ const serverInfo = {
   playerCount: -1,
 
   timer: 0,
-
-  drawingTitle: "",
-  drawing: null,
-  guesses: null,
-  finalGuessResults: null,
-  finalScores: null,
-
-  gameLoading: false,
-  paused: false,
-  playerDone: false,
-  rejoin: false,
 
   language: 'en',
 }
