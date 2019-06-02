@@ -22,10 +22,6 @@ class ControllerPrep extends Phaser.State {
 
     let div = document.getElementById("main-controller")
 
-    // TO DO
-    // Add the loadTab function for switching tabs
-    // Actually load the correct interfaces
-
     // Add the health bar at the top
     let healthBar = document.createElement("div");
     healthBar.id = "healthBar";
@@ -59,10 +55,9 @@ class ControllerPrep extends Phaser.State {
       newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + ROLE_DICTIONARY[roleNum] + '</span>';
 
       // when you click this tab, unload the previous tab, and load the new one!
-      // REMEMBER: <this> is the object associated with the event listener, ev.target is the thing that was actually clicked
+      // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
       newTab.addEventListener('click', function(ev) {
         ev.preventDefault(); 
-
         LOAD_TAB(this.id, curTab);
       })
 
@@ -77,9 +72,7 @@ class ControllerPrep extends Phaser.State {
     shipInterface.id = 'shipInterface';
     div.appendChild(shipInterface);
 
-    // automatically load the first role
-    // by calling loadTab on the first tab
-    // TO DO
+    // automatically load the first role (by calling LOAD_TAB with value 0)
     LOAD_TAB("label0", curTab)
 
     /*

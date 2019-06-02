@@ -20,7 +20,9 @@ export default function (num, cont) {
             cont.appendChild(input);
 
             // Canvas (drawing area)
-            // TO DO
+            let canvas = document.getElementById("canvas-container")
+            canvas.style.display = 'block';
+            cont.appendChild(canvas)
 
             // Title+Canvas submit button
             let btn1 = document.createElement("button")
@@ -33,7 +35,7 @@ export default function (num, cont) {
               let dataURI = bmdReference.canvas.toDataURL()
 
               // send the drawing to the server (including the information that it's a profile pic)
-              socket.emit('submit-preparation', { role: 0, title: input.value, dataURI: dataURI })
+              socket.emit('submit-preparation', { role: 0, shipTitle: input.value, shipDrawing: dataURI })
 
               // Disable canvas
               canvas.style.display = 'none';
@@ -45,6 +47,19 @@ export default function (num, cont) {
               p1.innerHTML = 'Thank you!'
             })
             cont.appendChild(btn1)
+
+            // make canvas the correct size
+            // SIZE = total screen size - height taken by elements above - height taken by the button
+            // keep some padding (I use 10 here)
+            let padding = 10;
+            let maxHeight = screen.height - (input.getBoundingClientRect().top + input.getBoundingClientRect().height) - btn1.getBoundingClientRect().height - padding;
+            let maxWidth = screen.width - padding;
+
+            // scale to the biggest size that fits (the canvas is a SQUARE)
+            let finalSize = Math.min(maxWidth, maxHeight)
+            // scale the game immediately (both stage and canvas simultaneously)
+            // TO DO (gm is undefined right now)
+            gm.scale.setGameSize(finalSize, finalSize)
 
             break;
 

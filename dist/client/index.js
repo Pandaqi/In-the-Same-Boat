@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 9);
+/******/ 	return __webpack_require__(__webpack_require__.s = 10);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -85,9 +85,7 @@ var serverInfo = {
 
   timer: 0,
 
-  language: 'en',
-
-  curTab: 0
+  language: 'en'
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -388,7 +386,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _loadImageComplete = __webpack_require__(11);
+var _loadImageComplete = __webpack_require__(12);
 
 var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
 
@@ -621,42 +619,54 @@ exports.default = loadRejoinRoom;
 
 
 Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _Menu = __webpack_require__(10);
+var _Menu = __webpack_require__(11);
 
 var _Menu2 = _interopRequireDefault(_Menu);
 
-var _GameLobby = __webpack_require__(12);
+var _GameLobby = __webpack_require__(13);
 
 var _GameLobby2 = _interopRequireDefault(_GameLobby);
 
-var _GamePrep = __webpack_require__(13);
+var _GamePrep = __webpack_require__(14);
 
 var _GamePrep2 = _interopRequireDefault(_GamePrep);
 
-var _GamePlay = __webpack_require__(14);
+var _GamePlay = __webpack_require__(15);
 
 var _GamePlay2 = _interopRequireDefault(_GamePlay);
 
-var _GameOver = __webpack_require__(15);
+var _GameOver = __webpack_require__(16);
 
 var _GameOver2 = _interopRequireDefault(_GameOver);
 
-var _ControllerLobby = __webpack_require__(16);
+var _ControllerLobby = __webpack_require__(17);
 
 var _ControllerLobby2 = _interopRequireDefault(_ControllerLobby);
 
-var _ControllerPrep = __webpack_require__(17);
+var _ControllerPrep = __webpack_require__(18);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(20);
+var _ControllerPlay = __webpack_require__(21);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(21);
+var _ControllerOver = __webpack_require__(22);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -723,7 +733,7 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function () {
 exports.default = SimpleGame;
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -769,7 +779,7 @@ var Menu = function (_Phaser$State) {
       // load stuff here
       //game.load.baseURL = 'https://trampolinedraak.herokuapp.com/';
       this.game.load.crossOrigin = 'Anonymous';
-      this.game.stage.backgroundColor = "#000000";
+      this.game.stage.backgroundColor = "#AA0000";
 
       // We set this to true so our game won't pause if we focus
       // something else other than the browser
@@ -934,7 +944,7 @@ var Menu = function (_Phaser$State) {
 exports.default = Menu;
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -953,7 +963,7 @@ var loadImageComplete = function loadImageComplete(gm, pos, dims, name) {
 exports.default = loadImageComplete;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1087,7 +1097,7 @@ var GameLobby = function (_Phaser$State) {
 exports.default = GameLobby;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1176,140 +1186,6 @@ var GamePrep = function (_Phaser$State) {
 }(Phaser.State);
 
 exports.default = GamePrep;
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _serverInfo = __webpack_require__(0);
-
-var _dynamicLoadImage = __webpack_require__(4);
-
-var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
-
-var _colors = __webpack_require__(1);
-
-var _loadPlayerVisuals = __webpack_require__(3);
-
-var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
-
-var _mainSocketsGame = __webpack_require__(2);
-
-var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
-
-var _watchRoomModule = __webpack_require__(7);
-
-var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
-
-var _styles = __webpack_require__(5);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var GameWaiting = function (_Phaser$State) {
-  _inherits(GameWaiting, _Phaser$State);
-
-  function GameWaiting() {
-    _classCallCheck(this, GameWaiting);
-
-    return _possibleConstructorReturn(this, (GameWaiting.__proto__ || Object.getPrototypeOf(GameWaiting)).call(this));
-  }
-
-  _createClass(GameWaiting, [{
-    key: 'preload',
-    value: function preload() {
-      // Set scaling (as game monitors can also be any size)
-      // Scale game to fit the entire window (and rescale when window is resized)
-      var gm = this.game;
-
-      gm.scale.scaleMode = Phaser.ScaleManager.RESIZE;
-      window.addEventListener('resize', function () {
-        gm.scale.refresh();
-      });
-      gm.scale.refresh();
-    }
-  }, {
-    key: 'create',
-    value: function create() {
-      var gm = this.game;
-
-      // display room code
-      var text = gm.add.text(gm.width * 0.5, 20, _serverInfo.serverInfo.translate('room').toUpperCase() + ": " + _serverInfo.serverInfo.roomCode, _styles.mainStyle.mainText(gm.width * 0.8));
-      text.anchor.setTo(0.5, 0);
-
-      // explain that we're waiting for people to join
-      var text2 = gm.add.text(gm.width * 0.5, 60, _serverInfo.serverInfo.translate('game-waiting-1'), _styles.mainStyle.subText(gm.width * 0.8));
-      text2.anchor.setTo(0.5, 0);
-
-      var socket = _serverInfo.serverInfo.socket;
-
-      socket.on('new-player', function (data) {
-        var x = gm.width * 0.5;
-        var y = 120 + data.rank * 60;
-        var newItem = gm.add.text(x, y, data.name, _styles.mainStyle.mainText(gm.width, _colors.playerColors[data.rank]));
-        newItem.anchor.setTo(0, 0.5);
-      });
-
-      socket.on('player-updated-profile', function (data) {
-        if (data.profile != null) {
-          var dataURI = data.profile;
-          var imageName = 'profileImage' + data.name; // creates unique name by appending the username
-
-          var x = gm.width * 0.5;
-          var y = 120 + data.rank * 60;
-
-          (0, _dynamicLoadImage2.default)(gm, { x: x - 100, y: y }, { width: 60, height: 78 }, imageName, dataURI);
-        }
-
-        // create a bubble at random location for each player
-        //let randPos = [gm.width*Math.random(), (gm.height-300)*Math.random()];
-        //var graphics = gm.add.graphics(0, 0);
-        //graphics.beginFill(0xFF0000, 1);
-        //graphics.drawCircle(randPos[0], randPos[1], 100);
-      });
-
-      (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
-      (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
-
-      console.log("Game waiting state");
-    }
-
-    // The shutdown function is called when we switch from one state to another
-    // In it, I can clean up this state (e.g. by removing eventListeners) before we go to another
-
-  }, {
-    key: 'shutdown',
-    value: function shutdown() {
-      var socket = _serverInfo.serverInfo.socket;
-
-      socket.off('new-player');
-      socket.off('player-updated-profile');
-    }
-  }, {
-    key: 'update',
-    value: function update() {
-      // This is where we listen for input!
-    }
-  }]);
-
-  return GameWaiting;
-}(Phaser.State);
-
-exports.default = GameWaiting;
 
 /***/ }),
 /* 15 */
@@ -1447,6 +1323,140 @@ exports.default = GameWaiting;
 
 /***/ }),
 /* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _serverInfo = __webpack_require__(0);
+
+var _dynamicLoadImage = __webpack_require__(4);
+
+var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
+
+var _colors = __webpack_require__(1);
+
+var _loadPlayerVisuals = __webpack_require__(3);
+
+var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
+
+var _mainSocketsGame = __webpack_require__(2);
+
+var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
+
+var _watchRoomModule = __webpack_require__(7);
+
+var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
+
+var _styles = __webpack_require__(5);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var GameWaiting = function (_Phaser$State) {
+  _inherits(GameWaiting, _Phaser$State);
+
+  function GameWaiting() {
+    _classCallCheck(this, GameWaiting);
+
+    return _possibleConstructorReturn(this, (GameWaiting.__proto__ || Object.getPrototypeOf(GameWaiting)).call(this));
+  }
+
+  _createClass(GameWaiting, [{
+    key: 'preload',
+    value: function preload() {
+      // Set scaling (as game monitors can also be any size)
+      // Scale game to fit the entire window (and rescale when window is resized)
+      var gm = this.game;
+
+      gm.scale.scaleMode = Phaser.ScaleManager.RESIZE;
+      window.addEventListener('resize', function () {
+        gm.scale.refresh();
+      });
+      gm.scale.refresh();
+    }
+  }, {
+    key: 'create',
+    value: function create() {
+      var gm = this.game;
+
+      // display room code
+      var text = gm.add.text(gm.width * 0.5, 20, _serverInfo.serverInfo.translate('room').toUpperCase() + ": " + _serverInfo.serverInfo.roomCode, _styles.mainStyle.mainText(gm.width * 0.8));
+      text.anchor.setTo(0.5, 0);
+
+      // explain that we're waiting for people to join
+      var text2 = gm.add.text(gm.width * 0.5, 60, _serverInfo.serverInfo.translate('game-waiting-1'), _styles.mainStyle.subText(gm.width * 0.8));
+      text2.anchor.setTo(0.5, 0);
+
+      var socket = _serverInfo.serverInfo.socket;
+
+      socket.on('new-player', function (data) {
+        var x = gm.width * 0.5;
+        var y = 120 + data.rank * 60;
+        var newItem = gm.add.text(x, y, data.name, _styles.mainStyle.mainText(gm.width, _colors.playerColors[data.rank]));
+        newItem.anchor.setTo(0, 0.5);
+      });
+
+      socket.on('player-updated-profile', function (data) {
+        if (data.profile != null) {
+          var dataURI = data.profile;
+          var imageName = 'profileImage' + data.name; // creates unique name by appending the username
+
+          var x = gm.width * 0.5;
+          var y = 120 + data.rank * 60;
+
+          (0, _dynamicLoadImage2.default)(gm, { x: x - 100, y: y }, { width: 60, height: 78 }, imageName, dataURI);
+        }
+
+        // create a bubble at random location for each player
+        //let randPos = [gm.width*Math.random(), (gm.height-300)*Math.random()];
+        //var graphics = gm.add.graphics(0, 0);
+        //graphics.beginFill(0xFF0000, 1);
+        //graphics.drawCircle(randPos[0], randPos[1], 100);
+      });
+
+      (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
+      (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
+
+      console.log("Game waiting state");
+    }
+
+    // The shutdown function is called when we switch from one state to another
+    // In it, I can clean up this state (e.g. by removing eventListeners) before we go to another
+
+  }, {
+    key: 'shutdown',
+    value: function shutdown() {
+      var socket = _serverInfo.serverInfo.socket;
+
+      socket.off('new-player');
+      socket.off('player-updated-profile');
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      // This is where we listen for input!
+    }
+  }]);
+
+  return GameWaiting;
+}(Phaser.State);
+
+exports.default = GameWaiting;
+
+/***/ }),
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1620,7 +1630,7 @@ var ControllerLobby = function (_Phaser$State) {
 exports.default = ControllerLobby;
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1644,7 +1654,7 @@ var _rejoinRoomModule = __webpack_require__(8);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
-var _roleDictionary = __webpack_require__(18);
+var _roleDictionary = __webpack_require__(9);
 
 var _loadTab = __webpack_require__(19);
 
@@ -1682,10 +1692,6 @@ var ControllerPrep = function (_Phaser$State) {
 
             var div = document.getElementById("main-controller");
 
-            // TO DO
-            // Add the loadTab function for switching tabs
-            // Actually load the correct interfaces
-
             // Add the health bar at the top
             var healthBar = document.createElement("div");
             healthBar.id = "healthBar";
@@ -1719,10 +1725,9 @@ var ControllerPrep = function (_Phaser$State) {
                 newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
 
                 // when you click this tab, unload the previous tab, and load the new one!
-                // REMEMBER: <this> is the object associated with the event listener, ev.target is the thing that was actually clicked
+                // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
                 newTab.addEventListener('click', function (ev) {
                     ev.preventDefault();
-
                     (0, _loadTab2.default)(this.id, curTab);
                 });
 
@@ -1737,9 +1742,8 @@ var ControllerPrep = function (_Phaser$State) {
             shipInterface.id = 'shipInterface';
             div.appendChild(shipInterface);
 
-            // automatically load the first role
-            // by calling loadTab on the first tab
-            // TO DO
+            // automatically load the first role (by calling LOAD_TAB with value 0)
+            (0, _loadTab2.default)("label0", curTab);
 
             /*
              * FOR TESTING IF INFORMATION WAS WELL-RECEIVED
@@ -1775,18 +1779,6 @@ var ControllerPrep = function (_Phaser$State) {
 exports.default = ControllerPrep;
 
 /***/ }),
-/* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
-
-/***/ }),
 /* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1808,18 +1800,145 @@ exports.default = function (eventID, curTab) {
    // enable new selected tab
    document.getElementById(eventID).classList.add('tabSelected');
 
-   // load the corresponding interface ("roles[num]")
-   // document.getElementById('shipInterface').innerHTML = '<div class="roleInterface" id="tab' + num  + '">' + loadRoleInterface(roles[num]) + '</div>';
-   document.getElementById('shipInterface').innerHTML = '<div class="roleInterface" id="tab' + num + '">You loaded the ... ' + ROLE_DICTIONARY[num] + '</div>';
+   // empty the interface area
+   document.getElementById("shipInterface").innerHTML = '';
+
+   // create the interface container
+   var container = document.createElement("div");
+   container.classList.add("roleInterface");
+   container.id = "tab" + num;
+
+   document.getElementById("shipInterface").appendChild(container);
+
+   console.log(_serverInfo.serverInfo.myRoles[num]);
+   console.log(container);
+
+   // now start loading the interface, for this ...
+   //  ... the role is needed (obviously) in the form of its number
+   //  ... the container is needed (because everything is going to be appended as a child there)
+   (0, _loadPrepInterface2.default)(_serverInfo.serverInfo.myRoles[num], container);
 
    // update current tab number
    curTab.num = num;
 };
 
+var _roleDictionary = __webpack_require__(9);
+
+var _serverInfo = __webpack_require__(0);
+
+var _loadPrepInterface = __webpack_require__(20);
+
+var _loadPrepInterface2 = _interopRequireDefault(_loadPrepInterface);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 ;
+
+// I'm cheating here
+// I pass curTab as a function with a property 'num', so it is passed by REFERENCE
+// This way I can access the old tab, disable it, and then update to the new tab, without having to send the object back
+// Bad practice, works well though :p
 
 /***/ }),
 /* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+exports.default = function (num, cont) {
+    switch (num) {
+        // Captain: give title and draw ship
+        case 0:
+            var p1 = document.createElement("p");
+            p1.innerHTML = 'Please title your ship and draw it (from the side)';
+            cont.appendChild(p1);
+
+            // Title input bar
+            var input = document.createElement("input");
+            input.type = "text";
+            input.id = "shipTitle";
+            cont.appendChild(input);
+
+            // Canvas (drawing area)
+            var canvas = document.getElementById("canvas-container");
+            canvas.style.display = 'block';
+            cont.appendChild(canvas);
+
+            // Title+Canvas submit button
+            var btn1 = document.createElement("button");
+            btn1.innerHTML = 'Submit title + drawing';
+            btn1.addEventListener('click', function (event) {
+                // Remove submit button
+                btn1.remove();
+
+                // Get the drawing into a form we can send over the internet
+                var dataURI = bmdReference.canvas.toDataURL();
+
+                // send the drawing to the server (including the information that it's a profile pic)
+                socket.emit('submit-preparation', { role: 0, title: input.value, dataURI: dataURI });
+
+                // Disable canvas
+                canvas.style.display = 'none';
+
+                // Remove input
+                input.remove();
+
+                // Replace text at the top
+                p1.innerHTML = 'Thank you!';
+            });
+            cont.appendChild(btn1);
+
+            // make canvas the correct size
+            // SIZE = total screen size - height taken by elements above - height taken by the button
+            // keep some padding (I use 10 here)
+            var padding = 10;
+            var maxHeight = screen.height - (input.getBoundingClientRect().top + input.getBoundingClientRect().height) - btn1.getBoundingClientRect().height - padding;
+            var maxWidth = screen.width - padding;
+
+            // scale to the biggest size that fits (the canvas is a SQUARE)
+            var finalSize = Math.min(maxWidth, maxHeight);
+            // scale the game immediately (both stage and canvas simultaneously)
+            gm.scale.setGameSize(finalSize, finalSize);
+
+            break;
+
+        // First mate: write motto and draw flag
+        case 1:
+
+            break;
+
+        // Cartographer: title seamonster and draw seamonster
+        case 2:
+
+            break;
+
+        // Sailor: (slider) choose between crew and resources
+        case 3:
+
+            break;
+
+        // Weapon Specialist: (slider) choose between gun powder and resources
+        case 4:
+
+            break;
+    }
+};
+
+; /*
+      This function loads the preparation interface for each role
+  
+      @num => the number of the role to be loaded
+      @cont => the container into which to load the interface
+  
+  */
+
+/***/ }),
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2000,7 +2119,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

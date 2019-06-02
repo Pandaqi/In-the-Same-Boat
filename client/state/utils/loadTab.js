@@ -1,6 +1,6 @@
-import { ROLE_DICTIONARY } from './utils/roleDictionary'
-import { serverInfo } from './sockets/serverInfo'
-import LOAD_INTERFACE from './interfaces/loadPrepInterface'
+import { ROLE_DICTIONARY } from './roleDictionary'
+import { serverInfo } from '../sockets/serverInfo'
+import LOAD_INTERFACE from '../interfaces/loadPrepInterface'
 
 // I'm cheating here
 // I pass curTab as a function with a property 'num', so it is passed by REFERENCE
@@ -26,6 +26,9 @@ export default function (eventID, curTab) {
     container.id = "tab" + num;
 
     document.getElementById("shipInterface").appendChild(container);
+
+    console.log(serverInfo.myRoles[num]);
+    console.log(container);
 
     // now start loading the interface, for this ...
     //  ... the role is needed (obviously) in the form of its number

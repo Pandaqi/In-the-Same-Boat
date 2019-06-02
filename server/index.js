@@ -671,7 +671,7 @@ function createPlayerShips(room) {
       console.log(fullRoleList);
 
 
-      room.players[tempKey].myRoles.push(fullRoleList.splice(0,1));
+      room.players[tempKey].myRoles.push(fullRoleList.splice(0,1)[0]);
 
       curPlayer = (curPlayer + 1) % playersOnShip;
     }
