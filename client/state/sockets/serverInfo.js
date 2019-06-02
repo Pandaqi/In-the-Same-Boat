@@ -6,7 +6,6 @@ const serverInfo = {
   server: null,
   roomCode: '',
   vip: false,
-  rank: -1,
   playerCount: -1,
 
   timer: 0,

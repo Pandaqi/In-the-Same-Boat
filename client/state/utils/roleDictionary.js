@@ -1,0 +1,1 @@
+export const ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist']

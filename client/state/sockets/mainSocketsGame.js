@@ -25,16 +25,20 @@ const loadMainSockets = (socket, gm, serverInfo) => {
   // go to next state
   // the server gives us (within data) the name of this next state
   socket.on('next-state', data => {
+    // set the timer
     serverInfo.timer = data.timer
+
+    // start the next state
     gm.state.start('Game' + data.nextState)
   })
 
   // presignals always have the following format ['variable name', value]
   // they always set a variable on the server info (before a state change)
   socket.on('pre-signal', data => {
-    serverInfo[data[0]] = data[1]
+    for (var key in data) {
+      serverInfo[key] = data[key];
+    }
   })
-
 
   // force disconnect (because game has been stopped/removed)
   socket.on('force-disconnect', data => {

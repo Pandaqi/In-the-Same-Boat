@@ -23,14 +23,14 @@ const config = {
     ]
   },
   plugins: [
-    new webpack.optimize.UglifyJsPlugin({
+    /*new webpack.optimize.UglifyJsPlugin({
       compress: {
         warnings: false
       },
       output: {
         comments: false
       }
-    }),
+    }),*/
     new HtmlWebpackPlugin({ template: './client/index.html' })
   ]
 }

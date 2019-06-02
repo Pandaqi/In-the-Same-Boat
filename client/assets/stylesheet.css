@@ -221,6 +221,29 @@ h1 {
 
 /*** 
  * 
+ * General interface rules (buttons, sliders, etc.)
+ *
+ ***/
+
+button {
+    font-family: 'Pirata One', cursive;
+    color:#CCC;
+    border:none;
+    cursor:pointer;
+    width:100%;
+    padding:10px;
+    background-color:#431B13;
+    font-size:24px;
+    margin-top:5px;
+}
+
+button {
+    color:#FFF;
+    background-color:#891B13;
+}
+
+/*** 
+ * 
  * Rules for the CAPTAIN interface
  *
  ***/
@@ -264,22 +287,7 @@ h1 {
     /* color:white; */
 }
 
-.taskButton {
-    font-family: 'Pirata One', cursive;
-    color:#CCC;
-    border:none;
-    cursor:pointer;
-    width:100%;
-    padding:10px;
-    background-color:#431B13;
-    font-size:24px;
-    margin-top:5px;
-}
 
-.taskButton:hover {
-    color:#FFF;
-    background-color:#891B13;
-}
 
 input[type="text"] {
     width:100%;
@@ -331,11 +339,15 @@ More greenish: #BEA51A;
     width:100%;
     max-width:375px;
     box-sizing:border-box;
-    padding:4px;
 }
 
 #main {
     margin-top:20px;
+    padding:4px;
+}
+
+#main-controller {
+    position:relative;
 }
 
 #main input {

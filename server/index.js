@@ -142,6 +142,7 @@ io.on('connection', socket => {
 
         let playerObject =  { 
           name: name, 
+          rank: rank,
           vip: vip,  
           profile: null, 
           room: room,
@@ -475,19 +476,19 @@ io.on('connection', socket => {
     switch(nextState) {
       // If the next state is the preperation state (first of the game, before actual gameplay starts)
       case 'Prep':
+
         // inform all players of their ship and roles
-        // TO DO: Figure out a way to use pre-signals for sending more than one thing
-          // Well, actually, I think this will work out. The preparation phase is only used once in the game, and it SHOULD send almost everything you need
-          // We can change it to an object, and when the signal is received, it just loops over the object and saves all the variables it received!
+        // we need to loop through the players, instead of sending a general player signal, because each of them will have different roles/a different ship
         for(let playerID in curRoom.players) {
-          sendSignal(room, false, 'pre-signal', {}, true, true, playerID);
+          let curPlayer = curRoom.players[playerID]
+          sendSignal(room, false, 'pre-signal', { myShip: curPlayer.myShip, myRoles: curPlayer.myRoles }, true, true, playerID);
         }
 
         // inform the monitors of the map
-        sendSignal(room, true, 'pre-signal', ['playerCount', rooms[room].playerCount], true)
+        sendSignal(room, true, 'pre-signal', { mapSeed: curRoom.mapSeed }, true)
 
-        // just set the timer
-        timer = 60;
+        // no timer in preparation - it ends when everyone has submitted the required information
+        timer = 0
         break;
 
       // If the next state is gameplay state (which will be called at the start of every new turn)
@@ -616,6 +617,7 @@ function createPlayerShips(room) {
   /* 
     Create a ship object for each ship
     Each ship object has:
+    => index number (determines color, makes referencing easier)
     => list of players
     => coordinates (tile => x,y)
     => orientation (number from 0 to 7; 0 is pointing to the right)
@@ -624,7 +626,7 @@ function createPlayerShips(room) {
    */
   room.playerShips = [];
   for(let i = 0; i < numberBoats; i++) {
-    room.playerShips.push({ players: [], resources: [0,0,0,0], x: 0, y: 0, orientation: 0, health: 100 });
+    room.playerShips.push({ num: i, players: [], resources: [0,0,0,0], x: 0, y: 0, orientation: 0, health: 100 });
   }
 
   /*
