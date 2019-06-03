@@ -85,7 +85,9 @@ var serverInfo = {
 
   timer: 0,
 
-  language: 'en'
+  language: 'en',
+
+  submittedPreparation: {}
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -662,11 +664,11 @@ var _ControllerPrep = __webpack_require__(18);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(21);
+var _ControllerPlay = __webpack_require__(22);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(22);
+var _ControllerOver = __webpack_require__(23);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -1154,15 +1156,31 @@ var GamePrep = function (_Phaser$State) {
   }, {
     key: 'create',
     value: function create() {
+      var _this2 = this;
+
       var gm = this.game;
       var socket = _serverInfo.serverInfo.socket;
 
-      gm.add.text(gm.width * 0.5 - 250, 20, 'Please look at your devices. For each role, you will have to do some preparation, and submit it to the server! IMPORTANT: Submit your drawing/title/settings before switching to a different role, or you will lose your progress.', _styles.mainStyle.mainText(500, '#FF0000'));
+      gm.add.text(gm.width * 0.5 - 250, 20, 'Please look at your devices and perform the preparation for each role.', _styles.mainStyle.mainText(500, '#000000'));
+
+      gm.add.text(gm.width * 0.5 - 250, 100, 'IMPORTANT: Submit your drawing/title/settings before switching to a different role, or you will lose your progress.', _styles.mainStyle.mainText(500, '#333333'));
+
+      // display a loading bar
+      this.loadingSprite = gm.add.sprite(gm.width * 0.5, 400, 'nonexistent_index');
+      this.loadingSprite.anchor.setTo(0, 0.5);
+      this.loadingSprite.height = 50;
+      this.loadingSprite.width = 500;
+
+      // update loading bar during the state (when progress signals are received from the server)
+      // @data => percentage of preparation that has finished
+      socket.on('preparation-progress', function (data) {
+        _this2.loadingSprite.width = 500 * data;
+      });
 
       // display the game map (just to test it out)
       // TO DO
       // We're just showing the seed, at the moment
-      gm.add.text(gm.width * 0.5, 400, 'Game seed:' + _serverInfo.serverInfo.mapSeed, _styles.mainStyle.subText());
+      //gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
 
       (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
       (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
@@ -1544,6 +1562,10 @@ var ControllerLobby = function (_Phaser$State) {
       var canvas = document.getElementById("canvas-container");
       div.appendChild(canvas);
 
+      // IMPORTANT: the canvas gets a reference to the game
+      // (we need this reference to create bitmaps and scale the canvas = game properly)
+      canvas.myGame = gm;
+
       // make canvas the correct size
       // check what's the maximum width or height we can use
       var maxWidth = document.getElementById('main-controller').clientWidth;
@@ -1555,22 +1577,20 @@ var ControllerLobby = function (_Phaser$State) {
       gm.scale.setGameSize(finalWidth, finalWidth * 1.3);
 
       // add a bitmap for drawing
-      this.bmd = gm.add.bitmapData(gm.width, gm.height);
-      this.bmd.ctx.strokeStyle = _colors.playerColors[_serverInfo.serverInfo.rank]; // THIS is the actual drawing color      
-      this.bmd.ctx.lineWidth = 10;
-      this.bmd.ctx.lineCap = 'round';
-      this.bmd.ctx.fillStyle = '#ff0000';
-      this.sprite = gm.add.sprite(0, 0, this.bmd);
-      this.bmd.isDragging = false;
-      this.bmd.lastPoint = null;
-      //this.bmd.smoothed = false;
-      var bmdReference = this.bmd;
+      gm.bmd = gm.add.bitmapData(gm.width, gm.height);
+      gm.bmd.ctx.strokeStyle = _colors.playerColors[_serverInfo.serverInfo.rank]; // THIS is the actual drawing color      
+      gm.bmd.ctx.lineWidth = 10;
+      gm.bmd.ctx.lineCap = 'round';
+      gm.bmd.isDragging = false;
+      gm.bmd.lastPoint = null;
+
+      gm.canvasSprite = gm.add.sprite(0, 0, gm.bmd);
 
       // display button to submit drawing
       var btn2 = document.createElement("button");
       btn2.innerHTML = _serverInfo.serverInfo.translate("submit-drawing");
       btn2.addEventListener('click', function (event) {
-        var dataURI = bmdReference.canvas.toDataURL();
+        var dataURI = gm.bmd.canvas.toDataURL();
 
         // send the drawing to the server (including the information that it's a profile pic)
         socket.emit('submit-drawing', { dataURI: dataURI, type: "profile" });
@@ -1601,25 +1621,26 @@ var ControllerLobby = function (_Phaser$State) {
       /***
        * DRAW STUFF
        ***/
-      if (this.game.input.activePointer.isUp) {
-        this.bmd.isDragging = false;
-        this.bmd.lastPoint = null;
+      var gm = this.game;
+      if (gm.input.activePointer.isUp) {
+        gm.bmd.isDragging = false;
+        gm.bmd.lastPoint = null;
       }
 
-      if (this.game.input.activePointer.isDown) {
-        this.bmd.isDragging = true;
-        this.bmd.ctx.beginPath();
-        var newPoint = new Phaser.Point(this.game.input.x, this.game.input.y);
+      if (gm.input.activePointer.isDown) {
+        gm.bmd.isDragging = true;
+        gm.bmd.ctx.beginPath();
+        var newPoint = new Phaser.Point(gm.input.x, gm.input.y);
 
-        if (this.bmd.lastPoint) {
-          this.bmd.ctx.moveTo(this.bmd.lastPoint.x, this.bmd.lastPoint.y);
-          this.bmd.ctx.lineTo(newPoint.x, newPoint.y);
+        if (gm.bmd.lastPoint) {
+          gm.bmd.ctx.moveTo(gm.bmd.lastPoint.x, gm.bmd.lastPoint.y);
+          gm.bmd.ctx.lineTo(newPoint.x, newPoint.y);
         }
 
-        this.bmd.lastPoint = newPoint;
-        this.bmd.ctx.stroke();
+        gm.bmd.lastPoint = newPoint;
+        gm.bmd.ctx.stroke();
 
-        this.bmd.dirty = true;
+        gm.bmd.dirty = true;
       }
     }
   }]);
@@ -1770,6 +1791,33 @@ var ControllerPrep = function (_Phaser$State) {
         key: 'update',
         value: function update() {
             // This is where we listen for input (such as drawing)!
+
+            /***
+             * DRAW STUFF
+             ***/
+            var gm = this.game;
+            if (gm.input.activePointer.isUp) {
+                gm.bmd.isDragging = false;
+                gm.bmd.lastPoint = null;
+            }
+
+            if (gm.input.activePointer.isDown) {
+                gm.bmd.isDragging = true;
+                gm.bmd.ctx.beginPath();
+                var newPoint = new Phaser.Point(gm.input.x, gm.input.y);
+
+                if (gm.bmd.lastPoint) {
+                    gm.bmd.ctx.moveTo(gm.bmd.lastPoint.x, gm.bmd.lastPoint.y);
+                    gm.bmd.ctx.lineTo(newPoint.x, newPoint.y);
+                }
+
+                gm.bmd.lastPoint = newPoint;
+                gm.bmd.ctx.stroke();
+
+                gm.bmd.dirty = true;
+
+                gm.bmd.hasBeenEdited = true;
+            }
         }
     }]);
 
@@ -1800,7 +1848,12 @@ exports.default = function (eventID, curTab) {
    // enable new selected tab
    document.getElementById(eventID).classList.add('tabSelected');
 
-   // empty the interface area
+   // save the canvas
+   var cv = document.getElementById("canvas-container");
+   cv.style.display = 'none';
+   document.body.appendChild(cv);
+
+   // then empty the interface area
    document.getElementById("shipInterface").innerHTML = '';
 
    // create the interface container
@@ -1809,9 +1862,6 @@ exports.default = function (eventID, curTab) {
    container.id = "tab" + num;
 
    document.getElementById("shipInterface").appendChild(container);
-
-   console.log(_serverInfo.serverInfo.myRoles[num]);
-   console.log(container);
 
    // now start loading the interface, for this ...
    //  ... the role is needed (obviously) in the form of its number
@@ -1851,17 +1901,31 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 exports.default = function (num, cont) {
+    var socket = _serverInfo.serverInfo.socket;
+
+    // if we already submitted this role, don't load everything again!
+    if (_serverInfo.serverInfo.submittedPreparation[num] == true) {
+        var p0 = document.createElement("p");
+        p0.innerHTML = 'Thank you!';
+        cont.appendChild(p0);
+        return;
+    }
+
+    // Otherwise, load the whole shabang!
     switch (num) {
-        // Captain: give title and draw ship
+        // **Captain**: give title and draw ship
         case 0:
+            // Instructions
             var p1 = document.createElement("p");
-            p1.innerHTML = 'Please title your ship and draw it (from the side)';
+            p1.innerHTML = 'Title your ship and draw it (side-view)';
             cont.appendChild(p1);
 
             // Title input bar
             var input = document.createElement("input");
             input.type = "text";
             input.id = "shipTitle";
+            input.style.marginBottom = '5px';
+            input.placeholder = "The Black Pearl";
             cont.appendChild(input);
 
             // Canvas (drawing area)
@@ -1873,14 +1937,22 @@ exports.default = function (num, cont) {
             var btn1 = document.createElement("button");
             btn1.innerHTML = 'Submit title + drawing';
             btn1.addEventListener('click', function (event) {
+                // check that the input isn't empty and the drawing has actually been edited
+                if (input.value.length < 1 || !canvas.myGame.bmd.hasBeenEdited) {
+                    return;
+                }
+
                 // Remove submit button
                 btn1.remove();
 
                 // Get the drawing into a form we can send over the internet
-                var dataURI = bmdReference.canvas.toDataURL();
+                var dataURI = bmd.canvas.toDataURL();
 
-                // send the drawing to the server (including the information that it's a profile pic)
-                socket.emit('submit-preparation', { role: 0, title: input.value, dataURI: dataURI });
+                console.log(dataURI);
+
+                // send the drawing and info to the server
+                // the server doesn't need to know the role or ship => it can figure it out itself
+                socket.emit('submit-preparation', { shipTitle: input.value, shipDrawing: dataURI });
 
                 // Disable canvas
                 canvas.style.display = 'none';
@@ -1890,24 +1962,47 @@ exports.default = function (num, cont) {
 
                 // Replace text at the top
                 p1.innerHTML = 'Thank you!';
+
+                // Remember that we already submitted this one
+                _serverInfo.serverInfo.submittedPreparation[num] = true;
             });
             cont.appendChild(btn1);
 
             // make canvas the correct size
             // SIZE = total screen size - height taken by elements above - height taken by the button
-            // keep some padding (I use 10 here)
+            // keep some padding on both sides (I use 10 here)
             var padding = 10;
-            var maxHeight = screen.height - (input.getBoundingClientRect().top + input.getBoundingClientRect().height) - btn1.getBoundingClientRect().height - padding;
-            var maxWidth = screen.width - padding;
+            var maxHeight = screen.height - (input.getBoundingClientRect().top + input.getBoundingClientRect().height) - btn1.getBoundingClientRect().height - padding * 2;
+            var maxWidth = document.getElementById('main-controller').clientWidth - padding * 2; // screen.width is misleading, because the main controller sets a max width
 
             // scale to the biggest size that fits (the canvas is a SQUARE)
             var finalSize = Math.min(maxWidth, maxHeight);
             // scale the game immediately (both stage and canvas simultaneously)
-            gm.scale.setGameSize(finalSize, finalSize);
+            canvas.myGame.scale.setGameSize(finalSize, finalSize);
+
+            // remove previous drawing (if any)
+            if (canvas.myGame.canvasSprite != undefined) {
+                canvas.myGame.canvasSprite.destroy();
+            }
+
+            // Create bitmap for canvas 
+            // Use the ship color for drawing
+            var bmd = canvas.myGame.add.bitmapData(canvas.myGame.width, canvas.myGame.height);
+            bmd.ctx.strokeStyle = _shipColors.SHIP_COLORS[_serverInfo.serverInfo.myShip];
+            bmd.ctx.lineWidth = 10;
+            bmd.ctx.lineCap = 'round';
+            bmd.isDragging = false;
+            bmd.lastPoint = null;
+
+            //  => add it to the game, so we can manipulate it in update() (this also automatically replaces the old one)
+            canvas.myGame.bmd = bmd;
+
+            //  => create a sprite, so we can actually see the bitmap
+            canvas.myGame.canvasSprite = canvas.myGame.add.sprite(0, 0, bmd);
 
             break;
 
-        // First mate: write motto and draw flag
+        // **First mate**: write motto and draw flag
         case 1:
 
             break;
@@ -1929,16 +2024,34 @@ exports.default = function (num, cont) {
     }
 };
 
-; /*
-      This function loads the preparation interface for each role
-  
-      @num => the number of the role to be loaded
-      @cont => the container into which to load the interface
-  
-  */
+var _serverInfo = __webpack_require__(0);
+
+var _shipColors = __webpack_require__(21);
+
+;
+
+/*
+    This function loads the preparation interface for each role
+
+    @num => the number of the role to be loaded
+    @cont => the container into which to load the interface
+
+*/
 
 /***/ }),
 /* 21 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
+
+/***/ }),
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2119,7 +2232,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

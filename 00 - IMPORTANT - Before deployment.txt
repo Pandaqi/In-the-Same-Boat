@@ -1,0 +1,10 @@
+When testing the game locally, I need to change a few parameters to make it work well.
+
+When deploying the game, these need to be changed back.
+
+
+1) Re-enable the ROOM ID system (for unique room ids, instead of always "SHIP")
+
+2) Set the SERVER_IP (in serverInfo) to the actual server (instead of localhost)
+
+3) Uglify/minify JS again (by enabling the WebPack plugin in webpack.config)

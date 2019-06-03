@@ -50,6 +50,10 @@ class ControllerLobby extends Phaser.State {
     let canvas = document.getElementById("canvas-container")
     div.appendChild(canvas)
 
+    // IMPORTANT: the canvas gets a reference to the game
+    // (we need this reference to create bitmaps and scale the canvas = game properly)
+    canvas.myGame = gm;
+
     // make canvas the correct size
     // check what's the maximum width or height we can use
     let maxWidth = document.getElementById('main-controller').clientWidth
@@ -61,22 +65,20 @@ class ControllerLobby extends Phaser.State {
     gm.scale.setGameSize(finalWidth, finalWidth * 1.3)
 
     // add a bitmap for drawing
-    this.bmd = gm.add.bitmapData(gm.width, gm.height);
-    this.bmd.ctx.strokeStyle = playerColors[serverInfo.rank]; // THIS is the actual drawing color      
-    this.bmd.ctx.lineWidth   = 10;     
-    this.bmd.ctx.lineCap     = 'round';      
-    this.bmd.ctx.fillStyle = '#ff0000';      
-    this.sprite = gm.add.sprite(0, 0, this.bmd); 
-    this.bmd.isDragging = false;
-    this.bmd.lastPoint = null;
-    //this.bmd.smoothed = false;
-    let bmdReference = this.bmd
+    gm.bmd = gm.add.bitmapData(gm.width, gm.height);
+    gm.bmd.ctx.strokeStyle = playerColors[serverInfo.rank]; // THIS is the actual drawing color      
+    gm.bmd.ctx.lineWidth   = 10;     
+    gm.bmd.ctx.lineCap     = 'round';    
+    gm.bmd.isDragging = false;
+    gm.bmd.lastPoint = null;  
+     
+    gm.canvasSprite = gm.add.sprite(0, 0, gm.bmd); 
 
     // display button to submit drawing
     let btn2 = document.createElement("button")
     btn2.innerHTML = serverInfo.translate("submit-drawing")
     btn2.addEventListener('click', function(event) {
-      let dataURI = bmdReference.canvas.toDataURL()
+      let dataURI = gm.bmd.canvas.toDataURL()
 
       // send the drawing to the server (including the information that it's a profile pic)
       socket.emit('submit-drawing', { dataURI: dataURI, type: "profile"})
@@ -107,25 +109,26 @@ class ControllerLobby extends Phaser.State {
     /***
      * DRAW STUFF
      ***/
-    if(this.game.input.activePointer.isUp) {        
-      this.bmd.isDragging = false;        
-      this.bmd.lastPoint = null;      
+    let gm = this.game;
+    if(gm.input.activePointer.isUp) {        
+      gm.bmd.isDragging = false;        
+      gm.bmd.lastPoint = null;      
     }      
 
-    if (this.game.input.activePointer.isDown) {            
-      this.bmd.isDragging = true;        
-      this.bmd.ctx.beginPath();                        
-      var newPoint = new Phaser.Point(this.game.input.x, this.game.input.y);        
+    if (gm.input.activePointer.isDown) {            
+      gm.bmd.isDragging = true;        
+      gm.bmd.ctx.beginPath();                        
+      var newPoint = new Phaser.Point(gm.input.x, gm.input.y);        
 
-      if(this.bmd.lastPoint) {          
-        this.bmd.ctx.moveTo(this.bmd.lastPoint.x, this.bmd.lastPoint.y);          
-        this.bmd.ctx.lineTo(newPoint.x, newPoint.y);        
+      if(gm.bmd.lastPoint) {          
+        gm.bmd.ctx.moveTo(gm.bmd.lastPoint.x, gm.bmd.lastPoint.y);          
+        gm.bmd.ctx.lineTo(newPoint.x, newPoint.y);        
       }        
 
-      this.bmd.lastPoint = newPoint;        
-      this.bmd.ctx.stroke();        
+      gm.bmd.lastPoint = newPoint;        
+      gm.bmd.ctx.stroke();        
     
-      this.bmd.dirty = true;
+      gm.bmd.dirty = true;
     }
   }
 }

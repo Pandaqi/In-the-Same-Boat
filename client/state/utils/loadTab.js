@@ -17,7 +17,12 @@ export default function (eventID, curTab) {
     // enable new selected tab
     document.getElementById(eventID).classList.add('tabSelected');
 
-    // empty the interface area
+    // save the canvas
+    let cv = document.getElementById("canvas-container")
+    cv.style.display = 'none'
+    document.body.appendChild(cv)
+
+    // then empty the interface area
     document.getElementById("shipInterface").innerHTML = '';
 
     // create the interface container
@@ -26,9 +31,6 @@ export default function (eventID, curTab) {
     container.id = "tab" + num;
 
     document.getElementById("shipInterface").appendChild(container);
-
-    console.log(serverInfo.myRoles[num]);
-    console.log(container);
 
     // now start loading the interface, for this ...
     //  ... the role is needed (obviously) in the form of its number

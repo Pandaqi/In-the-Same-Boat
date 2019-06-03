@@ -101,6 +101,33 @@ class ControllerPrep extends Phaser.State {
 
   update () {
     // This is where we listen for input (such as drawing)!
+
+    /***
+     * DRAW STUFF
+     ***/
+    let gm = this.game;
+    if(gm.input.activePointer.isUp) {        
+      gm.bmd.isDragging = false;        
+      gm.bmd.lastPoint = null;      
+    }      
+
+    if (gm.input.activePointer.isDown) {            
+      gm.bmd.isDragging = true;        
+      gm.bmd.ctx.beginPath();                        
+      var newPoint = new Phaser.Point(gm.input.x, gm.input.y);        
+
+      if(gm.bmd.lastPoint) {          
+        gm.bmd.ctx.moveTo(gm.bmd.lastPoint.x, gm.bmd.lastPoint.y);          
+        gm.bmd.ctx.lineTo(newPoint.x, newPoint.y);        
+      }        
+
+      gm.bmd.lastPoint = newPoint;        
+      gm.bmd.ctx.stroke();        
+    
+      gm.bmd.dirty = true;
+
+      gm.bmd.hasBeenEdited = true;
+    }
   }
 }
 

@@ -20,12 +20,26 @@ class GamePrep extends Phaser.State {
     let gm = this.game
     let socket = serverInfo.socket
 
-    gm.add.text(gm.width * 0.5 - 250, 20, 'Please look at your devices. For each role, you will have to do some preparation, and submit it to the server! IMPORTANT: Submit your drawing/title/settings before switching to a different role, or you will lose your progress.', mainStyle.mainText(500, '#FF0000'));
+    gm.add.text(gm.width * 0.5 - 250, 20, 'Please look at your devices and perform the preparation for each role.', mainStyle.mainText(500, '#000000'));
+
+    gm.add.text(gm.width * 0.5 - 250, 100, 'IMPORTANT: Submit your drawing/title/settings before switching to a different role, or you will lose your progress.', mainStyle.mainText(500, '#333333'));
+
+    // display a loading bar
+    this.loadingSprite = gm.add.sprite(gm.width * 0.5, 400, 'nonexistent_index')
+    this.loadingSprite.anchor.setTo(0, 0.5);
+    this.loadingSprite.height = 50;
+    this.loadingSprite.width = 500;
+
+    // update loading bar during the state (when progress signals are received from the server)
+    // @data => percentage of preparation that has finished
+    socket.on('preparation-progress', data => {
+      this.loadingSprite.width = 500 * data
+    })
 
     // display the game map (just to test it out)
     // TO DO
     // We're just showing the seed, at the moment
-    gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
+    //gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
 
     loadMainSockets(socket, gm, serverInfo)
     loadWatchRoom(socket, serverInfo)

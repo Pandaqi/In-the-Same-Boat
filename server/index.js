@@ -25,8 +25,10 @@ io.on('connection', socket => {
   socket.on('new-room', state => {
     // generate random set of 4 letters
     // until we have an ID that does not exist yet!
-    let id = "";
+    let id = "SHIP";
 
+    /*
+    // TO DO: Re-enable this once the thing goes live!
     do {
       id = "";
       let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" //abcdefghijklmnopqrstuvwxyz0123456789";
@@ -34,6 +36,7 @@ io.on('connection', socket => {
       for (let i = 0; i < 4; i++)
         id += possible.charAt(Math.floor(Math.random() * possible.length));
     } while (rooms[id] != undefined);
+    */
 
     // setup the room with the current id
     // create a dictionary to hold all the players (the ones with controllers)
@@ -48,6 +51,8 @@ io.on('connection', socket => {
       gameState: "Lobby",
       timerEnd: 0,
       timerLeft: 0,
+
+      prepProgress: 0,
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -436,6 +441,49 @@ io.on('connection', socket => {
       // TO DO
     }
     
+  })
+
+  /***
+   *
+   * This signal is received when a player finishes the preparation for a certain role
+   *
+   */
+  socket.on('submit-preparation', state => {
+    // The info submitted depends on the role (captain does title and ship, for example)
+    // ... but it's ALWAYS an object 
+    let room = socket.mainRoom
+    let curPlayer = rooms[room].players[socket.id]
+
+    // Find the corresponding SHIP 
+    let curShip = curPlayer.myShip;
+
+    console.log("Received preparation info for ship #" + curShip + ": " + state);
+
+    // ... sets the right values on this ship
+    for(var key in state) {
+      rooms[room].playerShips[key] = state[key];
+    }
+
+    // ... and saves preparation progress
+    rooms[room].prepProgress++;
+    let tempProgress = rooms[room].prepProgress;
+
+    // if everyone has submitted their preparation, start the game immediately!
+    // preparation needed = number of ships * number of roles per ship
+    let prepNeeded = rooms[room].playerShips.length * 5;
+
+    console.log("Preparation needed: " + prepNeeded);
+    console.log("Current progress: " + tempProgress);
+
+    if(tempProgress == prepNeeded) {
+      // TO DO
+      // START THE GAME!
+      // Call nextState, configure lots of stuff
+      console.log("Preparation finished => starting game");
+    } else {
+      // if we're not done yet, simply inform monitors of progress
+      sendSignal(room, true, 'preparation-progress', Math.round(tempProgress / prepNeeded * 10)/10, false, true)
+    }
   })
 
   socket.on('timer-complete', state => {

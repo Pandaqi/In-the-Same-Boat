@@ -1,0 +1,1 @@
+export const SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF',  '#FFFFAA', '#AAFFFF']

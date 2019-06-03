@@ -11,6 +11,8 @@ const serverInfo = {
   timer: 0,
 
   language: 'en',
+
+  submittedPreparation: {},
 }
 
 // language/translator object
