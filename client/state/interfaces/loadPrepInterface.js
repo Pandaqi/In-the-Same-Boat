@@ -70,7 +70,9 @@ export default function loadPrepInterface(num, cont) {
             canvas.style.display = 'block';
             cont.appendChild(canvas)
 
-            canvasProportion = 2;
+            canvasProportion = 0.5; // (flags are wide rectangles, not squares, thus height = width*0.5)
+
+            requiredInfo = { 'shipMotto': 'text', 'shipFlag': 'drawing' }
 
             break;
 
@@ -89,6 +91,8 @@ export default function loadPrepInterface(num, cont) {
             cont.appendChild(canvas)
 
             canvasProportion = 1;
+
+            requiredInfo = { 'shipMonster': 'text', 'shipMonsterDrawing': 'drawing' }
 
             break;
 
@@ -115,6 +119,8 @@ export default function loadPrepInterface(num, cont) {
             span1.style.float = 'right';
             cont.appendChild(span1);
 
+            requiredInfo = { 'shipCrew': 'slider' }
+
             break;
 
         // Weapon Specialist: (slider) choose between gun powder and resources
@@ -139,6 +145,8 @@ export default function loadPrepInterface(num, cont) {
             span1.innerHTML = 'WOOD';
             span1.style.float = 'right';
             cont.appendChild(span1);
+
+            requiredInfo = { 'shipCrew': 'slider' }
 
             break;
     }
