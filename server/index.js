@@ -457,11 +457,17 @@ io.on('connection', socket => {
     // Find the corresponding SHIP 
     let curShip = curPlayer.myShip;
 
-    console.log("Received preparation info for ship #" + curShip + ": " + state);
-
     // ... sets the right values on this ship
     for(var key in state) {
-      rooms[room].playerShips[key] = state[key];
+      // if it's a resource ... add it!
+      if(key.substring(0,3) == 'res') {
+        let i = parseInt( key.substring(3,4) ); // which resource? numerical index
+        rooms[room].playerShips[curShip].resources[i] += parseInt( state[key] );
+
+      // otherwise, just copy the VALUE directly to the ship, and put it on index KEY
+      } else {
+       rooms[room].playerShips[curShip][key] = state[key];
+      }     
     }
 
     // ... and saves preparation progress
@@ -471,9 +477,6 @@ io.on('connection', socket => {
     // if everyone has submitted their preparation, start the game immediately!
     // preparation needed = number of ships * number of roles per ship
     let prepNeeded = rooms[room].playerShips.length * 5;
-
-    console.log("Preparation needed: " + prepNeeded);
-    console.log("Current progress: " + tempProgress);
 
     if(tempProgress == prepNeeded) {
       // TO DO
@@ -669,7 +672,7 @@ function createPlayerShips(room) {
     => list of players
     => coordinates (tile => x,y)
     => orientation (number from 0 to 7; 0 is pointing to the right)
-    => resources 
+    => resources (gold, crew, wood, guns)
     => health 
    */
   room.playerShips = [];

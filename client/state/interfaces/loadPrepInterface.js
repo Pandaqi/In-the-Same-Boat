@@ -27,7 +27,6 @@ export default function loadPrepInterface(num, cont) {
     //   => The submit button is underneath this statement, because it's almost identical for each role
     //   => The canvas resizing code is also underneath this, because it needs the height of the button
     let input0 = document.createElement("input");
-    input0.type = "text";
     input0.style.marginBottom = '5px';
 
     let canvas = document.getElementById("canvas-container")
@@ -42,6 +41,7 @@ export default function loadPrepInterface(num, cont) {
             p0.innerHTML = 'Title your ship and draw it (side-view)';
 
             // Title input bar
+            input0.type = "text";
             input0.id = "shipTitle";
             input0.placeholder = "The Black Pearl";
             cont.appendChild(input0);
@@ -62,6 +62,7 @@ export default function loadPrepInterface(num, cont) {
             p0.innerHTML = 'Write a motto and draw your flag';
 
             // Motto input
+            input0.type = "text";
             input0.id = "shipMotto";
             input0.placeholder = "Veni, vidi, vici!";
             cont.appendChild(input0);
@@ -82,6 +83,7 @@ export default function loadPrepInterface(num, cont) {
             p0.innerHTML = 'Draw a seamonster and name it';
 
             // Seamonster name input
+            input0.type = "text";
             input0.id = "shipMonster";
             input0.placeholder = "The Kraken!";
             cont.appendChild(input0);
@@ -103,23 +105,24 @@ export default function loadPrepInterface(num, cont) {
 
             // Slider input (left = more crew, right = more wood)
             input0.type = "range";
-            input0.id = 'shipCrew';
-            input0.min = "0";
-            input0.max = "4";
-            input0.value = "2";
+            input0.id = 'res1';
+            input0.min = 0;
+            input0.max = 4;
+            input0.value = 2;
+            cont.appendChild(input0);
 
             // clues about what the slider means at a certain point
-            let span0 = document.createElement("span");
+            var span0 = document.createElement("span");
             span0.innerHTML = 'CREW';
             span0.style.float = 'left';
             cont.appendChild(span0);
 
-            let span1 = document.createElement("span");
+            var span1 = document.createElement("span");
             span1.innerHTML = 'WOOD';
             span1.style.float = 'right';
             cont.appendChild(span1);
 
-            requiredInfo = { 'shipCrew': 'slider' }
+            requiredInfo = { 'res1': 'res2' }
 
             break;
 
@@ -128,25 +131,26 @@ export default function loadPrepInterface(num, cont) {
             // Instructions
             p0.innerHTML = 'Do you want to start with lots of gun powder, or lots of wood?';
 
-            // Slider input (left = more crew, right = more wood)
+            // Slider input (left = more guns, right = more wood)
             input0.type = "range";
-            input0.id = 'shipGuns';
-            input0.min = "0";
-            input0.max = "4";
-            input0.value = "2";
+            input0.id = 'res3';
+            input0.min = 0;
+            input0.max = 4;
+            input0.value = 2;
+            cont.appendChild(input0);
 
             // clues about what the slider means at a certain point
-            let span0 = document.createElement("span");
+            var span0 = document.createElement("span");
             span0.innerHTML = 'GUNS';
             span0.style.float = 'left';
             cont.appendChild(span0);
 
-            let span1 = document.createElement("span");
+            var span1 = document.createElement("span");
             span1.innerHTML = 'WOOD';
             span1.style.float = 'right';
             cont.appendChild(span1);
 
-            requiredInfo = { 'shipCrew': 'slider' }
+            requiredInfo = { 'res3': 'res2' }
 
             break;
     }
@@ -178,12 +182,16 @@ export default function loadPrepInterface(num, cont) {
 
         for(let key in requiredInfo) {
             let t = requiredInfo[key]; // get the type
+            // it's either a piece of text
             if(t == 'text') {
-                signalContent[key] = input0.value;
+                signalContent[ key ] = input0.value;
+            // a drawing
             } else if(t == 'drawing') {
-                signalContent[key] = bmd.canvas.toDataURL()
-            } else if(t == 'slider') {
-                signalContent[key] = input0.value;
+                signalContent[ key ] = canvas.myGame.bmd.canvas.toDataURL() // this seems convoluted ... can't I get the dataURI from canvas immediately?
+            // or a slider, in which case the dictionary holds another id-name (a slider chooses between two things, mostly resources on the ship)
+            } else if (t.substring(0,3) == 'res') {
+                signalContent[ key ] = (0 + parseInt(input0.value));
+                signalContent[ requiredInfo[key] ] = (4 - input0.value);
             }
         }
 
@@ -193,13 +201,16 @@ export default function loadPrepInterface(num, cont) {
         // the server doesn't need to know the role or ship => it can figure it out itself
         socket.emit('submit-preparation', signalContent)
 
-        // Disable canvas
+        // Disable canvas (and save it!)
         canvas.style.display = 'none';
+        document.body.appendChild(canvas);
 
         // Remember that we already submitted this one
         serverInfo.submittedPreparation[num] = true;
 
         // Reload the current tab/role - only this time, we're already done, so it just loads a "submitted" message
+        // Empty the thing first (otherwise, it just keeps adding stuff to it)
+        cont.innerHTML = '';
         loadPrepInterface(num, cont);
     })
     cont.appendChild(btn1)
@@ -217,10 +228,11 @@ export default function loadPrepInterface(num, cont) {
     if(canvas.style.display == 'block') {
         // make canvas the correct size
         // SIZE = total screen size - height taken by elements above - height taken by the button
-        // keep some padding on both sides (I use 10 here)
-        let padding = 10;
-        let maxHeight = screen.height - (input.getBoundingClientRect().top + input.getBoundingClientRect().height) - (btn1.getBoundingClientRect().height + parseInt(btn1.style.marginTop)) - padding*2;
-        let maxWidth = document.getElementById('main-controller').clientWidth - padding*2; // screen.width is misleading, because the main controller sets a max width
+        // keep some padding on both sides (10 is average height padding/margin, 20 is the padding on the sides)
+        let paddingY = 10;
+        let paddingX = 20;
+        let maxHeight = screen.height - (input0.getBoundingClientRect().top + input0.getBoundingClientRect().height) - (btn1.getBoundingClientRect().height + 5*2) - paddingY*2 - 2;
+        let maxWidth = document.getElementById('shipInterface').clientWidth - paddingX*2; // screen.width is misleading, because the main controller sets a max width
 
         // scale to the biggest size that fits (the canvas is a SQUARE)
         let finalSize = Math.min(maxWidth, maxHeight / canvasProportion)
