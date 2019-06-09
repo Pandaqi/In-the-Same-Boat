@@ -1,12 +1,13 @@
 import { ROLE_DICTIONARY } from './roleDictionary'
 import { serverInfo } from '../sockets/serverInfo'
-import LOAD_INTERFACE from '../interfaces/loadPrepInterface'
+import LOAD_PREP_INTERFACE from '../interfaces/loadPrepInterface'
+import LOAD_PLAY_INTERFACE from '../interfaces/loadPlayInterface'
 
 // I'm cheating here
 // I pass curTab as a function with a property 'num', so it is passed by REFERENCE
 // This way I can access the old tab, disable it, and then update to the new tab, without having to send the object back
 // Bad practice, works well though :p
-export default function (eventID, curTab) { 
+export default function (eventID, curTab, interfaceType) { 
 	let num = eventID.charAt(5); // get number from id
 
     console.log("Loading tab " + num);
@@ -35,7 +36,14 @@ export default function (eventID, curTab) {
     // now start loading the interface, for this ...
     //  ... the role is needed (obviously) in the form of its number
     //  ... the container is needed (because everything is going to be appended as a child there)
-    LOAD_INTERFACE(serverInfo.myRoles[num], container);
+
+    // interfaceType "0" = preparation interface
+    // interfaceType "1" = play interface
+    if(interfaceType == 0) {
+        LOAD_PREP_INTERFACE(serverInfo.myRoles[num], container);
+    } else {
+        LOAD_PLAY_INTERFACE(serverInfo.myRoles[num], container);
+    }
 
     // update current tab number
     curTab.num = num;

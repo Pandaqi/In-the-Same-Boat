@@ -58,7 +58,7 @@ class ControllerPrep extends Phaser.State {
       // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
       newTab.addEventListener('click', function(ev) {
         ev.preventDefault(); 
-        LOAD_TAB(this.id, curTab);
+        LOAD_TAB(this.id, curTab, 0);
       })
 
       shipRoles.appendChild(newTab);
@@ -72,27 +72,9 @@ class ControllerPrep extends Phaser.State {
     shipInterface.id = 'shipInterface';
     div.appendChild(shipInterface);
 
-    // automatically load the first role (by calling LOAD_TAB with value 0)
-    LOAD_TAB("label0", curTab)
-
-    /*
-     * FOR TESTING IF INFORMATION WAS WELL-RECEIVED
-     *
-
-    let p1 = document.createElement("p")
-    p1.innerHTML = 'Ship number: ' + serverInfo.myShip;
-    div.appendChild(p1)
-
-    let p2 = document.createElement("p")
-    p2.innerHTML = 'Roles: ' + serverInfo.myRoles;
-    div.appendChild(p2)
-    */
-
-    // TO DO
-    // Load the main interface (ship title + color above, roles tab list below)
-    // Provide a little explanation (for each or your roles, you need to do a little preparation. The game will start once everyone has submitted their preparation.)
-    // Then provide the interface
-    // "Please finish your drawing/title" before switching to another role, otherwise you will lose your progress."
+    // automatically load the first role 
+    // (by calling LOAD_TAB with value "label0"; the other 0 determines its the preparation interface, not the play interface)
+    LOAD_TAB("label0", curTab, 0)
 
     loadMainSockets(socket, gm, serverInfo)
 

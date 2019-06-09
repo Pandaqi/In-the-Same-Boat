@@ -12,6 +12,7 @@ export const gameTimer = (ths, serverInfo) => {
 }    
 
 export const controllerTimer = (ths, serverInfo) => {
+  // If we're paused, or the timer has already run out, stop counting down (and sending timer signals)
   if(serverInfo.paused || ths.timer <= 0) {
     return;
   }

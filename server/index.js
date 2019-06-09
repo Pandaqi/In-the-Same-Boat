@@ -475,7 +475,6 @@ io.on('connection', socket => {
     let prepNeeded = rooms[room].playerShips.length * 5;
 
     if(tempProgress == prepNeeded) {
-      // TO DO
       // START THE GAME!
       console.log("Preparation finished => starting game");
 
@@ -534,9 +533,6 @@ io.on('connection', socket => {
           sendSignal(room, false, 'pre-signal', { myShip: curPlayer.myShip, myRoles: curPlayer.myRoles }, true, true, playerID);
         }
 
-        // inform the monitors of the map
-        sendSignal(room, true, 'pre-signal', { mapSeed: curRoom.mapSeed }, true)
-
         // no timer in preparation - it ends when everyone has submitted the required information
         timer = 0
         break;
@@ -544,22 +540,11 @@ io.on('connection', socket => {
       // If the next state is gameplay state 
       // (this is called ONCE at the beginning of the game, from that moment on, the startTurn() and finishTurn() functions regulate turns)
       case 'Play':
-        // if preparation was skipped, we need some extra information sent to all players
-        // This is IDENTICAL to the information sent before the Preparation phase
-        // It is outside of the startTurn function, because that is much faster and easier. (Otherwise, it needs to check, at the start of EVERY turn if preparation was skipped)
-        //  => It CAN be inside startTurn(), actually, because it already checks if this is the first turn of the game.
-        if(curRoom.prepSkip) {
-          for(let playerID in curRoom.players) {
-            let curPlayer = curRoom.players[playerID]
-            sendSignal(room, false, 'pre-signal', { myShip: curPlayer.myShip, myRoles: curPlayer.myRoles }, true, true, playerID);
-          }
-
-        }
-
+        // start a turn, set gameStart to "true" (to initialize some stuff)
         startTurn(room, true);
         
-        // set turn timer, send it
-        timer = 20;
+        // set turn timer
+        timer = 120;
         break;
 
       // If the next state is the game over (aka "end of round") state ...
@@ -647,15 +632,9 @@ function createPlayerShips(room) {
 
   // algorithm to determine a random distribution of boat sizes
   // it just picks a number of boats, and then (retroactively) determines how many players will be in each boat
-
-  // Number of boats is equal to the square root of the number, rounded. 
-  // With a slight chance, it will add or subtract a number between [0, 0.5*square root]
-  // There can never be 1 boat in the game.
-
-  // Example: 6 players. sqrt(6) = 2. #boats = 2 +- 1, so it can be 2 or 3 boats.
-  // Example: 10 players. sqrt(10) = 3. #boats = 3 +- 2, so it can be between 2 and 5 boats.
   const num = room.playerCount;
   let numberBoats = Math.round(Math.sqrt(num)) + Math.round( (Math.random()-0.5)*Math.sqrt(num) )
+
   if(numberBoats < 2) {
     numberBoats = 2;
   }
@@ -676,15 +655,8 @@ function createPlayerShips(room) {
    */
   room.playerShips = [];
   for(let i = 0; i < numberBoats; i++) {
-    room.playerShips.push({ num: i, players: [], resources: [0,0,0,0], x: 0, y: 0, orientation: 0, health: 100 });
+    room.playerShips.push({ num: i, players: [], resources: [10,2,5,0], x: 0, y: 0, orientation: 0, health: 100 });
   }
-
-  /*
-  // create 0-filled array of the right length (number of boats)
-  let distr = [] 
-  distr.length = numberBoats; 
-  distr.fill(0);
-  */
 
   // now we loop over it and determine player distribution
   let curBoat = 0;
@@ -742,7 +714,11 @@ function createPlayerShips(room) {
 function startTurn(room, gameStart = false) {
   console.log("Starting turn in room " + room)
 
-  /* Update MONITORS
+  let curRoom = rooms[room]
+
+  /* 
+
+  == Update MONITORS ==
   
   Each monitor should have the world situation updated. This means
    => New position (and orientation) for all units (ships and sea monsters)
@@ -750,36 +726,112 @@ function startTurn(room, gameStart = false) {
    => ...
 
   Only information that has _CHANGED_ is sent. 
-  If a dock still has the same deal, it's simply not included in the signal. 
-  If a ship is in the same spot, it's also not included.
-
-  What is sent on _GAME START_? 
-   => Where docks are
   
   */
 
-  /* Update PLAYERS
+  // variable that will hold the monitor package (thus mPack)
+  let mPack = {}
+
+  // at game start, we need to send initial information
+  //  => seed of the map
+  //  => locations/deals on docks (island groups only need to be saved on server)
+  //  => locations of all units
+  //  => overview of players and their ships (+ titles/flags)
+
+  // TO DO
+  if(gameStart) {
+    mPack["mapSeed"] = curRoom.mapSeed;
+  }
+
+  // send the mPack to all monitors
+  sendSignal(room, true, 'pre-signal', mPack, true)
+
+  /* 
+
+  == Update PLAYERS ==
 
   Each player should have updated information - BUT ONLY FOR THEIR ROLES
   For each player, a "package" is put together that contains only what this player needs (based on his roles)
   This puts slightly more strain on the server, but limits internet traffic significantly (and thus increases speed)
 
-  Only one thing is sent to all players: the HEALTH of the ship.
+  pPack = "player package" 
 
-  What does each role need to know?
-   => CAPTAIN: Resources, list of current tasks
-   => FIRST MATE: Current ship orientation (and compass level?)
-   => CARTOGRAPHER: Current position of units in vicinity (the seed of the map should already be in his possession)
-   => SAILOR: Nothing.
-   => WEAPON SPECIALIST: Current situation of the cannons (which ones do we have and do they have any load)? (But ... he should already know that himself, shouldn't he?)
-
-  What is sent on _GAME START_? (to all players)
-   => Title of the ship
-   => Flag
-   (=> Health isn't necessary, it always starts at 100%)
-   (=> Level of instruments isn't necessary, all instruments start at level 1)
+  (didn't want to do this, but had some trouble with reserved words and all)
 
   */
+
+  // loop through all players
+  for(let playerID in curRoom.players) {
+    let curPlayer = curRoom.players[playerID]
+    let curShip = curRoom.playerShips[curPlayer.myShip]
+
+    let pPack = {}
+
+    // if this is the first turn, send the basic info (ship title, flag)
+    // Health isn't necessary (always starts at 100%)
+    // Instrument level (before upgrades) isn't necessary (all instruments start at level 1)
+    if(gameStart) {
+      pPack["shipTitle"] = curShip.shipTitle;
+      pPack["shipFlag"] = curShip.shipFlag;
+
+      // if preparation was skipped, we need to resend the essential information
+      if(curRoom.prepSkip) {
+        pPack["myShip"] = curPlayer.myShip;
+        pPack["myRoles"] = curPlayer.myRoles;
+      }
+    } else {
+      // on every turn EXCEPT the first, all players receive ship health
+      pPack["shipHealth"] = curShip.health;
+    }
+
+    // check this player's roles
+    let rList = curPlayer.myRoles;
+    for(var i = 0; i < rList.length; i++) {
+      let role = rList[i];
+
+      switch(role) {
+        // Captain
+        case 0:
+          // (Basic) Ship resources (gold, crew, wood, gun powder)
+          pPack["resources"] = curShip.resources;
+
+          // List of current tasks
+          pPack["taskList"] = [[0, 0], [1, 5], [2, 7]];
+          break;
+
+        // First Mate
+        case 1:
+          // Current ship orientation
+          pPack["orientation"] = curShip.orientation;
+
+          break;
+
+        // Cartographer
+        case 2:
+          // Map seed and other static info is already known
+          // TO DO: Check units in vicinity, send them to him
+
+          break;
+
+        // Sailor
+        case 3:
+          // TO DO?? I think the sailor doesn't need to know anything extra
+
+          break;
+
+        // Weapon Specialist
+        case 4:
+          // Amount of cannons and their level are already known (by sending a negative number, we indicate a cannon does not exist yet?)
+          // TO DO: Cannon load
+          pPack["cannons"] = {};
+
+          break;
+      }
+    }
+
+    // send the whole package
+    sendSignal(room, false, 'pre-signal', pPack, true, true, playerID);
+  }
 
 }
 

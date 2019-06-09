@@ -25,6 +25,9 @@ class GamePlay extends Phaser.State {
     // THIS IS WHERE ALL THE MAGIC HAPPENS
 
     // Display the game map (hidden or not)
+    // TO DO
+    // We're just showing the seed, at the moment
+    gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
 
     // Display the messages from the radio
 

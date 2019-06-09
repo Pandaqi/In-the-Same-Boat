@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -388,7 +388,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _loadImageComplete = __webpack_require__(14);
+var _loadImageComplete = __webpack_require__(16);
 
 var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
 
@@ -621,6 +621,18 @@ exports.default = loadRejoinRoom;
 
 
 Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
 		value: true
 });
 var loadGUIOverlay = function loadGUIOverlay(gm, serverInfo, style1, style2) {
@@ -636,7 +648,7 @@ var loadGUIOverlay = function loadGUIOverlay(gm, serverInfo, style1, style2) {
 exports.default = loadGUIOverlay;
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -674,18 +686,6 @@ var controllerTimer = exports.controllerTimer = function controllerTimer(ths, se
 };
 
 /***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
-
-/***/ }),
 /* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -696,39 +696,125 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _Menu = __webpack_require__(13);
+exports.default = function (eventID, curTab, interfaceType) {
+    var num = eventID.charAt(5); // get number from id
+
+    console.log("Loading tab " + num);
+
+    // disable old selected tab
+    document.getElementById("label" + curTab.num).classList.remove('tabSelected');
+
+    // enable new selected tab
+    document.getElementById(eventID).classList.add('tabSelected');
+
+    // save the canvas
+    var cv = document.getElementById("canvas-container");
+    cv.style.display = 'none';
+    document.body.appendChild(cv);
+
+    // then empty the interface area
+    document.getElementById("shipInterface").innerHTML = '';
+
+    // create the interface container
+    var container = document.createElement("div");
+    container.classList.add("roleInterface");
+    container.id = "tab" + num;
+
+    document.getElementById("shipInterface").appendChild(container);
+
+    // now start loading the interface, for this ...
+    //  ... the role is needed (obviously) in the form of its number
+    //  ... the container is needed (because everything is going to be appended as a child there)
+
+    // interfaceType "0" = preparation interface
+    // interfaceType "1" = play interface
+    if (interfaceType == 0) {
+        (0, _loadPrepInterface2.default)(_serverInfo.serverInfo.myRoles[num], container);
+    } else {
+        (0, _loadPlayInterface2.default)(_serverInfo.serverInfo.myRoles[num], container);
+    }
+
+    // update current tab number
+    curTab.num = num;
+};
+
+var _roleDictionary = __webpack_require__(9);
+
+var _serverInfo = __webpack_require__(0);
+
+var _loadPrepInterface = __webpack_require__(23);
+
+var _loadPrepInterface2 = _interopRequireDefault(_loadPrepInterface);
+
+var _loadPlayInterface = __webpack_require__(24);
+
+var _loadPlayInterface2 = _interopRequireDefault(_loadPlayInterface);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+;
+
+// I'm cheating here
+// I pass curTab as a function with a property 'num', so it is passed by REFERENCE
+// This way I can access the old tab, disable it, and then update to the new tab, without having to send the object back
+// Bad practice, works well though :p
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _Menu = __webpack_require__(15);
 
 var _Menu2 = _interopRequireDefault(_Menu);
 
-var _GameLobby = __webpack_require__(15);
+var _GameLobby = __webpack_require__(17);
 
 var _GameLobby2 = _interopRequireDefault(_GameLobby);
 
-var _GamePrep = __webpack_require__(16);
+var _GamePrep = __webpack_require__(18);
 
 var _GamePrep2 = _interopRequireDefault(_GamePrep);
 
-var _GamePlay = __webpack_require__(17);
+var _GamePlay = __webpack_require__(19);
 
 var _GamePlay2 = _interopRequireDefault(_GamePlay);
 
-var _GameOver = __webpack_require__(18);
+var _GameOver = __webpack_require__(20);
 
 var _GameOver2 = _interopRequireDefault(_GameOver);
 
-var _ControllerLobby = __webpack_require__(19);
+var _ControllerLobby = __webpack_require__(21);
 
 var _ControllerLobby2 = _interopRequireDefault(_ControllerLobby);
 
-var _ControllerPrep = __webpack_require__(20);
+var _ControllerPrep = __webpack_require__(22);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(24);
+var _ControllerPlay = __webpack_require__(25);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(25);
+var _ControllerOver = __webpack_require__(26);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -795,7 +881,7 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function () {
 exports.default = SimpleGame;
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -841,7 +927,7 @@ var Menu = function (_Phaser$State) {
       // load stuff here
       //game.load.baseURL = 'https://trampolinedraak.herokuapp.com/';
       this.game.load.crossOrigin = 'Anonymous';
-      this.game.stage.backgroundColor = "#AA0000";
+      this.game.stage.backgroundColor = "#000000";
 
       // We set this to true so our game won't pause if we focus
       // something else other than the browser
@@ -1006,7 +1092,7 @@ var Menu = function (_Phaser$State) {
 exports.default = Menu;
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1025,7 +1111,7 @@ var loadImageComplete = function loadImageComplete(gm, pos, dims, name) {
 exports.default = loadImageComplete;
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1159,7 +1245,7 @@ var GameLobby = function (_Phaser$State) {
 exports.default = GameLobby;
 
 /***/ }),
-/* 16 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1193,7 +1279,7 @@ var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
 var _styles = __webpack_require__(5);
 
-var _loadGUIOverlay = __webpack_require__(9);
+var _loadGUIOverlay = __webpack_require__(10);
 
 var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
 
@@ -1236,15 +1322,10 @@ var GamePrep = function (_Phaser$State) {
       this.loadingSprite.width = 500;
 
       // update loading bar during the state (when progress signals are received from the server)
-      // @data => percentage of preparation that has finished
+      // @parameter data => percentage of preparation that has finished
       socket.on('preparation-progress', function (data) {
         _this2.loadingSprite.width = 500 * data;
       });
-
-      // display the game map (just to test it out)
-      // TO DO
-      // We're just showing the seed, at the moment
-      //gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
 
       // load GUI overlay (displays room code and such)
       (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
@@ -1273,7 +1354,7 @@ var GamePrep = function (_Phaser$State) {
 exports.default = GamePrep;
 
 /***/ }),
-/* 17 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1307,9 +1388,9 @@ var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
 var _styles = __webpack_require__(5);
 
-var _timers = __webpack_require__(10);
+var _timers = __webpack_require__(11);
 
-var _loadGUIOverlay = __webpack_require__(9);
+var _loadGUIOverlay = __webpack_require__(10);
 
 var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
 
@@ -1342,6 +1423,9 @@ var GamePlay = function (_Phaser$State) {
             // THIS IS WHERE ALL THE MAGIC HAPPENS
 
             // Display the game map (hidden or not)
+            // TO DO
+            // We're just showing the seed, at the moment
+            gm.add.text(gm.width * 0.5, 400, 'Game seed:' + _serverInfo.serverInfo.mapSeed, _styles.mainStyle.subText());
 
             // Display the messages from the radio
 
@@ -1372,7 +1456,7 @@ var GamePlay = function (_Phaser$State) {
 exports.default = GamePlay;
 
 /***/ }),
-/* 18 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1506,7 +1590,7 @@ var GameWaiting = function (_Phaser$State) {
 exports.default = GameWaiting;
 
 /***/ }),
-/* 19 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1683,14 +1767,14 @@ var ControllerLobby = function (_Phaser$State) {
 exports.default = ControllerLobby;
 
 /***/ }),
-/* 20 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", {
-    value: true
+  value: true
 });
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -1707,9 +1791,9 @@ var _rejoinRoomModule = __webpack_require__(8);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
-var _roleDictionary = __webpack_require__(11);
+var _roleDictionary = __webpack_require__(9);
 
-var _loadTab = __webpack_require__(21);
+var _loadTab = __webpack_require__(12);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
@@ -1722,207 +1806,128 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var ControllerPrep = function (_Phaser$State) {
-    _inherits(ControllerPrep, _Phaser$State);
+  _inherits(ControllerPrep, _Phaser$State);
 
-    function ControllerPrep() {
-        _classCallCheck(this, ControllerPrep);
+  function ControllerPrep() {
+    _classCallCheck(this, ControllerPrep);
 
-        return _possibleConstructorReturn(this, (ControllerPrep.__proto__ || Object.getPrototypeOf(ControllerPrep)).call(this));
-        // construct stuff here, if needed
+    return _possibleConstructorReturn(this, (ControllerPrep.__proto__ || Object.getPrototypeOf(ControllerPrep)).call(this));
+    // construct stuff here, if needed
+  }
+
+  _createClass(ControllerPrep, [{
+    key: 'preload',
+    value: function preload() {
+      // load stuff here, if needed
     }
+  }, {
+    key: 'create',
+    value: function create() {
+      var gm = this.game;
+      var socket = _serverInfo.serverInfo.socket;
+      var curTab = { num: 0 };
 
-    _createClass(ControllerPrep, [{
-        key: 'preload',
-        value: function preload() {
-            // load stuff here, if needed
+      var div = document.getElementById("main-controller");
+
+      // Add the health bar at the top
+      var healthBar = document.createElement("div");
+      healthBar.id = "healthBar";
+      healthBar.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set bar to the right color
+      div.appendChild(healthBar);
+
+      // Add the ship info (name + flag)
+      var shipInfo = document.createElement("div");
+      shipInfo.id = 'shipInfo';
+      shipInfo.innerHTML = '<img src="assets/pirate_flag.jpg" /> == Untitled Ship == ';
+      shipInfo.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set font to the right color
+      div.appendChild(shipInfo);
+
+      // Add the tabs for switching roles
+      // first create the container
+      var shipRoles = document.createElement("div");
+      shipRoles.id = 'shipRoles';
+
+      // then add the roles
+      var roles = _serverInfo.serverInfo.myRoles;
+      for (var i = 0; i < roles.length; i++) {
+        var roleNum = roles[i];
+
+        // create a new tab object (with correct/unique label and z-index)
+        var newTab = document.createElement("span");
+        newTab.classList.add("shipRoleGroup");
+        newTab.id = 'label' + i;
+        newTab.style.zIndex = 5 - i;
+
+        // add the ICON and the ROLE NAME within the tab
+        newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
+
+        // when you click this tab, unload the previous tab, and load the new one!
+        // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
+        newTab.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          (0, _loadTab2.default)(this.id, curTab, 0);
+        });
+
+        shipRoles.appendChild(newTab);
+      }
+
+      // finally, add the whole thing to the page
+      div.appendChild(shipRoles);
+
+      // add the area for the role interface
+      var shipInterface = document.createElement("div");
+      shipInterface.id = 'shipInterface';
+      div.appendChild(shipInterface);
+
+      // automatically load the first role 
+      // (by calling LOAD_TAB with value "label0"; the other 0 determines its the preparation interface, not the play interface)
+      (0, _loadTab2.default)("label0", curTab, 0);
+
+      (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
+
+      console.log("Controller Preparation state");
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      // This is where we listen for input (such as drawing)!
+
+      /***
+       * DRAW STUFF
+       ***/
+      var gm = this.game;
+      if (gm.input.activePointer.isUp) {
+        gm.bmd.isDragging = false;
+        gm.bmd.lastPoint = null;
+      }
+
+      if (gm.input.activePointer.isDown) {
+        gm.bmd.isDragging = true;
+        gm.bmd.ctx.beginPath();
+        var newPoint = new Phaser.Point(gm.input.x, gm.input.y);
+
+        if (gm.bmd.lastPoint) {
+          gm.bmd.ctx.moveTo(gm.bmd.lastPoint.x, gm.bmd.lastPoint.y);
+          gm.bmd.ctx.lineTo(newPoint.x, newPoint.y);
         }
-    }, {
-        key: 'create',
-        value: function create() {
-            var gm = this.game;
-            var socket = _serverInfo.serverInfo.socket;
-            var curTab = { num: 0 };
 
-            var div = document.getElementById("main-controller");
+        gm.bmd.lastPoint = newPoint;
+        gm.bmd.ctx.stroke();
 
-            // Add the health bar at the top
-            var healthBar = document.createElement("div");
-            healthBar.id = "healthBar";
-            healthBar.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set bar to the right color
-            div.appendChild(healthBar);
+        gm.bmd.dirty = true;
 
-            // Add the ship info (name + flag)
-            var shipInfo = document.createElement("div");
-            shipInfo.id = 'shipInfo';
-            shipInfo.innerHTML = '<img src="assets/pirate_flag.jpg" /> == Untitled Ship == ';
-            shipInfo.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set font to the right color
-            div.appendChild(shipInfo);
+        gm.bmd.hasBeenEdited = true;
+      }
+    }
+  }]);
 
-            // Add the tabs for switching roles
-            // first create the container
-            var shipRoles = document.createElement("div");
-            shipRoles.id = 'shipRoles';
-
-            // then add the roles
-            var roles = _serverInfo.serverInfo.myRoles;
-            for (var i = 0; i < roles.length; i++) {
-                var roleNum = roles[i];
-
-                // create a new tab object (with correct/unique label and z-index)
-                var newTab = document.createElement("span");
-                newTab.classList.add("shipRoleGroup");
-                newTab.id = 'label' + i;
-                newTab.style.zIndex = 5 - i;
-
-                // add the ICON and the ROLE NAME within the tab
-                newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
-
-                // when you click this tab, unload the previous tab, and load the new one!
-                // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
-                newTab.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    (0, _loadTab2.default)(this.id, curTab);
-                });
-
-                shipRoles.appendChild(newTab);
-            }
-
-            // finally, add the whole thing to the page
-            div.appendChild(shipRoles);
-
-            // add the area for the role interface
-            var shipInterface = document.createElement("div");
-            shipInterface.id = 'shipInterface';
-            div.appendChild(shipInterface);
-
-            // automatically load the first role (by calling LOAD_TAB with value 0)
-            (0, _loadTab2.default)("label0", curTab);
-
-            /*
-             * FOR TESTING IF INFORMATION WAS WELL-RECEIVED
-             *
-              let p1 = document.createElement("p")
-            p1.innerHTML = 'Ship number: ' + serverInfo.myShip;
-            div.appendChild(p1)
-              let p2 = document.createElement("p")
-            p2.innerHTML = 'Roles: ' + serverInfo.myRoles;
-            div.appendChild(p2)
-            */
-
-            // TO DO
-            // Load the main interface (ship title + color above, roles tab list below)
-            // Provide a little explanation (for each or your roles, you need to do a little preparation. The game will start once everyone has submitted their preparation.)
-            // Then provide the interface
-            // "Please finish your drawing/title" before switching to another role, otherwise you will lose your progress."
-
-            (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
-
-            console.log("Controller Preparation state");
-        }
-    }, {
-        key: 'update',
-        value: function update() {
-            // This is where we listen for input (such as drawing)!
-
-            /***
-             * DRAW STUFF
-             ***/
-            var gm = this.game;
-            if (gm.input.activePointer.isUp) {
-                gm.bmd.isDragging = false;
-                gm.bmd.lastPoint = null;
-            }
-
-            if (gm.input.activePointer.isDown) {
-                gm.bmd.isDragging = true;
-                gm.bmd.ctx.beginPath();
-                var newPoint = new Phaser.Point(gm.input.x, gm.input.y);
-
-                if (gm.bmd.lastPoint) {
-                    gm.bmd.ctx.moveTo(gm.bmd.lastPoint.x, gm.bmd.lastPoint.y);
-                    gm.bmd.ctx.lineTo(newPoint.x, newPoint.y);
-                }
-
-                gm.bmd.lastPoint = newPoint;
-                gm.bmd.ctx.stroke();
-
-                gm.bmd.dirty = true;
-
-                gm.bmd.hasBeenEdited = true;
-            }
-        }
-    }]);
-
-    return ControllerPrep;
+  return ControllerPrep;
 }(Phaser.State);
 
 exports.default = ControllerPrep;
 
 /***/ }),
-/* 21 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-   value: true
-});
-
-exports.default = function (eventID, curTab) {
-   var num = eventID.charAt(5); // get number from id
-
-   console.log("Loading tab " + num);
-
-   // disable old selected tab
-   document.getElementById("label" + curTab.num).classList.remove('tabSelected');
-
-   // enable new selected tab
-   document.getElementById(eventID).classList.add('tabSelected');
-
-   // save the canvas
-   var cv = document.getElementById("canvas-container");
-   cv.style.display = 'none';
-   document.body.appendChild(cv);
-
-   // then empty the interface area
-   document.getElementById("shipInterface").innerHTML = '';
-
-   // create the interface container
-   var container = document.createElement("div");
-   container.classList.add("roleInterface");
-   container.id = "tab" + num;
-
-   document.getElementById("shipInterface").appendChild(container);
-
-   // now start loading the interface, for this ...
-   //  ... the role is needed (obviously) in the form of its number
-   //  ... the container is needed (because everything is going to be appended as a child there)
-   (0, _loadPrepInterface2.default)(_serverInfo.serverInfo.myRoles[num], container);
-
-   // update current tab number
-   curTab.num = num;
-};
-
-var _roleDictionary = __webpack_require__(11);
-
-var _serverInfo = __webpack_require__(0);
-
-var _loadPrepInterface = __webpack_require__(22);
-
-var _loadPrepInterface2 = _interopRequireDefault(_loadPrepInterface);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-;
-
-// I'm cheating here
-// I pass curTab as a function with a property 'num', so it is passed by REFERENCE
-// This way I can access the old tab, disable it, and then update to the new tab, without having to send the object back
-// Bad practice, works well though :p
-
-/***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1935,13 +1940,13 @@ exports.default = loadPrepInterface;
 
 var _serverInfo = __webpack_require__(0);
 
-var _shipColors = __webpack_require__(23);
+var _shipColors = __webpack_require__(13);
 
 /*
     This function loads the preparation interface for each role
 
-    @num => the number of the role to be loaded
-    @cont => the container into which to load the interface
+    @parameter num => the number of the role to be loaded
+    @parameter cont => the container into which to load the interface
 
 */
 function loadPrepInterface(num, cont) {
@@ -2190,18 +2195,6 @@ function loadPrepInterface(num, cont) {
 };
 
 /***/ }),
-/* 23 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
-
-/***/ }),
 /* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2209,7 +2202,163 @@ var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAA
 
 
 Object.defineProperty(exports, "__esModule", {
-  value: true
+    value: true
+});
+exports.default = loadPlayInterface;
+
+var _serverInfo = __webpack_require__(0);
+
+var _shipColors = __webpack_require__(13);
+
+/*
+    This function loads the preparation interface for each role
+
+    @parameter num => the number of the role to be loaded
+    @parameter cont => the container into which to load the interface
+
+*/
+function loadPlayInterface(num, cont) {
+    var socket = _serverInfo.serverInfo.socket;
+
+    // This switch statement loads the required buttons, inputs, sliders, etc. for a given role
+    // It takes its settings from "serverInfo", which sould have the information (from a pre-signal)
+
+    switch (num) {
+        // **Captain**: 
+        //  => display list of tasks (changes all the time; given by server)
+        //  => display ship resources (only the 4 basic ones: gold, crew, wood, guns)
+        case 0:
+            // TO DO: Make buttons actually work
+
+            // Loop through all tasks
+            var tasks = _serverInfo.serverInfo.taskList;
+            for (var i = 0; i < tasks.length; i++) {
+                var taskType = tasks[i][0];
+                var param = tasks[i][1];
+
+                switch (taskType) {
+                    // Battle => enemies are nearby
+                    // No parameter necessary
+                    case 0:
+                        var span0 = document.createElement("span");
+                        span0.classList.add("captain-task");
+                        span0.innerHTML = "<p>One or more enemies are nearby. Attack?</p>";
+
+                        // TO DO: Make button actually send the fire signal
+                        var btn0 = document.createElement("btn");
+                        btn0.innerHTML = 'FIRE!';
+                        span0.appendChild(btn0);
+
+                        cont.appendChild(span0);
+
+                        break;
+
+                    // Discovery => an island has been discovered, and you may give it a name
+                    // @parameter index of the island
+                    case 1:
+                        var span1 = document.createElement("span");
+                        span1.classList.add("captain-task");
+                        span1.innerHTML = "<p>You have discovered a mysterious island! What will you name it?</p>";
+
+                        var inp1 = document.createElement("input");
+                        inp1.type = "text";
+                        span1.appendChild(inp1);
+
+                        // TO DO: Make button actually submit the name
+                        var btn1 = document.createElement("btn");
+                        btn1.innerHTML = 'Submit name';
+                        span1.appendChild(btn1);
+
+                        cont.appendChild(span1);
+
+                        break;
+
+                    // Dock => you are adjacent to a dock and may trade
+                    // @parameter the index of the dock (so you know what you can trade)
+                    case 2:
+                        var span2 = document.createElement("span");
+                        span2.classList.add("captain-task");
+                        span2.innerHTML = "<p>You are docked at a harbor. Want to trade?</p>";
+
+                        // TO DO: Actually display the proposed trade
+                        span2.innerHTML += '<p><em>This feature doesn\'t work at the moment. BE PATIENT.</em></p>';
+
+                        // TO DO: Make button actually perform the trade
+                        var btn2 = document.createElement("btn");
+                        btn2.innerHTML = 'Perform trade';
+                        span2.appendChild(btn2);
+
+                        cont.appendChild(span2);
+
+                        break;
+                }
+            }
+
+            // Display resources underneath
+            var resHeading = document.createElement("h1");
+            resHeading.innerHTML = 'Resources';
+            cont.appendChild(resHeading);
+
+            var resDiv = document.createElement("div");
+            resDiv.id = 'shipResources';
+
+            for (var _i = 0; _i < 4; _i++) {
+                var curResVal = _serverInfo.serverInfo.resources[_i];
+
+                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/pirate_flag.jpg"><span id="shipResource' + _i + '">' + curResVal + '</span></span>';
+            }
+
+            cont.appendChild(resDiv);
+
+            break;
+
+        // **First mate**: 
+        //  => display current orientation (in background)
+        //  => compass (rotatable; sends info when released)
+        //  => current compass level + upgrade button
+        case 1:
+            // TO DO
+
+            break;
+
+        // Cartographer: 
+        //  => display part of the map on canvas (centered on ship)
+        //  => arrows to move around
+        //  => current map level + upgrade button
+        case 2:
+            // TO DO
+
+            break;
+
+        // Sailor: 
+        //  => display ship side-view (in background)
+        //  => vertical slider for choosing sail strength/height
+        //  => horizontal slider for choosing paddle strength
+        //  => current sail level + upgrade button
+        case 3:
+            // TO DO
+
+            break;
+
+        // Weapon Specialist:
+        //  => display ship (top-view; shows where each cannon is)
+        //  => display all cannons (bought or not, level + upgrade button, current load)
+        case 4:
+            // TO DO
+
+            break;
+    }
+};
+
+/***/ }),
+/* 25 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
 });
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -2226,7 +2375,13 @@ var _rejoinRoomModule = __webpack_require__(8);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
-var _timers = __webpack_require__(10);
+var _roleDictionary = __webpack_require__(9);
+
+var _loadTab = __webpack_require__(12);
+
+var _loadTab2 = _interopRequireDefault(_loadTab);
+
+var _timers = __webpack_require__(11);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2237,51 +2392,104 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var ControllerWaiting = function (_Phaser$State) {
-  _inherits(ControllerWaiting, _Phaser$State);
+    _inherits(ControllerWaiting, _Phaser$State);
 
-  function ControllerWaiting() {
-    _classCallCheck(this, ControllerWaiting);
+    function ControllerWaiting() {
+        _classCallCheck(this, ControllerWaiting);
 
-    return _possibleConstructorReturn(this, (ControllerWaiting.__proto__ || Object.getPrototypeOf(ControllerWaiting)).call(this));
-    // construct stuff here, if needed
-  }
-
-  _createClass(ControllerWaiting, [{
-    key: 'preload',
-    value: function preload() {
-      // load stuff here, if needed
+        return _possibleConstructorReturn(this, (ControllerWaiting.__proto__ || Object.getPrototypeOf(ControllerWaiting)).call(this));
+        // construct stuff here, if needed
     }
-  }, {
-    key: 'create',
-    value: function create() {
-      var gm = this.game;
-      var socket = _serverInfo.serverInfo.socket;
 
-      var div = document.getElementById("main-controller");
+    _createClass(ControllerWaiting, [{
+        key: 'preload',
+        value: function preload() {
+            // load stuff here, if needed
+        }
+    }, {
+        key: 'create',
+        value: function create() {
+            var gm = this.game;
+            var socket = _serverInfo.serverInfo.socket;
 
-      // load player interface here
+            var curTab = { num: 0 };
 
+            var div = document.getElementById("main-controller");
 
-      this.timer = _serverInfo.serverInfo.timer;
-      (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
+            // Add the health bar at the top
+            var healthBar = document.createElement("div");
+            healthBar.id = "healthBar";
+            healthBar.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set bar to the right color
+            div.appendChild(healthBar);
 
-      console.log("Controller Play state");
-    }
-  }, {
-    key: 'update',
-    value: function update() {
-      // Update timer
-      (0, _timers.controllerTimer)(this, _serverInfo.serverInfo);
-    }
-  }]);
+            // Add the ship info (name + flag)
+            var shipInfo = document.createElement("div");
+            shipInfo.id = 'shipInfo';
+            shipInfo.innerHTML = '<img src="' + _serverInfo.serverInfo.shipFlag + '" />' + _serverInfo.serverInfo.shipTitle;
+            shipInfo.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set font to the right color
+            div.appendChild(shipInfo);
 
-  return ControllerWaiting;
+            // Add the tabs for switching roles
+            // first create the container
+            var shipRoles = document.createElement("div");
+            shipRoles.id = 'shipRoles';
+
+            // then add the roles
+            var roles = _serverInfo.serverInfo.myRoles;
+            for (var i = 0; i < roles.length; i++) {
+                var roleNum = roles[i];
+
+                // create a new tab object (with correct/unique label and z-index)
+                var newTab = document.createElement("span");
+                newTab.classList.add("shipRoleGroup");
+                newTab.id = 'label' + i;
+                newTab.style.zIndex = 5 - i;
+
+                // add the ICON and the ROLE NAME within the tab
+                newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
+
+                // when you click this tab, unload the previous tab, and load the new one!
+                // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
+                newTab.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    (0, _loadTab2.default)(this.id, curTab, 1);
+                });
+
+                shipRoles.appendChild(newTab);
+            }
+
+            // finally, add the whole thing to the page
+            div.appendChild(shipRoles);
+
+            // add the area for the role interface
+            var shipInterface = document.createElement("div");
+            shipInterface.id = 'shipInterface';
+            div.appendChild(shipInterface);
+
+            // automatically load the first role 
+            // (by calling LOAD_TAB with value 0; third paramter loads play interface instead of prep interface)
+            (0, _loadTab2.default)("label0", curTab, 1);
+
+            this.timer = _serverInfo.serverInfo.timer;
+            (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
+
+            console.log("Controller Play state");
+        }
+    }, {
+        key: 'update',
+        value: function update() {
+            // Update timer
+            (0, _timers.controllerTimer)(this, _serverInfo.serverInfo);
+        }
+    }]);
+
+    return ControllerWaiting;
 }(Phaser.State);
 
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

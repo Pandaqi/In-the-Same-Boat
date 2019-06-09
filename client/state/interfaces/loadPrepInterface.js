@@ -4,8 +4,8 @@ import { SHIP_COLORS } from '../utils/shipColors'
 /*
     This function loads the preparation interface for each role
 
-    @num => the number of the role to be loaded
-    @cont => the container into which to load the interface
+    @parameter num => the number of the role to be loaded
+    @parameter cont => the container into which to load the interface
 
 */
 export default function loadPrepInterface(num, cont) { 

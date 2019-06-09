@@ -32,15 +32,10 @@ class GamePrep extends Phaser.State {
     this.loadingSprite.width = 500;
 
     // update loading bar during the state (when progress signals are received from the server)
-    // @data => percentage of preparation that has finished
+    // @parameter data => percentage of preparation that has finished
     socket.on('preparation-progress', data => {
       this.loadingSprite.width = 500 * data
     })
-
-    // display the game map (just to test it out)
-    // TO DO
-    // We're just showing the seed, at the moment
-    //gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
 
     // load GUI overlay (displays room code and such)
     loadGUIOverlay(gm, serverInfo, mainStyle.mainText(), mainStyle.subText())
