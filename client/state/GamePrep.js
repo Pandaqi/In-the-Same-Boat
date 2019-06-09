@@ -6,6 +6,7 @@ import loadMainSockets from './sockets/mainSocketsGame'
 import loadWatchRoom from './sockets/watchRoomModule'
 import { mainStyle } from './utils/styles'
 
+import loadGUIOverlay from './utils/loadGUIOverlay'
 
 class GamePrep extends Phaser.State {
   constructor () {
@@ -40,6 +41,9 @@ class GamePrep extends Phaser.State {
     // TO DO
     // We're just showing the seed, at the moment
     //gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
+
+    // load GUI overlay (displays room code and such)
+    loadGUIOverlay(gm, serverInfo, mainStyle.mainText(), mainStyle.subText())
 
     loadMainSockets(socket, gm, serverInfo)
     loadWatchRoom(socket, serverInfo)

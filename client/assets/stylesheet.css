@@ -3,7 +3,8 @@ body, html {
 	padding:0;
 	width:100%;
 	height:100%;
-	background-color:#000;
+	/* background-color:#000; */
+    background-color:#956F4E;
     color:white;
 }
 

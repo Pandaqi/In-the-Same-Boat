@@ -53,6 +53,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
+      prepSkip: false,
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -410,37 +411,32 @@ io.on('connection', socket => {
     // Make the game started (in the eyes of the server)
     curRoom.gameStarted = true;
 
-    // Switch to the preparation phase
-    // This should send the correct roles to each player (as a preSignal)
-    // And then switch to the preparation state
-    gotoNextState(room, 'Prep', true)
+    // If the current room skips preparation, jump straight to the main game
+    if(curRoom.prepSkip) {
+      gotoNextState(room, 'Play')
+    } else {
+      // Otherwise, switch to the preparation phase
+      // This should send the correct roles to each player (as a preSignal)
+      // And then switch to the preparation state
+      gotoNextState(room, 'Prep')
+    }
+
+    
   })
 
   // When someone submits a drawing ...
-  socket.on('submit-drawing', state => {
+  socket.on('submit-profile-pic', state => {
     let room = socket.mainRoom
     let curRoom = rooms[room]
     let curPlayer = curRoom.players[socket.id]
 
-    curPlayer.done = true
-    console.log('Received drawing in room ' + room);
+    console.log('Received profile pic in room ' + room);
 
-    if(state.type == "profile") {
-      // save the drawing as profile picture (for this player)
-      curPlayer.profile = state.dataURI
+    // save the drawing as profile picture (for this player)
+    curPlayer.profile = state.dataURI
 
-      // update the waiting screen
-      sendSignal(room, true, 'player-updated-profile', curPlayer)
-    } else if (state.type == "ship") {
-      // TO DO
-      // save the drawing for this player
-      rooms[room].players[socket.id].drawing = state.dataURI    
-    } else if(state.type == "flag") {
-      // TO DO
-    } else if(state.type == "monster") {
-      // TO DO
-    }
-    
+    // update the waiting screen
+    sendSignal(room, true, 'player-updated-profile', curPlayer)
   })
 
   /***
@@ -481,23 +477,26 @@ io.on('connection', socket => {
     if(tempProgress == prepNeeded) {
       // TO DO
       // START THE GAME!
-      // Call nextState, configure lots of stuff
       console.log("Preparation finished => starting game");
+
+      // Go to the next state ("Play"), lots of stuff will be configured there
+      gotoNextState(room, 'Play');
     } else {
       // if we're not done yet, simply inform monitors of progress
       sendSignal(room, true, 'preparation-progress', Math.round(tempProgress / prepNeeded * 10)/10, false, true)
     }
   })
 
+  /***
+   *
+   * This signal is received when the VIP timer runs out => a new turn should start
+   * This calls finishTurn, which calls startTurn, then the turn has actually begun
+   *
+   */
   socket.on('timer-complete', state => {
     let room = socket.mainRoom
 
-    let nextState = state.nextState
-    let certain = false
-    if(state.certain !== undefined && state.certain !== null) {
-      certain = state.certain
-    }
-    gotoNextState(room, nextState, certain)
+    finishTurn(room);
   })
 
   // room: the current room to move to the next state
@@ -542,25 +541,25 @@ io.on('connection', socket => {
         timer = 0
         break;
 
-      // If the next state is gameplay state (which will be called at the start of every new turn)
+      // If the next state is gameplay state 
+      // (this is called ONCE at the beginning of the game, from that moment on, the startTurn() and finishTurn() functions regulate turns)
       case 'Play':
-        // create a random suggestion for each player
-        // and send it to them
-        r = curRoom.suggestions
+        // if preparation was skipped, we need some extra information sent to all players
+        // This is IDENTICAL to the information sent before the Preparation phase
+        // It is outside of the startTurn function, because that is much faster and easier. (Otherwise, it needs to check, at the start of EVERY turn if preparation was skipped)
+        //  => It CAN be inside startTurn(), actually, because it already checks if this is the first turn of the game.
+        if(curRoom.prepSkip) {
+          for(let playerID in curRoom.players) {
+            let curPlayer = curRoom.players[playerID]
+            sendSignal(room, false, 'pre-signal', { myShip: curPlayer.myShip, myRoles: curPlayer.myRoles }, true, true, playerID);
+          }
 
-        for(let playerID in curRoom.players) {
-          let title = generateSuggestion(curRoom)
-
-          // save it
-          curRoom.players[playerID].drawingTitle = title
-
-          // send it (the player variable holds the key for this player in the dictionary, which is set to its socketid when created)
-          // sendSignal automatically saves the presignal (if the correct parameter is set to true)
-          // so it all works out beautifully in the end!
-          sendSignal(room, false, 'pre-signal', ['drawingTitle', title], true, true, playerID)
         }
 
-        timer = 60;
+        startTurn(room, true);
+        
+        // set turn timer, send it
+        timer = 20;
         break;
 
       // If the next state is the game over (aka "end of round") state ...
@@ -729,4 +728,81 @@ function createPlayerShips(room) {
   }
 
   console.log(room.playerShips);
+}
+
+
+
+/*
+
+  This function takes care of starting a turn
+  @parameter room => the room in which a new turn should be started
+  @parameter gameStart => if true, this means it is the first signal of the game, and some extra info needs to be sent.
+
+*/
+function startTurn(room, gameStart = false) {
+  console.log("Starting turn in room " + room)
+
+  /* Update MONITORS
+  
+  Each monitor should have the world situation updated. This means
+   => New position (and orientation) for all units (ships and sea monsters)
+   => New deals at the docks
+   => ...
+
+  Only information that has _CHANGED_ is sent. 
+  If a dock still has the same deal, it's simply not included in the signal. 
+  If a ship is in the same spot, it's also not included.
+
+  What is sent on _GAME START_? 
+   => Where docks are
+  
+  */
+
+  /* Update PLAYERS
+
+  Each player should have updated information - BUT ONLY FOR THEIR ROLES
+  For each player, a "package" is put together that contains only what this player needs (based on his roles)
+  This puts slightly more strain on the server, but limits internet traffic significantly (and thus increases speed)
+
+  Only one thing is sent to all players: the HEALTH of the ship.
+
+  What does each role need to know?
+   => CAPTAIN: Resources, list of current tasks
+   => FIRST MATE: Current ship orientation (and compass level?)
+   => CARTOGRAPHER: Current position of units in vicinity (the seed of the map should already be in his possession)
+   => SAILOR: Nothing.
+   => WEAPON SPECIALIST: Current situation of the cannons (which ones do we have and do they have any load)? (But ... he should already know that himself, shouldn't he?)
+
+  What is sent on _GAME START_? (to all players)
+   => Title of the ship
+   => Flag
+   (=> Health isn't necessary, it always starts at 100%)
+   (=> Level of instruments isn't necessary, all instruments start at level 1)
+
+  */
+
+}
+
+
+/*
+
+  This function takes care of finishing a turn
+  @parameter room => the room in which a turn needs finishing
+  
+*/
+function finishTurn(room) {
+  console.log("Finishing turn in room " + room)
+
+  // Fight battles
+
+  // Move ships
+
+  // Solidify upgrades (to instruments)
+
+  // Replenish crew
+
+  // With X% probability, change the deals on the docks
+
+  // Start next turn
+  startTurn(room)
 }

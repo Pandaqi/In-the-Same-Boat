@@ -81,7 +81,7 @@ class ControllerLobby extends Phaser.State {
       let dataURI = gm.bmd.canvas.toDataURL()
 
       // send the drawing to the server (including the information that it's a profile pic)
-      socket.emit('submit-drawing', { dataURI: dataURI, type: "profile"})
+      socket.emit('submit-profile-pic', { dataURI: dataURI, type: "profile"})
 
       // Remove submit button
       btn2.remove();

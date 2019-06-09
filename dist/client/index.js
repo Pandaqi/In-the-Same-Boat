@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 10);
+/******/ 	return __webpack_require__(__webpack_require__.s = 12);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -388,7 +388,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _loadImageComplete = __webpack_require__(12);
+var _loadImageComplete = __webpack_require__(14);
 
 var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
 
@@ -621,9 +621,19 @@ exports.default = loadRejoinRoom;
 
 
 Object.defineProperty(exports, "__esModule", {
-  value: true
+		value: true
 });
-var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+var loadGUIOverlay = function loadGUIOverlay(gm, serverInfo, style1, style2) {
+		// display the room code
+		var text = gm.add.text(gm.width - 20, 20, serverInfo.roomCode, style1);
+		text.anchor.setTo(1.0, 0);
+
+		//display text above it to make clear that this is a room code
+		var text2 = gm.add.text(gm.width - 20, 20 + 12, serverInfo.translate('room').toUpperCase(), style2);
+		text2.anchor.setTo(1.0, 1.0);
+};
+
+exports.default = loadGUIOverlay;
 
 /***/ }),
 /* 10 */
@@ -633,42 +643,92 @@ var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Carto
 
 
 Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var gameTimer = exports.gameTimer = function gameTimer(ths, serverInfo) {
+  if (serverInfo.paused) {
+    return;
+  }
+
+  if (ths.timer > 0) {
+    ths.timer -= ths.game.time.elapsed / 1000;
+    ths.timerText.text = Math.ceil(ths.timer);
+  } else {
+    ths.timerText.text = "Time's up!";
+  }
+};
+
+var controllerTimer = exports.controllerTimer = function controllerTimer(ths, serverInfo) {
+  if (serverInfo.paused || ths.timer <= 0) {
+    return;
+  }
+
+  // Perform countdown, if we're VIP
+  if (serverInfo.vip) {
+    ths.timer -= ths.game.time.elapsed / 1000;
+
+    if (ths.timer <= 0) {
+      serverInfo.socket.emit('timer-complete', {});
+    }
+  }
+};
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _Menu = __webpack_require__(11);
+var _Menu = __webpack_require__(13);
 
 var _Menu2 = _interopRequireDefault(_Menu);
 
-var _GameLobby = __webpack_require__(13);
+var _GameLobby = __webpack_require__(15);
 
 var _GameLobby2 = _interopRequireDefault(_GameLobby);
 
-var _GamePrep = __webpack_require__(14);
+var _GamePrep = __webpack_require__(16);
 
 var _GamePrep2 = _interopRequireDefault(_GamePrep);
 
-var _GamePlay = __webpack_require__(15);
+var _GamePlay = __webpack_require__(17);
 
 var _GamePlay2 = _interopRequireDefault(_GamePlay);
 
-var _GameOver = __webpack_require__(16);
+var _GameOver = __webpack_require__(18);
 
 var _GameOver2 = _interopRequireDefault(_GameOver);
 
-var _ControllerLobby = __webpack_require__(17);
+var _ControllerLobby = __webpack_require__(19);
 
 var _ControllerLobby2 = _interopRequireDefault(_ControllerLobby);
 
-var _ControllerPrep = __webpack_require__(18);
+var _ControllerPrep = __webpack_require__(20);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(22);
+var _ControllerPlay = __webpack_require__(24);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(23);
+var _ControllerOver = __webpack_require__(25);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -735,7 +795,7 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function () {
 exports.default = SimpleGame;
 
 /***/ }),
-/* 11 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -946,7 +1006,7 @@ var Menu = function (_Phaser$State) {
 exports.default = Menu;
 
 /***/ }),
-/* 12 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -965,7 +1025,7 @@ var loadImageComplete = function loadImageComplete(gm, pos, dims, name) {
 exports.default = loadImageComplete;
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1099,7 +1159,7 @@ var GameLobby = function (_Phaser$State) {
 exports.default = GameLobby;
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1132,6 +1192,10 @@ var _watchRoomModule = __webpack_require__(7);
 var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
 var _styles = __webpack_require__(5);
+
+var _loadGUIOverlay = __webpack_require__(9);
+
+var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1182,6 +1246,9 @@ var GamePrep = function (_Phaser$State) {
       // We're just showing the seed, at the moment
       //gm.add.text(gm.width * 0.5, 400, 'Game seed:' + serverInfo.mapSeed, mainStyle.subText());
 
+      // load GUI overlay (displays room code and such)
+      (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
+
       (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
       (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
 
@@ -1206,275 +1273,240 @@ var GamePrep = function (_Phaser$State) {
 exports.default = GamePrep;
 
 /***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _serverInfo = __webpack_require__(0);
-
-var _dynamicLoadImage = __webpack_require__(4);
-
-var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
-
-var _colors = __webpack_require__(1);
-
-var _loadPlayerVisuals = __webpack_require__(3);
-
-var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
-
-var _mainSocketsGame = __webpack_require__(2);
-
-var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
-
-var _watchRoomModule = __webpack_require__(7);
-
-var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
-
-var _styles = __webpack_require__(5);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var GameWaiting = function (_Phaser$State) {
-  _inherits(GameWaiting, _Phaser$State);
-
-  function GameWaiting() {
-    _classCallCheck(this, GameWaiting);
-
-    return _possibleConstructorReturn(this, (GameWaiting.__proto__ || Object.getPrototypeOf(GameWaiting)).call(this));
-  }
-
-  _createClass(GameWaiting, [{
-    key: 'preload',
-    value: function preload() {
-      // Set scaling (as game monitors can also be any size)
-      // Scale game to fit the entire window (and rescale when window is resized)
-      var gm = this.game;
-
-      gm.scale.scaleMode = Phaser.ScaleManager.RESIZE;
-      window.addEventListener('resize', function () {
-        gm.scale.refresh();
-      });
-      gm.scale.refresh();
-    }
-  }, {
-    key: 'create',
-    value: function create() {
-      var gm = this.game;
-
-      // display room code
-      var text = gm.add.text(gm.width * 0.5, 20, _serverInfo.serverInfo.translate('room').toUpperCase() + ": " + _serverInfo.serverInfo.roomCode, _styles.mainStyle.mainText(gm.width * 0.8));
-      text.anchor.setTo(0.5, 0);
-
-      // explain that we're waiting for people to join
-      var text2 = gm.add.text(gm.width * 0.5, 60, _serverInfo.serverInfo.translate('game-waiting-1'), _styles.mainStyle.subText(gm.width * 0.8));
-      text2.anchor.setTo(0.5, 0);
-
-      var socket = _serverInfo.serverInfo.socket;
-
-      socket.on('new-player', function (data) {
-        var x = gm.width * 0.5;
-        var y = 120 + data.rank * 60;
-        var newItem = gm.add.text(x, y, data.name, _styles.mainStyle.mainText(gm.width, _colors.playerColors[data.rank]));
-        newItem.anchor.setTo(0, 0.5);
-      });
-
-      socket.on('player-updated-profile', function (data) {
-        if (data.profile != null) {
-          var dataURI = data.profile;
-          var imageName = 'profileImage' + data.name; // creates unique name by appending the username
-
-          var x = gm.width * 0.5;
-          var y = 120 + data.rank * 60;
-
-          (0, _dynamicLoadImage2.default)(gm, { x: x - 100, y: y }, { width: 60, height: 78 }, imageName, dataURI);
-        }
-
-        // create a bubble at random location for each player
-        //let randPos = [gm.width*Math.random(), (gm.height-300)*Math.random()];
-        //var graphics = gm.add.graphics(0, 0);
-        //graphics.beginFill(0xFF0000, 1);
-        //graphics.drawCircle(randPos[0], randPos[1], 100);
-      });
-
-      (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
-      (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
-
-      console.log("Game waiting state");
-    }
-
-    // The shutdown function is called when we switch from one state to another
-    // In it, I can clean up this state (e.g. by removing eventListeners) before we go to another
-
-  }, {
-    key: 'shutdown',
-    value: function shutdown() {
-      var socket = _serverInfo.serverInfo.socket;
-
-      socket.off('new-player');
-      socket.off('player-updated-profile');
-    }
-  }, {
-    key: 'update',
-    value: function update() {
-      // This is where we listen for input!
-    }
-  }]);
-
-  return GameWaiting;
-}(Phaser.State);
-
-exports.default = GameWaiting;
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _serverInfo = __webpack_require__(0);
-
-var _dynamicLoadImage = __webpack_require__(4);
-
-var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
-
-var _colors = __webpack_require__(1);
-
-var _loadPlayerVisuals = __webpack_require__(3);
-
-var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
-
-var _mainSocketsGame = __webpack_require__(2);
-
-var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
-
-var _watchRoomModule = __webpack_require__(7);
-
-var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
-
-var _styles = __webpack_require__(5);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var GameWaiting = function (_Phaser$State) {
-  _inherits(GameWaiting, _Phaser$State);
-
-  function GameWaiting() {
-    _classCallCheck(this, GameWaiting);
-
-    return _possibleConstructorReturn(this, (GameWaiting.__proto__ || Object.getPrototypeOf(GameWaiting)).call(this));
-  }
-
-  _createClass(GameWaiting, [{
-    key: 'preload',
-    value: function preload() {
-      // Set scaling (as game monitors can also be any size)
-      // Scale game to fit the entire window (and rescale when window is resized)
-      var gm = this.game;
-
-      gm.scale.scaleMode = Phaser.ScaleManager.RESIZE;
-      window.addEventListener('resize', function () {
-        gm.scale.refresh();
-      });
-      gm.scale.refresh();
-    }
-  }, {
-    key: 'create',
-    value: function create() {
-      var gm = this.game;
-
-      // display room code
-      var text = gm.add.text(gm.width * 0.5, 20, _serverInfo.serverInfo.translate('room').toUpperCase() + ": " + _serverInfo.serverInfo.roomCode, _styles.mainStyle.mainText(gm.width * 0.8));
-      text.anchor.setTo(0.5, 0);
-
-      // explain that we're waiting for people to join
-      var text2 = gm.add.text(gm.width * 0.5, 60, _serverInfo.serverInfo.translate('game-waiting-1'), _styles.mainStyle.subText(gm.width * 0.8));
-      text2.anchor.setTo(0.5, 0);
-
-      var socket = _serverInfo.serverInfo.socket;
-
-      socket.on('new-player', function (data) {
-        var x = gm.width * 0.5;
-        var y = 120 + data.rank * 60;
-        var newItem = gm.add.text(x, y, data.name, _styles.mainStyle.mainText(gm.width, _colors.playerColors[data.rank]));
-        newItem.anchor.setTo(0, 0.5);
-      });
-
-      socket.on('player-updated-profile', function (data) {
-        if (data.profile != null) {
-          var dataURI = data.profile;
-          var imageName = 'profileImage' + data.name; // creates unique name by appending the username
-
-          var x = gm.width * 0.5;
-          var y = 120 + data.rank * 60;
-
-          (0, _dynamicLoadImage2.default)(gm, { x: x - 100, y: y }, { width: 60, height: 78 }, imageName, dataURI);
-        }
-
-        // create a bubble at random location for each player
-        //let randPos = [gm.width*Math.random(), (gm.height-300)*Math.random()];
-        //var graphics = gm.add.graphics(0, 0);
-        //graphics.beginFill(0xFF0000, 1);
-        //graphics.drawCircle(randPos[0], randPos[1], 100);
-      });
-
-      (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
-      (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
-
-      console.log("Game waiting state");
-    }
-
-    // The shutdown function is called when we switch from one state to another
-    // In it, I can clean up this state (e.g. by removing eventListeners) before we go to another
-
-  }, {
-    key: 'shutdown',
-    value: function shutdown() {
-      var socket = _serverInfo.serverInfo.socket;
-
-      socket.off('new-player');
-      socket.off('player-updated-profile');
-    }
-  }, {
-    key: 'update',
-    value: function update() {
-      // This is where we listen for input!
-    }
-  }]);
-
-  return GameWaiting;
-}(Phaser.State);
-
-exports.default = GameWaiting;
-
-/***/ }),
 /* 17 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _serverInfo = __webpack_require__(0);
+
+var _dynamicLoadImage = __webpack_require__(4);
+
+var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
+
+var _colors = __webpack_require__(1);
+
+var _loadPlayerVisuals = __webpack_require__(3);
+
+var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
+
+var _mainSocketsGame = __webpack_require__(2);
+
+var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
+
+var _watchRoomModule = __webpack_require__(7);
+
+var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
+
+var _styles = __webpack_require__(5);
+
+var _timers = __webpack_require__(10);
+
+var _loadGUIOverlay = __webpack_require__(9);
+
+var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var GamePlay = function (_Phaser$State) {
+    _inherits(GamePlay, _Phaser$State);
+
+    function GamePlay() {
+        _classCallCheck(this, GamePlay);
+
+        return _possibleConstructorReturn(this, (GamePlay.__proto__ || Object.getPrototypeOf(GamePlay)).call(this));
+    }
+
+    _createClass(GamePlay, [{
+        key: 'preload',
+        value: function preload() {}
+    }, {
+        key: 'create',
+        value: function create() {
+            var gm = this.game;
+            var socket = _serverInfo.serverInfo.socket;
+
+            // THIS IS WHERE ALL THE MAGIC HAPPENS
+
+            // Display the game map (hidden or not)
+
+            // Display the messages from the radio
+
+            // Display all the players in the game and the color of their ship (and name/flag?)
+
+            // load timer
+            this.timerText = gm.add.text(gm.width * 0.5, 60, "", _styles.mainStyle.timerText());
+            this.timer = _serverInfo.serverInfo.timer;
+
+            // load GUI overlay (displays room code and such)
+            (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
+
+            (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
+
+            console.log("Game Play state");
+        }
+    }, {
+        key: 'update',
+        value: function update() {
+            // Update timer
+            (0, _timers.gameTimer)(this, _serverInfo.serverInfo);
+        }
+    }]);
+
+    return GamePlay;
+}(Phaser.State);
+
+exports.default = GamePlay;
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _serverInfo = __webpack_require__(0);
+
+var _dynamicLoadImage = __webpack_require__(4);
+
+var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
+
+var _colors = __webpack_require__(1);
+
+var _loadPlayerVisuals = __webpack_require__(3);
+
+var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
+
+var _mainSocketsGame = __webpack_require__(2);
+
+var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
+
+var _watchRoomModule = __webpack_require__(7);
+
+var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
+
+var _styles = __webpack_require__(5);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var GameWaiting = function (_Phaser$State) {
+  _inherits(GameWaiting, _Phaser$State);
+
+  function GameWaiting() {
+    _classCallCheck(this, GameWaiting);
+
+    return _possibleConstructorReturn(this, (GameWaiting.__proto__ || Object.getPrototypeOf(GameWaiting)).call(this));
+  }
+
+  _createClass(GameWaiting, [{
+    key: 'preload',
+    value: function preload() {
+      // Set scaling (as game monitors can also be any size)
+      // Scale game to fit the entire window (and rescale when window is resized)
+      var gm = this.game;
+
+      gm.scale.scaleMode = Phaser.ScaleManager.RESIZE;
+      window.addEventListener('resize', function () {
+        gm.scale.refresh();
+      });
+      gm.scale.refresh();
+    }
+  }, {
+    key: 'create',
+    value: function create() {
+      var gm = this.game;
+
+      // display room code
+      var text = gm.add.text(gm.width * 0.5, 20, _serverInfo.serverInfo.translate('room').toUpperCase() + ": " + _serverInfo.serverInfo.roomCode, _styles.mainStyle.mainText(gm.width * 0.8));
+      text.anchor.setTo(0.5, 0);
+
+      // explain that we're waiting for people to join
+      var text2 = gm.add.text(gm.width * 0.5, 60, _serverInfo.serverInfo.translate('game-waiting-1'), _styles.mainStyle.subText(gm.width * 0.8));
+      text2.anchor.setTo(0.5, 0);
+
+      var socket = _serverInfo.serverInfo.socket;
+
+      socket.on('new-player', function (data) {
+        var x = gm.width * 0.5;
+        var y = 120 + data.rank * 60;
+        var newItem = gm.add.text(x, y, data.name, _styles.mainStyle.mainText(gm.width, _colors.playerColors[data.rank]));
+        newItem.anchor.setTo(0, 0.5);
+      });
+
+      socket.on('player-updated-profile', function (data) {
+        if (data.profile != null) {
+          var dataURI = data.profile;
+          var imageName = 'profileImage' + data.name; // creates unique name by appending the username
+
+          var x = gm.width * 0.5;
+          var y = 120 + data.rank * 60;
+
+          (0, _dynamicLoadImage2.default)(gm, { x: x - 100, y: y }, { width: 60, height: 78 }, imageName, dataURI);
+        }
+
+        // create a bubble at random location for each player
+        //let randPos = [gm.width*Math.random(), (gm.height-300)*Math.random()];
+        //var graphics = gm.add.graphics(0, 0);
+        //graphics.beginFill(0xFF0000, 1);
+        //graphics.drawCircle(randPos[0], randPos[1], 100);
+      });
+
+      (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
+      (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
+
+      console.log("Game waiting state");
+    }
+
+    // The shutdown function is called when we switch from one state to another
+    // In it, I can clean up this state (e.g. by removing eventListeners) before we go to another
+
+  }, {
+    key: 'shutdown',
+    value: function shutdown() {
+      var socket = _serverInfo.serverInfo.socket;
+
+      socket.off('new-player');
+      socket.off('player-updated-profile');
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      // This is where we listen for input!
+    }
+  }]);
+
+  return GameWaiting;
+}(Phaser.State);
+
+exports.default = GameWaiting;
+
+/***/ }),
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1593,7 +1625,7 @@ var ControllerLobby = function (_Phaser$State) {
         var dataURI = gm.bmd.canvas.toDataURL();
 
         // send the drawing to the server (including the information that it's a profile pic)
-        socket.emit('submit-drawing', { dataURI: dataURI, type: "profile" });
+        socket.emit('submit-profile-pic', { dataURI: dataURI, type: "profile" });
 
         // Remove submit button
         btn2.remove();
@@ -1651,7 +1683,7 @@ var ControllerLobby = function (_Phaser$State) {
 exports.default = ControllerLobby;
 
 /***/ }),
-/* 18 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1675,9 +1707,9 @@ var _rejoinRoomModule = __webpack_require__(8);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
-var _roleDictionary = __webpack_require__(9);
+var _roleDictionary = __webpack_require__(11);
 
-var _loadTab = __webpack_require__(19);
+var _loadTab = __webpack_require__(21);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
@@ -1827,7 +1859,7 @@ var ControllerPrep = function (_Phaser$State) {
 exports.default = ControllerPrep;
 
 /***/ }),
-/* 19 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1872,11 +1904,11 @@ exports.default = function (eventID, curTab) {
    curTab.num = num;
 };
 
-var _roleDictionary = __webpack_require__(9);
+var _roleDictionary = __webpack_require__(11);
 
 var _serverInfo = __webpack_require__(0);
 
-var _loadPrepInterface = __webpack_require__(20);
+var _loadPrepInterface = __webpack_require__(22);
 
 var _loadPrepInterface2 = _interopRequireDefault(_loadPrepInterface);
 
@@ -1890,7 +1922,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // Bad practice, works well though :p
 
 /***/ }),
-/* 20 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1903,7 +1935,7 @@ exports.default = loadPrepInterface;
 
 var _serverInfo = __webpack_require__(0);
 
-var _shipColors = __webpack_require__(21);
+var _shipColors = __webpack_require__(23);
 
 /*
     This function loads the preparation interface for each role
@@ -2158,7 +2190,7 @@ function loadPrepInterface(num, cont) {
 };
 
 /***/ }),
-/* 21 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2170,7 +2202,7 @@ Object.defineProperty(exports, "__esModule", {
 var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
 
 /***/ }),
-/* 22 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2193,6 +2225,8 @@ var _mainSocketsController2 = _interopRequireDefault(_mainSocketsController);
 var _rejoinRoomModule = __webpack_require__(8);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
+
+var _timers = __webpack_require__(10);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2225,123 +2259,19 @@ var ControllerWaiting = function (_Phaser$State) {
 
       var div = document.getElementById("main-controller");
 
-      // Create some text to explain rejoining was succesfull. 
-      // If the player was already done for this round, the function returns true, and we stop loading the interface
-      // TO DO: At the moment, rejoining in the waiting room is actually forbidden. (Also, it doesn't load the main sockets now.) Fix this sometime.
-      if ((0, _rejoinRoomModule2.default)(socket, _serverInfo.serverInfo, div)) {
-        return;
-      }
+      // load player interface here
 
-      // display VIP message
-      // and start button
-      if (_serverInfo.serverInfo.vip) {
-        var p2 = document.createElement("p");
-        p2.innerHTML = _serverInfo.serverInfo.translate("vip-message-waiting");
-        div.appendChild(p2);
 
-        var btn1 = document.createElement("button");
-        btn1.innerHTML = _serverInfo.serverInfo.translate("start-game");
-        btn1.addEventListener('click', function (event) {
-          if (btn1.disabled) {
-            return;
-          }
-
-          btn1.disabled = true;
-
-          // send message to server that we want to start
-          socket.emit('start-game', {});
-
-          // we don't need to go to the next state; that happens automatically when the server responds with "okay! we start!"
-        });
-        div.appendChild(btn1);
-      }
-
-      // ask user to draw their own profile pic
-      var p3 = document.createElement("p");
-      p3.innerHTML = _serverInfo.serverInfo.translate('controller-waiting-1');
-      div.appendChild(p3);
-
-      // move canvas inside GUI
-      var canvas = document.getElementById("canvas-container");
-      div.appendChild(canvas);
-
-      // make canvas the correct size
-      // check what's the maximum width or height we can use
-      var maxWidth = document.getElementById('main-controller').clientWidth;
-      // calculate height of the viewport, subtract the space lost because of text above the canvas, subtract space lost from button (height+padding+margin)
-      var maxHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0) - canvas.getBoundingClientRect().top - (16 + 8 * 2 + 4 * 2);
-      // determine the greatest width we can use (either the original width, or the width that will lead to maximum allowed height)
-      var finalWidth = Math.min(maxWidth, maxHeight / 1.3);
-      // scale the game immediately (both stage and canvas simultaneously)
-      gm.scale.setGameSize(finalWidth, finalWidth * 1.3);
-
-      // add a bitmap for drawing
-      this.bmd = gm.add.bitmapData(gm.width, gm.height);
-      this.bmd.ctx.strokeStyle = _colors.playerColors[_serverInfo.serverInfo.rank]; // THIS is the actual drawing color      
-      this.bmd.ctx.lineWidth = 10;
-      this.bmd.ctx.lineCap = 'round';
-      this.bmd.ctx.fillStyle = '#ff0000';
-      this.sprite = gm.add.sprite(0, 0, this.bmd);
-      this.bmd.isDragging = false;
-      this.bmd.lastPoint = null;
-      //this.bmd.smoothed = false;
-      var bmdReference = this.bmd;
-
-      // display button to submit drawing
-      var btn2 = document.createElement("button");
-      btn2.innerHTML = _serverInfo.serverInfo.translate("submit-drawing");
-      btn2.addEventListener('click', function (event) {
-        var dataURI = bmdReference.canvas.toDataURL();
-
-        // send the drawing to the server (including the information that it's a profile pic)
-        socket.emit('submit-drawing', { dataURI: dataURI, type: "profile" });
-
-        // Remove submit button
-        btn2.remove();
-
-        // Disable canvas
-        canvas.style.display = 'none';
-
-        if (!_serverInfo.serverInfo.vip) {
-          p3.innerHTML = _serverInfo.serverInfo.translate('controller-waiting-2');
-        } else {
-          p3.innerHTML = '';
-        }
-      });
-      div.appendChild(btn2);
-
+      this.timer = _serverInfo.serverInfo.timer;
       (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
 
-      console.log("Controller Waiting state");
+      console.log("Controller Play state");
     }
   }, {
     key: 'update',
     value: function update() {
-      // This is where we listen for input!
-
-      /***
-       * DRAW STUFF
-       ***/
-      if (this.game.input.activePointer.isUp) {
-        this.bmd.isDragging = false;
-        this.bmd.lastPoint = null;
-      }
-
-      if (this.game.input.activePointer.isDown) {
-        this.bmd.isDragging = true;
-        this.bmd.ctx.beginPath();
-        var newPoint = new Phaser.Point(this.game.input.x, this.game.input.y);
-
-        if (this.bmd.lastPoint) {
-          this.bmd.ctx.moveTo(this.bmd.lastPoint.x, this.bmd.lastPoint.y);
-          this.bmd.ctx.lineTo(newPoint.x, newPoint.y);
-        }
-
-        this.bmd.lastPoint = newPoint;
-        this.bmd.ctx.stroke();
-
-        this.bmd.dirty = true;
-      }
+      // Update timer
+      (0, _timers.controllerTimer)(this, _serverInfo.serverInfo);
     }
   }]);
 
@@ -2351,7 +2281,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 23 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

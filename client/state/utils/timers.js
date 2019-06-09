@@ -11,19 +11,17 @@ export const gameTimer = (ths, serverInfo) => {
   }
 }    
 
-export const controllerTimer = (ths, serverInfo, nextState) => {
-  if(serverInfo.paused) {
+export const controllerTimer = (ths, serverInfo) => {
+  if(serverInfo.paused || ths.timer <= 0) {
     return;
   }
 
   // Perform countdown, if we're VIP
   if(serverInfo.vip) {
-    if(ths.timer > 0) {
-      ths.timer -= ths.game.time.elapsed/1000;
-    } else {
-      // TIMER IS DONE!
-      // Send message to the server that the next phase should start
-      serverInfo.socket.emit('timer-complete', { nextState: nextState })
+    ths.timer -= ths.game.time.elapsed/1000;
+
+    if(ths.timer <= 0) {
+      serverInfo.socket.emit('timer-complete', {})
     }
   }
 } 
