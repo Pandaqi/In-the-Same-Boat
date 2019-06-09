@@ -97,7 +97,7 @@ export default function loadPlayInterface(num, cont) {
             for(let i = 0; i < 4; i++) {
                 let curResVal = serverInfo.resources[i];
 
-                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/pirate_flag.jpg"><span id="shipResource' + i + '">' + curResVal + '</span></span>';
+                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/resourceIcon' + i + '.png"><span id="shipResource' + i + '">' + curResVal + '</span></span>';
             }
 
             cont.appendChild(resDiv)
@@ -110,6 +110,28 @@ export default function loadPlayInterface(num, cont) {
         //  => current compass level + upgrade button
         case 1:
             // TO DO
+
+            // Current orientation in background
+            // TO DO: Convert server orientation to degrees?
+            let bgOrient = document.createElement("img");
+            bgOrient.src = "assets/shipGhostTopCompass.png";
+            bgOrient.style.maxWidth = '100%'
+            bgOrient.style.position = 'absolute';
+            bgOrient.style.opacity = 0.5;
+            bgOrient.style.transform = 'rotate(' + serverInfo.orientation + 'deg)';
+
+            cont.appendChild(bgOrient);
+
+            // Compass on top of that
+            let bgCompass = document.createElement("img");
+            bgCompass.src = "assets/backgroundCompass.png";
+            bgCompass.style.maxWidth = '100%'
+            bgCompass.style.position = 'absolute';
+
+            cont.appendChild(bgCompass);
+
+            // Now add the compass POINTER
+            // TO DO (question): on which element do we put the onclick/ontouch events? The pointer, or the background image (which has a larger and more consistent area)
 
             break;
 

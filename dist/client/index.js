@@ -671,6 +671,7 @@ var gameTimer = exports.gameTimer = function gameTimer(ths, serverInfo) {
 };
 
 var controllerTimer = exports.controllerTimer = function controllerTimer(ths, serverInfo) {
+  // If we're paused, or the timer has already run out, stop counting down (and sending timer signals)
   if (serverInfo.paused || ths.timer <= 0) {
     return;
   }
@@ -2245,7 +2246,7 @@ function loadPlayInterface(num, cont) {
                         span0.innerHTML = "<p>One or more enemies are nearby. Attack?</p>";
 
                         // TO DO: Make button actually send the fire signal
-                        var btn0 = document.createElement("btn");
+                        var btn0 = document.createElement("button");
                         btn0.innerHTML = 'FIRE!';
                         span0.appendChild(btn0);
 
@@ -2265,7 +2266,7 @@ function loadPlayInterface(num, cont) {
                         span1.appendChild(inp1);
 
                         // TO DO: Make button actually submit the name
-                        var btn1 = document.createElement("btn");
+                        var btn1 = document.createElement("button");
                         btn1.innerHTML = 'Submit name';
                         span1.appendChild(btn1);
 
@@ -2284,7 +2285,7 @@ function loadPlayInterface(num, cont) {
                         span2.innerHTML += '<p><em>This feature doesn\'t work at the moment. BE PATIENT.</em></p>';
 
                         // TO DO: Make button actually perform the trade
-                        var btn2 = document.createElement("btn");
+                        var btn2 = document.createElement("button");
                         btn2.innerHTML = 'Perform trade';
                         span2.appendChild(btn2);
 
@@ -2302,10 +2303,11 @@ function loadPlayInterface(num, cont) {
             var resDiv = document.createElement("div");
             resDiv.id = 'shipResources';
 
+            // TO DO: Write (and receive) signal that updates these resource stats
             for (var _i = 0; _i < 4; _i++) {
                 var curResVal = _serverInfo.serverInfo.resources[_i];
 
-                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/pirate_flag.jpg"><span id="shipResource' + _i + '">' + curResVal + '</span></span>';
+                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/resourceIcon' + _i + '.png"><span id="shipResource' + _i + '">' + curResVal + '</span></span>';
             }
 
             cont.appendChild(resDiv);
@@ -2318,6 +2320,28 @@ function loadPlayInterface(num, cont) {
         //  => current compass level + upgrade button
         case 1:
             // TO DO
+
+            // Current orientation in background
+            // TO DO: Convert server orientation to degrees?
+            var bgOrient = document.createElement("img");
+            bgOrient.src = "assets/shipGhostTopCompass.png";
+            bgOrient.style.maxWidth = '100%';
+            bgOrient.style.position = 'absolute';
+            bgOrient.style.opacity = 0.5;
+            bgOrient.style.transform = 'rotate(' + _serverInfo.serverInfo.orientation + 'deg)';
+
+            cont.appendChild(bgOrient);
+
+            // Compass on top of that
+            var bgCompass = document.createElement("img");
+            bgCompass.src = "assets/backgroundCompass.png";
+            bgOrient.style.maxWidth = '100%';
+            bgOrient.style.position = 'absolute';
+
+            cont.appendChild(bgCompass);
+
+            // Now add the compass POINTER
+            // TO DO (question): on which element do we put the onclick/ontouch events? The pointer, or the background image (which has a larger and more consistent area)
 
             break;
 

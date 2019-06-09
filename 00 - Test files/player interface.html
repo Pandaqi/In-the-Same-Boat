@@ -16,7 +16,7 @@
 	let curTab = 0;
 	let shipNum = 5;
 
-	let roles = [0, 1, 2, 3];
+	let roles = [0, 1, 2, 3, 4];
 
 	let crew = ["Alfred", "Bert", "Cassidy"];
 
@@ -95,10 +95,10 @@
 				domString += '<h1>Resources</h1>';
 
 				domString += '<div id="shipResources">\
-				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceCrew">' + resources[0] + '</span></span>\
-				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceGold">' + resources[1] + '</span></span>\
-				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceWood">' + resources[2] + '</span></span>\
-				<span class="shipResourceGroup"><img src="pirate_flag.jpg"/><span id="shipResourceGuns">' + resources[3] + '</span></span></div>';
+				<span class="shipResourceGroup"><img src="resIconGold.png"/><span id="shipResourceCrew">' + resources[0] + '</span></span>\
+				<span class="shipResourceGroup"><img src="resIconCrew.png"/><span id="shipResourceGold">' + resources[1] + '</span></span>\
+				<span class="shipResourceGroup"><img src="resIconWood.png"/><span id="shipResourceWood">' + resources[2] + '</span></span>\
+				<span class="shipResourceGroup"><img src="resIconGuns.png"/><span id="shipResourceGuns">' + resources[3] + '</span></span></div>';
 
 				// Load crew
 				// Display their name
@@ -113,7 +113,7 @@
 			case 1:
 				// Load compass
 				// TO DO
-				domString += '<img src="pirate_flag.jpg" style="max-width:100%;position:absolute;" />';
+				domString += '<img src="shipGhostTop.png" style="max-width:100%;position:absolute;" />';
 
 				// Load current ship rotation
 				// (This means an image of a basic ship layout, rotated to the current angle of the ship)

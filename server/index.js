@@ -53,7 +53,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: false,
+      prepSkip: true,
       
       signalHistory: [],
       peopleDisconnected: [],
