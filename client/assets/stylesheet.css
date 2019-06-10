@@ -17,6 +17,7 @@ h1 {
     margin-top:20px;
     margin-bottom:0px;
     font-family: 'Pirata One', cursive;
+    color:#000;
 }
 
 /*** 
@@ -242,7 +243,7 @@ button {
     margin-top:5px;
 }
 
-button {
+button:hover {
     color:#FFF;
     background-color:#891B13;
 }
@@ -292,6 +293,24 @@ button {
     /* color:white; */
 }
 
+
+.weaponeer-cannonLoad {
+  height:100%;
+  display:block;
+  background:
+  repeating-linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0) 2px,
+    white 2px,
+    white 10px
+  );
+}
+
+.weaponeer-cannonLoadBg {
+  width:50px;
+  background-color:black;
+}
 
 
 input[type="text"] {

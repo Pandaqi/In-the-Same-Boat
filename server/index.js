@@ -810,6 +810,11 @@ function startTurn(room, gameStart = false) {
         case 2:
           // Map seed and other static info is already known
           // TO DO: Check units in vicinity, send them to him
+          pPack["mapSeed"] = curRoom.mapSeed; // TO DO: Map seed shouldn't be send every turn, should only be send once at the start
+
+          // Send our own location (?? or is this sent along with the other units?)
+          pPack["x"] = curShip.x;
+          pPack["y"] = curShip.y;
 
           break;
 
@@ -823,7 +828,7 @@ function startTurn(room, gameStart = false) {
         case 4:
           // Amount of cannons and their level are already known (by sending a negative number, we indicate a cannon does not exist yet?)
           // TO DO: Cannon load
-          pPack["cannons"] = {};
+          pPack["shipCannons"] = [ { load: 2, level: 0 }, { load: -1, level: 0 }, { load: -1, level: 0 }, { load: -1, level: 0 } ];
 
           break;
       }
