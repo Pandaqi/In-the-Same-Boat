@@ -10,6 +10,8 @@ Server.listen(PORT, () => console.log('Game server running on:', PORT))
 // this variable will hold all current game rooms (and thus all games that are currently being played)
 const rooms = {}
 
+const UPGRADE_DICT = require('./upgradeDictionary.js')
+
 io.on('connection', socket => {
 
   /****
@@ -439,6 +441,48 @@ io.on('connection', socket => {
     sendSignal(room, true, 'player-updated-profile', curPlayer)
   })
 
+  // When someone updated their compass
+  // @parameter orientation = desired orientation of the ship (integer between 0 and 8)
+  socket.on('compass-up', orientation => {
+    // Find their ship, update orientation directly
+    let curShip = rooms[socket.mainRoom].playerShips[ rooms[socket.mainRoom].players[socket.id].myShip ];
+    curShip.orientation = orientation;
+  })
+
+  // When someone wants an upgrade
+  // @parameter role = index of the role that wants an upgrade
+  socket.on('upgrade', role => {
+    let curShip = rooms[socket.mainRoom].playerShips[ rooms[socket.mainRoom].players[socket.id].myShip ];
+    let curLevel = curShip.roleStats[role].lvl;
+
+    // Check if the upgrade is possible (considering current ship resources)
+    let costs = UPGRADE_DICT[role][(curLevel + 1)]
+    let upgradePossible = true;
+    for(let key in costs) {
+      if(costs[key] > curShip.resources[key]) {
+        upgradePossible = false;
+        break;
+      }
+    }
+
+    // If possible ... 
+    if(upgradePossible) {
+      // subtract resources
+      for(let key in costs) {
+        curShip.resources[key] -= costs[key];
+      }
+
+      // execute upgrade
+      curShip.roleStats[role].lvl += 1;
+
+      // inform captain
+      // IDEA: Only send change in resources during the turn (res-up) (needs edits on the client side as well, should work)
+      sendSignal(socket.mainRoom, false, 'res-up', curShip.resources, false, false, curShip.captain)
+    } else {
+      // If not possible, do nothing (... send error message that it didn't succeed?)
+    }
+  })
+
   /***
    *
    * This signal is received when a player finishes the preparation for a certain role
@@ -652,10 +696,22 @@ function createPlayerShips(room) {
     => orientation (number from 0 to 7; 0 is pointing to the right)
     => resources (gold, crew, wood, guns)
     => health 
+    => roleStats (the level of each role's instrument)
    */
   room.playerShips = [];
   for(let i = 0; i < numberBoats; i++) {
-    room.playerShips.push({ num: i, players: [], resources: [10,2,5,0], x: 0, y: 0, orientation: 0, health: 100 });
+    let newShip = { 
+      num: i, 
+      players: [], 
+      resources: [20,20,20,20], 
+      x: 0, 
+      y: 0, 
+      orientation: 0, 
+      health: 100, 
+      roleStats: [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 } ] 
+    }
+
+    room.playerShips.push(newShip);
   }
 
   // now we loop over it and determine player distribution
@@ -692,10 +748,16 @@ function createPlayerShips(room) {
       console.log("Going once; player " + tempKey);
       console.log(fullRoleList);
 
-
-      room.players[tempKey].myRoles.push(fullRoleList.splice(0,1)[0]);
+      let roleToGive = fullRoleList.splice(0,1)[0];
+      room.players[tempKey].myRoles.push(roleToGive);
 
       curPlayer = (curPlayer + 1) % playersOnShip;
+
+      // the captain of each ship is saved on the ship (by socket id)
+      // tempKey is the key in the player dictionary, which is equal to the socket.id
+      if(roleToGive == 0) {
+        room.playerShips[i].captain = tempKey;
+      }
     }
   }
 
@@ -826,9 +888,9 @@ function startTurn(room, gameStart = false) {
 
         // Weapon Specialist
         case 4:
-          // Amount of cannons and their level are already known (by sending a negative number, we indicate a cannon does not exist yet?)
-          // TO DO: Cannon load
-          pPack["shipCannons"] = [ { load: 2, level: 0 }, { load: -1, level: 0 }, { load: -1, level: 0 }, { load: -1, level: 0 } ];
+          // All cannons have the same level; this level is known by the player??
+          // TO DO: Send the correct cannon load (just a number, negative means the cannon hasn't been bought yet)
+          pPack["shipCannons"] = [ 2, -1, -1, -1 ];
 
           break;
       }

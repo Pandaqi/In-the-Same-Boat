@@ -26,6 +26,41 @@ class ControllerWaiting extends Phaser.State {
 
     let div = document.getElementById("main-controller")
 
+    /**** DO SOME EXTRA INITIALIZATION *****/
+    // loop through all the roles
+    let roles = serverInfo.myRoles;
+    serverInfo.roleStats = [ { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0}, { lvl: 0} ];
+    for(let i = 0; i < roles.length; i++) {
+      let roleNum = roles[i];
+      switch(roleNum) {
+        // Captain needs to listen to resource changes
+        case 0:
+          // res-up => resource update
+          socket.on('res-up', data => {
+            // save the received resources
+            serverInfo.resources = data;
+
+            // if the captain tab is currently displaying, update it
+            if(curTab.num == 0) {
+              for(let i = 0; i < data.length; i++) {
+                document.getElementById('shipResource'+i).innerHTML = data[i];
+              }
+            }
+          });
+
+          break;
+
+        // First mate
+        // Set compass level to 1
+        case 1:
+          serverInfo.roleStats[1].lvl = 0;
+
+          break;
+      }
+    }
+
+    /**** DISPLAY INTERFACE *****/
+
     // Add the health bar at the top
     let healthBar = document.createElement("div");
     healthBar.id = "healthBar";
@@ -45,7 +80,7 @@ class ControllerWaiting extends Phaser.State {
     shipRoles.id = 'shipRoles';
 
     // then add the roles
-    let roles = serverInfo.myRoles;
+    //let roles = serverInfo.myRoles;
     for(let i = 0; i < roles.length; i++) {
       let roleNum = roles[i];
 

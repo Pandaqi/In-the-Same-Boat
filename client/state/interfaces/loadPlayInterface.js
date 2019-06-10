@@ -1,5 +1,6 @@
 import { serverInfo } from '../sockets/serverInfo'
 import { SHIP_COLORS } from '../utils/shipColors'
+import { UPGRADE_DICT } from '../utils/upgradeDictionary'
 
 /*
     The functions below are HELPER FUNCTIONS for specific roles (that require interactivity beyond basic DOM stuff)
@@ -26,12 +27,55 @@ function compassMove(ev) {
     // calculate difference vector, determine angle from that
     var vec = [px - cx, py - cy];
     var angle = Math.atan2(vec[1], vec[0]) * 180 / Math.PI;
+    if(angle < 0) {
+        angle += 360;
+    }
 
-    // Snap angle to fixed directions (8 dir, around center)
-    angle = Math.round(angle / 45) * 45;
+    // Lock angle to compass level 
+    // Determine the maximum rotation per turn (based on compass level)
+    var deltaAngle = 180;
+    switch(serverInfo.roleStats[1].lvl) {
+        case 0:
+            deltaAngle = 45;
+            break;
+        case 1:
+            deltaAngle = 90;
+            break;
+        case 2:
+            deltaAngle = 90;
+            break;
+        case 3:
+            deltaAngle = 135;
+            break;
+        case 4:
+            deltaAngle = 135;
+            break;
+    }
 
-    document.getElementById('firstmate-compassPointer').style.transform = 'rotate(' + angle + 'deg)';
-    document.getElementById('firstmate-compassPointer').setAttribute('data-angle', angle);
+    // get distance from current angle to current ship orientation
+    // if this distance is above delta, you're too far
+    var angleDiff;
+    if(serverInfo.oldOrientation == undefined) {
+        angleDiff = ( angle - serverInfo.orientation + 180 ) % 360 - 180;
+    } else {
+        angleDiff = ( angle - serverInfo.oldOrientation + 180 ) % 360 - 180;
+    }
+
+    if(angleDiff < -180) {
+        angleDiff += 360
+    }
+
+    if(Math.abs(angleDiff) > deltaAngle) {
+        return;
+    } else {
+        // Snap angle to fixed directions (8 dir, around center)
+        angle = Math.round(angle / 45) * 45;
+
+        // Update compass pointer
+        document.getElementById('firstmate-compassPointer').style.transform = 'rotate(' + angle + 'deg)';
+        document.getElementById('firstmate-compassPointer').setAttribute('data-angle', angle);
+    }
+    
 }
 
 function mapMove(ev) {
@@ -47,6 +91,25 @@ function mapMove(ev) {
 
     // update oldMovePoint
     cv.oldMovePoint = { x: ev.pageX, y: ev.pageY };
+}
+
+function loadUpgradeButton(role, level) {
+    let costs = UPGRADE_DICT[role][level];
+    let curString = '';
+
+    // an upgrade to level 0 is the same as buying ...
+    if(level == 0) {
+        curString += '<span class="upgradeButtonLabel">Buy</span>';
+    } else {
+        curString += '<span class="upgradeButtonLabel">Upgrade (lv ' + level + ')</span>';
+    }
+
+
+    for(let key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    }
+
+    return curString;
 }
 
 /*
@@ -142,7 +205,6 @@ export default function loadPlayInterface(num, cont) {
             let resDiv = document.createElement("div");
             resDiv.id = 'shipResources'
 
-            // TO DO: Write (and receive) signal that updates these resource stats
             for(let i = 0; i < 4; i++) {
                 let curResVal = serverInfo.resources[i];
 
@@ -185,9 +247,6 @@ export default function loadPlayInterface(num, cont) {
             cont.appendChild(bgCompass);
 
             // Now add the compass POINTER
-            // TO DO (question): on which element do we put the onclick/ontouch events? The pointer, or the background image (which has a larger and more consistent area)
-            // TO DO: Set pointer to current rotation (by default), constrain it based on compass level
-            //        => The ghost of the ship should be set to the "old rotation" (at start of turn), the pointer to the current one
             let compassPointer = document.createElement("img");
             compassPointer.src = "assets/compassPointer.png";
             compassPointer.id = 'firstmate-compassPointer';
@@ -210,7 +269,9 @@ export default function loadPlayInterface(num, cont) {
             compassPointer.addEventListener('mouseup', function (ev) {
                 document.removeEventListener('mousemove', compassMove);
 
-                // TO DO: send signal
+                // Send signal to the server (with the new orientation)
+                let newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
+                socket.emit('compass-up', newOrient);
 
                 // Update serverInfo
                 // Save the current orientation of the ship on the map (so we know what a compass change means)
@@ -220,17 +281,8 @@ export default function loadPlayInterface(num, cont) {
                 }
 
                 // Update our own orientation (to remember it when switching tabs)
-                serverInfo.orientation = Math.round(compassPointer.getAttribute('data-angle') / 45);
+                serverInfo.orientation = newOrient;
             }, false);
-
-            // Finally, add the upgrade button
-            // TO DO: Send signal that actually upgrades the thing
-            // TO DO: The button overlaps the compass, because that is set to position: absolute. Can I just remove that style property?
-            let compassUpgradeBtn = document.createElement("button");
-            compassUpgradeBtn.classList.add("upgradeButton");
-            compassUpgradeBtn.innerHTML = 'Upgrade';
-
-            cont.appendChild(compassUpgradeBtn);
 
             break;
 
@@ -320,14 +372,6 @@ export default function loadPlayInterface(num, cont) {
 
             cont.appendChild(vignetImg);
 
-            // Finally, add the upgrade button
-            // TO DO: Send signal that actually upgrades the thing
-            let mapUpgradeBtn = document.createElement("button");
-            mapUpgradeBtn.classList.add("upgradeButton");
-            mapUpgradeBtn.innerHTML = 'Upgrade';
-
-            cont.appendChild(mapUpgradeBtn);
-
             break;
 
         // Sailor: 
@@ -374,14 +418,6 @@ export default function loadPlayInterface(num, cont) {
 
             cont.appendChild(hSlider);
 
-            // Finally, add the upgrade button
-            // TO DO: Send signal that actually upgrades the thing
-            let upgradeBtn = document.createElement("button");
-            upgradeBtn.classList.add("upgradeButton");
-            upgradeBtn.innerHTML = 'Upgrade';
-
-            cont.appendChild(upgradeBtn);
-
             break;
 
         // Weapon Specialist:
@@ -407,28 +443,32 @@ export default function loadPlayInterface(num, cont) {
 
                 // Show cannon number
                 let span = document.createElement("span");
-                span.innerHTML = '#' + i;
+                span.innerHTML = (i + 1);
                 cannonDiv.appendChild(span);
 
                 // If the current load is negative, this cannon hasn't been bought yet
-                if(c[i].load < 0) {
+                let curLoad = c[i];
+                if(curLoad < 0) {
                     // Show "buy" button
-                    // TO DO: Send signal on click (and update my own cannonList + interface)
+                    // TO DO: Send signal on click 
+                    //   => Remove buy button
+                    //   => Set current load (for this cannon) to 0
+                    // TO DO: Perform a "cumulative costs calculation": calculate the resources needed to buy a cannon at level X immediately
                     let buyBtn = document.createElement("button")
-                    buyBtn.innerHTML = 'BUY';
+                    buyBtn.classList.add('upgradeButton');
+                    buyBtn.innerHTML = loadUpgradeButton(4, 0)
                     cannonDiv.appendChild(buyBtn);
                 } else {
-                    // Show the current load
-
-                    // First load a background
+                    // Show the current load ...
+                    // ... 1) First load a background
                     let divLoad = document.createElement("div");
                     divLoad.classList.add("weaponeer-cannonLoadBg");
                     cannonDiv.appendChild(divLoad);
 
-                    // Then load the amount of guns/bullets/cannon balls on top
+                    // ... 2) Then load the amount of guns/bullets/cannon balls on top
                     let spanLoad = document.createElement("span");
                     spanLoad.classList.add("weaponeer-cannonLoad")
-                    spanLoad.style.width = (c[i].load*10) + 'px';
+                    spanLoad.style.width = (curLoad * 10) + 'px';
                     divLoad.appendChild(spanLoad);
 
                     // Show "Load cannon" button
@@ -436,19 +476,32 @@ export default function loadPlayInterface(num, cont) {
                     let loadBtn = document.createElement("button")
                     loadBtn.innerHTML = 'LOAD';
                     cannonDiv.appendChild(loadBtn);
-
-                    // Show "upgrade button"
-                    // TO DO: Send signal on click (and update my own cannonList + interface)
-                    let upgradeBtn = document.createElement("button")
-                    upgradeBtn.innerHTML = 'UPGRADE';
-                    upgradeBtn.classList.add('upgradeButton');
-                    cannonDiv.appendChild(upgradeBtn);
                 }
 
                 cont.appendChild(cannonDiv);
             }
 
             break;
+    }
+
+    // if no upgrade has been submitted yet, display the upgrade button
+    // also, the captain (role 0) is the ONLY role without an upgrade button
+    if(!serverInfo.submittedUpgrade[num] && num != 0) {
+        let upgradeBtn = document.createElement("button");
+        upgradeBtn.classList.add("upgradeButton");
+
+        // load the required resources for the NEXT level of this role 
+        upgradeBtn.innerHTML = loadUpgradeButton(num, (serverInfo.roleStats[num].lvl + 1) );
+
+        // on click, send upgrade signal, remove this button, remember we've already upgraded
+        upgradeBtn.addEventListener('click', function() {
+            socket.emit('upgrade', num);
+
+            this.remove();
+            serverInfo.submittedUpgrade[num] = true;
+        })
+
+        cont.appendChild(upgradeBtn);
     }
 
 };

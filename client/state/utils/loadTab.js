@@ -23,6 +23,9 @@ export default function (eventID, curTab, interfaceType) {
     cv.style.display = 'none'
     document.body.appendChild(cv)
 
+    // in fact, empty the canvas completely 
+    cv.myGame.world.removeAll();
+
     // then empty the interface area
     document.getElementById("shipInterface").innerHTML = '';
 

@@ -13,6 +13,7 @@ const serverInfo = {
   language: 'en',
 
   submittedPreparation: {},
+  submittedUpgrade: {},
 }
 
 // language/translator object

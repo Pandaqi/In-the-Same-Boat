@@ -87,7 +87,8 @@ var serverInfo = {
 
   language: 'en',
 
-  submittedPreparation: {}
+  submittedPreparation: {},
+  submittedUpgrade: {}
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -713,6 +714,9 @@ exports.default = function (eventID, curTab, interfaceType) {
     cv.style.display = 'none';
     document.body.appendChild(cv);
 
+    // in fact, empty the canvas completely 
+    cv.myGame.world.removeAll();
+
     // then empty the interface area
     document.getElementById("shipInterface").innerHTML = '';
 
@@ -811,11 +815,11 @@ var _ControllerPrep = __webpack_require__(22);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(25);
+var _ControllerPlay = __webpack_require__(26);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(26);
+var _ControllerOver = __webpack_require__(27);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -2211,6 +2215,8 @@ var _serverInfo = __webpack_require__(0);
 
 var _shipColors = __webpack_require__(13);
 
+var _upgradeDictionary = __webpack_require__(25);
+
 /*
     The functions below are HELPER FUNCTIONS for specific roles (that require interactivity beyond basic DOM stuff)
     (At the bottom of this file, the main "loadPlayInterface" function can be found)
@@ -2236,12 +2242,54 @@ function compassMove(ev) {
     // calculate difference vector, determine angle from that
     var vec = [px - cx, py - cy];
     var angle = Math.atan2(vec[1], vec[0]) * 180 / Math.PI;
+    if (angle < 0) {
+        angle += 360;
+    }
 
-    // Snap angle to fixed directions (8 dir, around center)
-    angle = Math.round(angle / 45) * 45;
+    // Lock angle to compass level 
+    // Determine the maximum rotation per turn (based on compass level)
+    var deltaAngle = 180;
+    switch (_serverInfo.serverInfo.roleStats[1].lvl) {
+        case 0:
+            deltaAngle = 45;
+            break;
+        case 1:
+            deltaAngle = 90;
+            break;
+        case 2:
+            deltaAngle = 90;
+            break;
+        case 3:
+            deltaAngle = 135;
+            break;
+        case 4:
+            deltaAngle = 135;
+            break;
+    }
 
-    document.getElementById('firstmate-compassPointer').style.transform = 'rotate(' + angle + 'deg)';
-    document.getElementById('firstmate-compassPointer').setAttribute('data-angle', angle);
+    // get distance from current angle to current ship orientation
+    // if this distance is above delta, you're too far
+    var angleDiff;
+    if (_serverInfo.serverInfo.oldOrientation == undefined) {
+        angleDiff = (angle - _serverInfo.serverInfo.orientation + 180) % 360 - 180;
+    } else {
+        angleDiff = (angle - _serverInfo.serverInfo.oldOrientation + 180) % 360 - 180;
+    }
+
+    if (angleDiff < -180) {
+        angleDiff += 360;
+    }
+
+    if (Math.abs(angleDiff) > deltaAngle) {
+        return;
+    } else {
+        // Snap angle to fixed directions (8 dir, around center)
+        angle = Math.round(angle / 45) * 45;
+
+        // Update compass pointer
+        document.getElementById('firstmate-compassPointer').style.transform = 'rotate(' + angle + 'deg)';
+        document.getElementById('firstmate-compassPointer').setAttribute('data-angle', angle);
+    }
 }
 
 function mapMove(ev) {
@@ -2257,6 +2305,24 @@ function mapMove(ev) {
 
     // update oldMovePoint
     cv.oldMovePoint = { x: ev.pageX, y: ev.pageY };
+}
+
+function loadUpgradeButton(role, level) {
+    var costs = _upgradeDictionary.UPGRADE_DICT[role][level];
+    var curString = '';
+
+    // an upgrade to level 0 is the same as buying ...
+    if (level == 0) {
+        curString += '<span class="upgradeButtonLabel">Buy</span>';
+    } else {
+        curString += '<span class="upgradeButtonLabel">Upgrade (lv ' + level + ')</span>';
+    }
+
+    for (var key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    }
+
+    return curString;
 }
 
 /*
@@ -2352,7 +2418,6 @@ function loadPlayInterface(num, cont) {
             var resDiv = document.createElement("div");
             resDiv.id = 'shipResources';
 
-            // TO DO: Write (and receive) signal that updates these resource stats
             for (var _i = 0; _i < 4; _i++) {
                 var curResVal = _serverInfo.serverInfo.resources[_i];
 
@@ -2394,9 +2459,6 @@ function loadPlayInterface(num, cont) {
             cont.appendChild(bgCompass);
 
             // Now add the compass POINTER
-            // TO DO (question): on which element do we put the onclick/ontouch events? The pointer, or the background image (which has a larger and more consistent area)
-            // TO DO: Set pointer to current rotation (by default), constrain it based on compass level
-            //        => The ghost of the ship should be set to the "old rotation" (at start of turn), the pointer to the current one
             var compassPointer = document.createElement("img");
             compassPointer.src = "assets/compassPointer.png";
             compassPointer.id = 'firstmate-compassPointer';
@@ -2419,7 +2481,9 @@ function loadPlayInterface(num, cont) {
             compassPointer.addEventListener('mouseup', function (ev) {
                 document.removeEventListener('mousemove', compassMove);
 
-                // TO DO: send signal
+                // Send signal to the server (with the new orientation)
+                var newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
+                socket.emit('compass-up', newOrient);
 
                 // Update serverInfo
                 // Save the current orientation of the ship on the map (so we know what a compass change means)
@@ -2429,17 +2493,8 @@ function loadPlayInterface(num, cont) {
                 }
 
                 // Update our own orientation (to remember it when switching tabs)
-                _serverInfo.serverInfo.orientation = Math.round(compassPointer.getAttribute('data-angle') / 45);
+                _serverInfo.serverInfo.orientation = newOrient;
             }, false);
-
-            // Finally, add the upgrade button
-            // TO DO: Send signal that actually upgrades the thing
-            // TO DO: The button overlaps the compass, because that is set to position: absolute. Can I just remove that style property?
-            var compassUpgradeBtn = document.createElement("button");
-            compassUpgradeBtn.classList.add("upgradeButton");
-            compassUpgradeBtn.innerHTML = 'Upgrade';
-
-            cont.appendChild(compassUpgradeBtn);
 
             break;
 
@@ -2529,14 +2584,6 @@ function loadPlayInterface(num, cont) {
 
             cont.appendChild(vignetImg);
 
-            // Finally, add the upgrade button
-            // TO DO: Send signal that actually upgrades the thing
-            var mapUpgradeBtn = document.createElement("button");
-            mapUpgradeBtn.classList.add("upgradeButton");
-            mapUpgradeBtn.innerHTML = 'Upgrade';
-
-            cont.appendChild(mapUpgradeBtn);
-
             break;
 
         // Sailor: 
@@ -2553,6 +2600,7 @@ function loadPlayInterface(num, cont) {
             bgShipSide.style.maxWidth = '100%';
             bgShipSide.style.position = 'absolute';
             bgShipSide.style.opacity = 0.5;
+            bgShipSide.style.zIndex = -1;
 
             cont.appendChild(bgShipSide);
 
@@ -2582,14 +2630,6 @@ function loadPlayInterface(num, cont) {
 
             cont.appendChild(hSlider);
 
-            // Finally, add the upgrade button
-            // TO DO: Send signal that actually upgrades the thing
-            var upgradeBtn = document.createElement("button");
-            upgradeBtn.classList.add("upgradeButton");
-            upgradeBtn.innerHTML = 'Upgrade';
-
-            cont.appendChild(upgradeBtn);
-
             break;
 
         // Weapon Specialist:
@@ -2615,41 +2655,64 @@ function loadPlayInterface(num, cont) {
 
                 // Show cannon number
                 var span = document.createElement("span");
-                span.innerHTML = '#' + _i2;
+                span.innerHTML = _i2 + 1;
                 cannonDiv.appendChild(span);
 
                 // If the current load is negative, this cannon hasn't been bought yet
-                if (c[_i2].load < 0) {
+                var curLoad = c[_i2];
+                if (curLoad < 0) {
                     // Show "buy" button
                     // TO DO: Send signal on click (and update my own cannonList + interface)
+                    // TO DO: Perform a "cumulative costs calculation": calculate the resources needed to buy a cannon at level X immediately
                     var buyBtn = document.createElement("button");
-                    buyBtn.innerHTML = 'BUY';
+                    buyBtn.classList.add('upgradeButton');
+                    buyBtn.innerHTML = loadUpgradeButton(4, 0);
                     cannonDiv.appendChild(buyBtn);
                 } else {
                     // Show the current load
+
+                    // First load a background
+                    var divLoad = document.createElement("div");
+                    divLoad.classList.add("weaponeer-cannonLoadBg");
+                    cannonDiv.appendChild(divLoad);
+
+                    // Then load the amount of guns/bullets/cannon balls on top
                     var spanLoad = document.createElement("span");
-                    spanLoad.classList.add("weaponeer-load");
-                    spanLoad.style.width = c[_i2].load * 10 + 'px';
-                    cannonDiv.appendChild(spanLoad);
+                    spanLoad.classList.add("weaponeer-cannonLoad");
+                    spanLoad.style.width = curLoad * 10 + 'px';
+                    divLoad.appendChild(spanLoad);
 
                     // Show "Load cannon" button
                     // TO DO: Send signal on click (and update my own cannonList + interface)
                     var loadBtn = document.createElement("button");
                     loadBtn.innerHTML = 'LOAD';
                     cannonDiv.appendChild(loadBtn);
-
-                    // Show "upgrade button"
-                    // TO DO: Send signal on click (and update my own cannonList + interface)
-                    var _upgradeBtn = document.createElement("button");
-                    _upgradeBtn.innerHTML = 'UPGRADE';
-                    _upgradeBtn.classList.add('upgradeButton');
-                    cannonDiv.appendChild(_upgradeBtn);
                 }
 
                 cont.appendChild(cannonDiv);
             }
 
             break;
+    }
+
+    // if no upgrade has been submitted yet, display the upgrade button
+    // also, the captain (role 0) is the ONLY role without an upgrade button
+    if (!_serverInfo.serverInfo.submittedUpgrade[num] && num != 0) {
+        var upgradeBtn = document.createElement("button");
+        upgradeBtn.classList.add("upgradeButton");
+
+        // load the required resources for the NEXT level of this role 
+        upgradeBtn.innerHTML = loadUpgradeButton(num, _serverInfo.serverInfo.roleStats[num].lvl + 1);
+
+        // on click, send upgrade signal, remove this button, remember we've already upgraded
+        upgradeBtn.addEventListener('click', function () {
+            socket.emit('upgrade', num);
+
+            this.remove();
+            _serverInfo.serverInfo.submittedUpgrade[num] = true;
+        });
+
+        cont.appendChild(upgradeBtn);
     }
 };
 
@@ -2661,7 +2724,30 @@ function loadPlayInterface(num, cont) {
 
 
 Object.defineProperty(exports, "__esModule", {
-    value: true
+	value: true
+});
+// The upgrade dictionary contains the cost for each upgrade
+// The structure is as follows:
+//  - Top level = array, index represents role
+//     - 2nd level = array, index represents level (you're upgrading TO)
+//        - 3rd level = object, key is the resource, value is how many of them are needed
+
+var UPGRADE_DICT = exports.UPGRADE_DICT = [[], // captain (has no upgrades)
+[{}, { 2: 4 }, { 2: 6 }, { 0: 2, 2: 8 }, { 0: 5, 2: 10 }, { 0: 10, 2: 10 }], // first mate
+[{}, { 2: 2 }, { 0: 2, 2: 5 }, { 0: 4, 2: 8 }, { 0: 6, 1: 1, 2: 10 }, { 0: 10, 1: 2, 2: 10 }], // cartographer
+[{}, { 2: 4 }, { 1: 1, 2: 6 }, { 1: 2, 2: 8 }, { 0: 2, 1: 2, 2: 10 }, { 0: 5, 1: 3, 2: 10 }], // sailor
+[{ 0: 5, 1: 1, 2: 10 }, { 2: 4 }, { 1: 1, 2: 7 }, { 0: 5, 2: 10 }, { 0: 5, 1: 1, 2: 10 }, { 0: 10, 1: 2, 2: 10 }] // weapon specialist
+];
+
+/***/ }),
+/* 26 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
 });
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -2695,104 +2781,139 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var ControllerWaiting = function (_Phaser$State) {
-    _inherits(ControllerWaiting, _Phaser$State);
+  _inherits(ControllerWaiting, _Phaser$State);
 
-    function ControllerWaiting() {
-        _classCallCheck(this, ControllerWaiting);
+  function ControllerWaiting() {
+    _classCallCheck(this, ControllerWaiting);
 
-        return _possibleConstructorReturn(this, (ControllerWaiting.__proto__ || Object.getPrototypeOf(ControllerWaiting)).call(this));
-        // construct stuff here, if needed
+    return _possibleConstructorReturn(this, (ControllerWaiting.__proto__ || Object.getPrototypeOf(ControllerWaiting)).call(this));
+    // construct stuff here, if needed
+  }
+
+  _createClass(ControllerWaiting, [{
+    key: 'preload',
+    value: function preload() {
+      // load stuff here, if needed
     }
+  }, {
+    key: 'create',
+    value: function create() {
+      var gm = this.game;
+      var socket = _serverInfo.serverInfo.socket;
 
-    _createClass(ControllerWaiting, [{
-        key: 'preload',
-        value: function preload() {
-            // load stuff here, if needed
+      var curTab = { num: 0 };
+
+      var div = document.getElementById("main-controller");
+
+      /**** DO SOME EXTRA INITIALIZATION *****/
+      // loop through all the roles
+      var roles = _serverInfo.serverInfo.myRoles;
+      _serverInfo.serverInfo.roleStats = [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }];
+      for (var i = 0; i < roles.length; i++) {
+        var roleNum = roles[i];
+        switch (roleNum) {
+          // Captain needs to listen to resource changes
+          case 0:
+            // res-up => resource update
+            socket.on('res-up', function (data) {
+              // save the received resources
+              _serverInfo.serverInfo.resources = data;
+
+              // if the captain tab is currently displaying, update it
+              if (curTab.num == 0) {
+                for (var _i = 0; _i < data.length; _i++) {
+                  document.getElementById('shipResource' + _i).innerHTML = data[_i];
+                }
+              }
+            });
+
+            break;
+
+          // First mate
+          // Set compass level to 1
+          case 1:
+            _serverInfo.serverInfo.roleStats[1].lvl = 0;
+
+            break;
         }
-    }, {
-        key: 'create',
-        value: function create() {
-            var gm = this.game;
-            var socket = _serverInfo.serverInfo.socket;
+      }
 
-            var curTab = { num: 0 };
+      /**** DISPLAY INTERFACE *****/
 
-            var div = document.getElementById("main-controller");
+      // Add the health bar at the top
+      var healthBar = document.createElement("div");
+      healthBar.id = "healthBar";
+      healthBar.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set bar to the right color
+      div.appendChild(healthBar);
 
-            // Add the health bar at the top
-            var healthBar = document.createElement("div");
-            healthBar.id = "healthBar";
-            healthBar.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set bar to the right color
-            div.appendChild(healthBar);
+      // Add the ship info (name + flag)
+      var shipInfo = document.createElement("div");
+      shipInfo.id = 'shipInfo';
+      shipInfo.innerHTML = '<img src="' + _serverInfo.serverInfo.shipFlag + '" />' + _serverInfo.serverInfo.shipTitle;
+      shipInfo.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set font to the right color
+      div.appendChild(shipInfo);
 
-            // Add the ship info (name + flag)
-            var shipInfo = document.createElement("div");
-            shipInfo.id = 'shipInfo';
-            shipInfo.innerHTML = '<img src="' + _serverInfo.serverInfo.shipFlag + '" />' + _serverInfo.serverInfo.shipTitle;
-            shipInfo.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set font to the right color
-            div.appendChild(shipInfo);
+      // Add the tabs for switching roles
+      // first create the container
+      var shipRoles = document.createElement("div");
+      shipRoles.id = 'shipRoles';
 
-            // Add the tabs for switching roles
-            // first create the container
-            var shipRoles = document.createElement("div");
-            shipRoles.id = 'shipRoles';
+      // then add the roles
+      //let roles = serverInfo.myRoles;
+      for (var _i2 = 0; _i2 < roles.length; _i2++) {
+        var _roleNum = roles[_i2];
 
-            // then add the roles
-            var roles = _serverInfo.serverInfo.myRoles;
-            for (var i = 0; i < roles.length; i++) {
-                var roleNum = roles[i];
+        // create a new tab object (with correct/unique label and z-index)
+        var newTab = document.createElement("span");
+        newTab.classList.add("shipRoleGroup");
+        newTab.id = 'label' + _i2;
+        newTab.style.zIndex = 5 - _i2;
 
-                // create a new tab object (with correct/unique label and z-index)
-                var newTab = document.createElement("span");
-                newTab.classList.add("shipRoleGroup");
-                newTab.id = 'label' + i;
-                newTab.style.zIndex = 5 - i;
+        // add the ICON and the ROLE NAME within the tab
+        newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[_roleNum] + '</span>';
 
-                // add the ICON and the ROLE NAME within the tab
-                newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
+        // when you click this tab, unload the previous tab, and load the new one!
+        // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
+        newTab.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          (0, _loadTab2.default)(this.id, curTab, 1);
+        });
 
-                // when you click this tab, unload the previous tab, and load the new one!
-                // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
-                newTab.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    (0, _loadTab2.default)(this.id, curTab, 1);
-                });
+        shipRoles.appendChild(newTab);
+      }
 
-                shipRoles.appendChild(newTab);
-            }
+      // finally, add the whole thing to the page
+      div.appendChild(shipRoles);
 
-            // finally, add the whole thing to the page
-            div.appendChild(shipRoles);
+      // add the area for the role interface
+      var shipInterface = document.createElement("div");
+      shipInterface.id = 'shipInterface';
+      div.appendChild(shipInterface);
 
-            // add the area for the role interface
-            var shipInterface = document.createElement("div");
-            shipInterface.id = 'shipInterface';
-            div.appendChild(shipInterface);
+      // automatically load the first role 
+      // (by calling LOAD_TAB with value 0; third paramter loads play interface instead of prep interface)
+      (0, _loadTab2.default)("label0", curTab, 1);
 
-            // automatically load the first role 
-            // (by calling LOAD_TAB with value 0; third paramter loads play interface instead of prep interface)
-            (0, _loadTab2.default)("label0", curTab, 1);
+      this.timer = _serverInfo.serverInfo.timer;
+      (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
 
-            this.timer = _serverInfo.serverInfo.timer;
-            (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
+      console.log("Controller Play state");
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      // Update timer
+      (0, _timers.controllerTimer)(this, _serverInfo.serverInfo);
+    }
+  }]);
 
-            console.log("Controller Play state");
-        }
-    }, {
-        key: 'update',
-        value: function update() {
-            // Update timer
-            (0, _timers.controllerTimer)(this, _serverInfo.serverInfo);
-        }
-    }]);
-
-    return ControllerWaiting;
+  return ControllerWaiting;
 }(Phaser.State);
 
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

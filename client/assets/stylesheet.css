@@ -248,6 +248,34 @@ button:hover {
     background-color:#891B13;
 }
 
+.upgradeButton {
+  padding:0px;
+  background-color:orange;
+  color:darkred;
+  display:flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.upgradeResourcesNeeded {
+  display:flex;
+  flex-direction:column;
+  margin:5px;
+}
+
+.upgradeResourcesNeeded img {
+  max-height: 20px;
+}
+
+.upgradeResourcesNeeded span {
+  font-size:16px;
+}
+
+.upgradeButtonLabel {
+  margin-right:40px;
+}
+
 /*** 
  * 
  * Rules for the CAPTAIN interface
@@ -271,9 +299,10 @@ button:hover {
     width:100%;
 }
 
+/*
 .captain-crewMember button {
     font-family:inherit;
-    background-color:#431B13; /* rgba(60, 0, 0, 0.5); */
+    background-color:#431B13; // rgba(60, 0, 0, 0.5); 
     color:#CCC;
     border:none;
     margin-left:5px;
@@ -282,8 +311,9 @@ button:hover {
 
 .captain-crewMember button:hover {
     color:#FFF;
-    background-color:#891B13; /*rgba(200, 0, 0, 0.5);*/
+    background-color:#891B13; // rgba(200, 0, 0, 0.5);
 }
+*/
 
 .captain-task {
     display:block;
@@ -302,14 +332,19 @@ button:hover {
     90deg,
     rgba(0, 0, 0, 0),
     rgba(0, 0, 0, 0) 2px,
-    white 2px,
-    white 10px
+    #DDD 2px,
+    #DDD 10px
   );
 }
 
 .weaponeer-cannonLoadBg {
-  width:50px;
-  background-color:black;
+  width:100px;
+  min-width: 100px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background-color:#300;
+
+  box-shadow: inset 0 0 10px #000;
 }
 
 
