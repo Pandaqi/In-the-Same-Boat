@@ -55,7 +55,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: true,
+      prepSkip: false,
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -451,23 +451,76 @@ io.on('connection', socket => {
   // When someone updated their sails
   // @parameter lvl = desired sail level/height for the ship
   socket.on('sail-up', lvl => {
-    // update sails directly
-    socket.curShip.roleStats[3].sailLvl = lvl;
+    // get difference in crew that needs to work the sails (based on previous amount)
+    let deltaCrew = (lvl - socket.curShip.roleStats[3].sailLvl);
+
+    // check if we can "spend" the extra crew
+    // (this should automatically work for a negative delta, in which case resources will just be added)
+    if( resourceCheck(socket, 3, -1, { 1: deltaCrew }) ) {
+      // update sails to the new level
+      socket.curShip.roleStats[3].sailLvl = lvl;
+    }
+    
   })
 
   // When someone updated their peddles
   // @parameter lvl = desired peddle level/strength for the ship
   socket.on('peddle-up', lvl => {
-    // update peddles directly
-    socket.curShip.roleStats[3].peddleLvl = lvl;
+    // get difference in crew that needs to work the peddles (based on previous amount)
+    // Remember: peddle crew costs twice as much (per level) => 2 CREW = 1 PEDDLE EXTRA
+    let deltaCrew = (lvl*2 - socket.curShip.roleStats[3].peddleLvl*2);
+
+    // check if we can "spend" the extra crew
+    if( resourceCheck(socket, 3, -1, { 1: deltaCrew }) ) {
+      // update sails to the new level
+      socket.curShip.roleStats[3].peddleLvl = lvl;
+    }
+
   })
 
   // When someone wants to add extra load to a cannon
   // @parameter cannon = index of the cannon to be loaded up
   socket.on('load-up', cannon => {
-    // Find their ship, update cannon directly
-    socket.curShip.shipCannons[cannon]++;
+    // If we have a single cannonball to spare ...
+    if( resourceCheck(socket, 4, -1, { 3: 1} )) {
+      // ... update cannon directly
+      socket.curShip.cannons[cannon]++;
+    }
   })
+
+  // When someone wants to buy a cannon
+  // @parameter cannon = index of the cannon to be bought
+  socket.on('buy-cannon', cannon => {
+    // If we have the resources for a (cumulative) cannon purchase ...
+    if( resourceCheck(socket, 4, -1) ) {
+      // ... set cannon load to 0 (negative means unbought, positive means bought)
+      socket.curShip.cannons[cannon] = 0;
+    }
+  })
+
+  // When someone orders their ship to fire
+  // This signal is dataless, that's why it has a function without parameters
+  socket.on('fire', function() {
+    // Remember that the ship will fire, when the new turn starts
+    socket.curShip.willFire = true;
+  });
+
+  socket.on('name-island', data => {
+    // TO DO
+    // data.name holds the desired name (a string)
+    // data.island holds the index of the island to be name (an integer)
+  });
+
+  socket.on('dock-trade', function() {
+    // TO DO
+    // The dock we're trading with should be saved on the ship (when we arrived there)
+    // The deal should be saved on the dock object itself
+
+    // Check if we have the resources
+    // If so, trade and update stats
+    // If not, return error message
+  });
+
 
   // When someone wants an upgrade
   // @parameter role = index of the role that wants an upgrade
@@ -475,31 +528,10 @@ io.on('connection', socket => {
     let curShip = socket.curShip;
     let curLevel = curShip.roleStats[role].lvl;
 
-    // Check if the upgrade is possible (considering current ship resources)
-    let costs = UPGRADE_DICT[role][(curLevel + 1)]
-    let upgradePossible = true;
-    for(let key in costs) {
-      if(costs[key] > curShip.resources[key]) {
-        upgradePossible = false;
-        break;
-      }
-    }
-
-    // If possible ... 
-    if(upgradePossible) {
-      // subtract resources
-      for(let key in costs) {
-        curShip.resources[key] -= costs[key];
-      }
-
-      // execute upgrade
+    // if resources and costs check out ...
+    if( resourceCheck(socket, role, curLevel) ) {
+      // ... execute upgrade
       curShip.roleStats[role].lvl += 1;
-
-      // inform captain
-      // IDEA: Only send _CHANGE_ in resources during the turn (res-up) (needs edits on the client side as well, should work)
-      sendSignal(socket.mainRoom, false, 'res-up', curShip.resources, false, false, curShip.captain)
-    } else {
-      // If not possible, do nothing (... send error message that it didn't succeed?)
     }
   })
 
@@ -723,12 +755,13 @@ function createPlayerShips(room) {
     let newShip = { 
       num: i, 
       players: [], 
-      resources: [20,20,20,20], 
+      resources: [5,1,1,0], 
       x: 0, 
       y: 0, 
       orientation: 0, 
       health: 100, 
-      roleStats: [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 } ] 
+      roleStats: [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0, sailLvl: 0, peddleLvl: 0 }, { lvl: 0 } ], 
+      cannons: [2, -1, -1, -1]
     }
 
     room.playerShips.push(newShip);
@@ -788,6 +821,89 @@ function createPlayerShips(room) {
   console.log(room.playerShips);
 }
 
+/*
+
+  This function checks if spending a certain cost/number of resources is ALLOWED (or POSSIBLE)
+  If so, it immediately informs the captain of the change.
+  If not, it immediately informs the captain of the failure (with an error message)
+
+  It returns true/false value, because what's actually being bought/upgraded can change heavily.
+
+  @parameter room => the room in which a new turn should be started
+  @parameter gameStart => if true, this means it is the first signal of the game, and some extra info needs to be sent.
+
+*/
+function resourceCheck(socket, role, curLevel, costs = null) {
+  let curShip = socket.curShip
+
+  console.log(role + ' - ' + curLevel + ' - ' + JSON.stringify(costs))
+
+  /**** GET THE COST ****/
+
+  // If we haven't been given a predetermined cost (by some other function), calculate it ourselves (as an UPGRADE)
+  if(costs == null) {
+    // If the current level is -1, this means we're BUYING something
+    // Calculate cumulative costs
+    costs = {} 
+    if(curLevel == -1) {
+      let targetLevel = curShip.roleStats[role].lvl;
+
+      // For each level ...
+      for(let i = 0; i <= targetLevel; i++) {
+          let c = UPGRADE_DICT[role][i];
+
+          // Go through the different resource costs at this level ...
+          for(let key in c) {
+              // If this resource isn't in our costs yet, add it (with this value)
+              if(costs[key] == undefined) {
+                  costs[key] = c[key];
+              // If this resource is already in the costs object, just add this value to it
+              } else {
+                  costs[key] += c[key];
+              }
+          }
+      }
+    } else {
+      // If it's a regular upgrade/purchase, just get the value from the dictionary
+      costs = UPGRADE_DICT[role][(curLevel + 1)]
+    }
+  }
+
+  console.log(costs);
+
+  /**** CHECK COST AGAINST SHIP RESOURCES ****/
+  let upgradePossible = true;
+  for(let key in costs) {
+    let convKey = parseInt(key);
+    if(costs[key] > curShip.resources[convKey]) {
+      upgradePossible = false;
+      break;
+    }
+  }
+
+  /**** PERFORM ACTIONS (based on whether the purchase is possible/goes through or not) ****/
+
+  // If possible ... 
+  if(upgradePossible) {
+    // subtract resources
+    for(let key in costs) {
+      let convKey = parseInt(key);
+      curShip.resources[convKey] -= costs[key];
+    }
+
+    // inform captain
+    sendSignal(socket.mainRoom, false, 'res-up', curShip.resources, false, false, curShip.captain)
+  } else {
+    // If not possible, do not upgrade
+    // send the captain an error message (informing him of the failure) 
+    // Error messages have this form: Array (2); 0 = message type, 1 = role that created the error
+
+    // TO DO: Differentiate error messages! Now it only sends type 0 -> upgrade failed
+    sendSignal(socket.mainRoom, false, 'error-msg', [0, role], false, false, curShip.captain)
+  }
+
+  return upgradePossible;
+}
 
 
 /*
@@ -920,7 +1036,7 @@ function startTurn(room, gameStart = false) {
         case 4:
           // All cannons have the same level; this level is known by the player??
           // TO DO: Send the correct cannon load (just a number, negative means the cannon hasn't been bought yet)
-          pPack["shipCannons"] = [ 2, -1, -1, -1 ];
+          pPack["shipCannons"] = curShip.cannons;
 
           break;
       }

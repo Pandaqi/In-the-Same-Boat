@@ -1,6 +1,10 @@
 import { serverInfo } from '../sockets/serverInfo'
 import { SHIP_COLORS } from '../utils/shipColors'
 import { UPGRADE_DICT } from '../utils/upgradeDictionary'
+import { ROLE_DICTIONARY } from '../utils/roleDictionary'
+import LOAD_ERROR_MESSAGE from './loadErrorMessage'
+
+import dynamicLoadImage from '../drawing/dynamicLoadImage'
 
 /*
     The functions below are HELPER FUNCTIONS for specific roles (that require interactivity beyond basic DOM stuff)
@@ -109,7 +113,13 @@ function mapMove(ev) {
     cv.oldMovePoint = { x: ev.pageX, y: ev.pageY };
 }
 
-function loadUpgradeButton(role, level) {
+/*
+
+    @parameter role => the role that wants an upgrade (every role only has one upgrade)
+    @parameter level => the level we're upgrading TOWARDS
+    @parameter serverInfo => global variable, in case we need it (for certain (cumulative) upgrades)
+*/
+function loadUpgradeButton(role, level, targetLevel = 0) {
     let costs = UPGRADE_DICT[role][level];
     let curString = '';
 
@@ -119,6 +129,29 @@ function loadUpgradeButton(role, level) {
     } else {
         curString += '<span class="upgradeButtonLabel">Upgrade (lv ' + level + ')</span>';
     }
+
+    // if we're buying, we need to consider cumulative costs
+    // because, the thing we buy will IMMEDIATELY be of the same level as this role's other instruments
+    if(level == 0) {
+        costs = {};
+
+        // For each level ...
+        for(let i = 0; i <= targetLevel; i++) {
+            let c = UPGRADE_DICT[role][i];
+
+            // Go through the different resource costs at this level ...
+            for(let key in c) {
+                // If this resource isn't in our costs yet, add it (with this value)
+                if(costs[key] == undefined) {
+                    costs[key] = c[key];
+                // If this resource is already in the costs object, just add this value to it
+                } else {
+                    costs[key] += c[key];
+                }
+            }
+        }
+    }
+    
 
     // display costs inside upgrade button
     for(let key in costs) {
@@ -146,15 +179,28 @@ export default function loadPlayInterface(num, cont) {
         //  => display list of tasks (changes all the time; given by server)
         //  => display ship resources (only the 4 basic ones: gold, crew, wood, guns)
         case 0:
-            // TO DO: Make buttons actually work
-            // TO DO: When you've performed a task, remove it from the interface and pop it off the task list
+            // Display error messages
+            // The loop is DESCENDING (rather than ASCENDING), because newer error messages should be displayed first
+            let msg = serverInfo.errorMessages;
+            for(let i = (msg.length - 1); i >= 0; i--) {
+                if(msg[i] == null) {
+                    continue;
+                }
+
+                cont.appendChild( LOAD_ERROR_MESSAGE(msg, i) );
+            }
 
             // Loop through all tasks
             let tasks = serverInfo.taskList;
             for(let i = 0; i < tasks.length; i++) {
+                if(tasks[i] == null) {
+                    continue;
+                }
+
                 let taskType = tasks[i][0];
                 let param = tasks[i][1];
 
+                
                 switch(taskType) {
                     // Battle => enemies are nearby
                     // No parameter necessary
@@ -163,10 +209,22 @@ export default function loadPlayInterface(num, cont) {
                         span0.classList.add("captain-task")
                         span0.innerHTML = "<p>One or more enemies are nearby. Attack?</p>"
 
-                        // TO DO: Make button actually send the fire signal
                         let btn0 = document.createElement("button")
+                        btn0.setAttribute('data-taskid', i);
                         btn0.innerHTML = 'FIRE!'
                         span0.appendChild(btn0);
+
+                        btn0.addEventListener('click', function() {
+                            // send signal to server
+                            socket.emit('fire');
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span0.remove();
+                        })
                         
                         cont.appendChild(span0);
 
@@ -183,10 +241,22 @@ export default function loadPlayInterface(num, cont) {
                         inp1.type = "text"
                         span1.appendChild(inp1)
 
-                        // TO DO: Make button actually submit the name
                         let btn1 = document.createElement("button")
+                        btn1.setAttribute('data-taskid', i);
                         btn1.innerHTML = 'Submit name'
                         span1.appendChild(btn1)
+
+                        btn1.addEventListener('click', function() {
+                            // send signal to server
+                            socket.emit('name-island', { name: inp1.value, island: param } );
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span1.remove();
+                        })
 
                         cont.appendChild(span1)
 
@@ -202,10 +272,25 @@ export default function loadPlayInterface(num, cont) {
                         // TO DO: Actually display the proposed trade
                         span2.innerHTML += '<p><em>This feature doesn\'t work at the moment. BE PATIENT.</em></p>'
 
-                        // TO DO: Make button actually perform the trade
                         let btn2 = document.createElement("button")
+                        btn2.setAttribute('data-taskid', i);
                         btn2.innerHTML = 'Perform trade'
                         span2.appendChild(btn2)
+
+                        btn2.addEventListener('click', function() {
+                            // send signal to server
+                            socket.emit('dock-trade');
+
+                            // TO DO 
+                            // just update the resources immediately here, then we don't need to send/receive another signal
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span2.remove();
+                        })
 
                         cont.appendChild(span2)
 
@@ -355,10 +440,10 @@ export default function loadPlayInterface(num, cont) {
             // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
-            let globalMapWidth = 40;
-            let globalMapHeight = 20;
+            let globalMapWidth = 60;
+            let globalMapHeight = 30;
 
-            let globalTileSize = 40; // TO DO this is the tile size used for the map on all devices, to keep it consistent
+            let globalTileSize = 24.17; // TO DO this is the tile size used for the map on all devices, to keep it consistent
             let localTileSize = 120; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
 
             // Loop through our visible tiles
@@ -399,6 +484,9 @@ export default function loadPlayInterface(num, cont) {
 
             // Set world bounds to the map size
             canvas.myGame.world.setBounds(0, 0, mapSize*localTileSize, mapSize*localTileSize);
+
+            // Load our ship drawing/image
+            dynamicLoadImage(canvas.myGame, {x: 0, y: 0 }, { width: localTileSize, height: localTileSize }, 'myShip', serverInfo.shipDrawing)
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false)
@@ -484,7 +572,7 @@ export default function loadPlayInterface(num, cont) {
             vSlider.type = 'range'
             vSlider.min = 0
             vSlider.max = 4
-            vSlider.value = 0
+            vSlider.value = serverInfo.roleStats[3].sailLvl;
 
             vSlider.style.transform = 'rotate(-90deg)';
             vSlider.style.marginTop = '70px';
@@ -499,6 +587,11 @@ export default function loadPlayInterface(num, cont) {
                 if(v > insLvl[0]) {
                     v = insLvl[0];
                     this.value = v;
+                }
+
+                // if it's the same as our current value, don't do anything
+                if(serverInfo.roleStats[3].sailLvl == v) {
+                    return;
                 }
 
                 // ... send the new signal (a sail update)
@@ -516,7 +609,7 @@ export default function loadPlayInterface(num, cont) {
             hSlider.type = 'range'
             hSlider.min = 0
             hSlider.max = 4
-            hSlider.value = 0
+            hSlider.value = serverInfo.roleStats[3].peddleLvl;
             
             hSlider.style.width = '100%';
             hSlider.style.marginTop = '140px';
@@ -543,6 +636,11 @@ export default function loadPlayInterface(num, cont) {
                 if(v > insLvl[1]) {
                     v = insLvl[1];
                     this.value = v;
+                }
+
+                // if it's the same as our current value, don't do anything
+                if(serverInfo.roleStats[3].peddleLvl == v) {
+                    return;
                 }
 
                 // ... send the new signal (a peddle update)
@@ -585,15 +683,29 @@ export default function loadPlayInterface(num, cont) {
                 let curLoad = c[i];
                 if(curLoad < 0) {
                     // Show "buy" button
-                    // TO DO: Send signal on click 
-                    //   => Remove buy button
-                    //   => Set current load (for this cannon) to 0
-                    // TO DO: Perform a "cumulative costs calculation": calculate the resources needed to buy a cannon at level X immediately
                     let buyBtn = document.createElement("button")
                     buyBtn.classList.add('upgradeButton');
-                    buyBtn.innerHTML = loadUpgradeButton(4, 0)
+
+                    // Because we're buying, the function calculates the cumulative costs for going to the target level immediately (3rd parameter)
+                    buyBtn.innerHTML = loadUpgradeButton(4, 0, serverInfo.roleStats[4].lvl)
                     buyBtn.style.marginLeft = '40px';
+
                     cannonDiv.appendChild(buyBtn);
+
+                    // When the button is clicked ...
+                    buyBtn.addEventListener('click', function() {
+                        // send signal
+                        socket.emit('buy-cannon', i);
+
+                        // set load to 0 (if its positive, the cannon has been bought)
+                        serverInfo.shipCannons[i] = 0;
+
+                        // remove this button
+                        this.remove();
+
+                        // don't allow it to load (this turn)
+                        serverInfo.roleStats[4].cannonsLoaded[i] = true;
+                    })
                 } else {
                     // Show the current load ...
                     // ... 1) First load a background

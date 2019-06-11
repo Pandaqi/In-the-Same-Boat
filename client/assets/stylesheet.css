@@ -325,6 +325,25 @@ button:hover {
     /* color:white; */
 }
 
+.captain-error {
+  display: block;
+  background-color: red;
+  padding: 10px;
+  margin-bottom: 5px;
+  box-shadow: 0px 0px 5px red;
+  position: relative; /* otherwise the "X" delete symbol thinks it needs to position absolutely to the window */
+}
+
+.captain-error::after {
+  content: 'X';
+  position: absolute;
+  color: darkred;
+  right: 8px;
+  top: 6px;
+  font-size: 24px;
+  font-family: 'Pirata One', cursive;
+}
+
 
 .weaponeer-cannonLoad {
   height:100%;

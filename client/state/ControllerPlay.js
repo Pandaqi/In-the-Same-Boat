@@ -8,6 +8,8 @@ import LOAD_TAB from './utils/loadTab'
 
 import { controllerTimer } from './utils/timers'
 
+import LOAD_ERROR_MESSAGE from './interfaces/loadErrorMessage'
+
 class ControllerWaiting extends Phaser.State {
   constructor () {
     super()
@@ -48,6 +50,16 @@ class ControllerWaiting extends Phaser.State {
             }
           });
 
+          // error-msg => error message (because another crew member screwed up)
+          socket.on('error-msg', msg => {
+            serverInfo.errorMessages.push(msg);
+
+            // if the captain tab is currently displaying, update it with the new error
+            if(curTab.num == 0) {
+              document.getElementById('tab0').appendChild( LOAD_ERROR_MESSAGE(msg, (serverInfo.errorMessages.length - 1)) );
+            }
+          })
+
           break;
 
         // First mate
@@ -68,6 +80,8 @@ class ControllerWaiting extends Phaser.State {
         // Set instrument level to 0
         case 3:
           serverInfo.roleStats[3].lvl = 0;
+          serverInfo.roleStats[3].sailLvl = 0;
+          serverInfo.roleStats[3].peddleLvl = 0;
 
           break;
 

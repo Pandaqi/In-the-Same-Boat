@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 15);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -88,7 +88,8 @@ var serverInfo = {
   language: 'en',
 
   submittedPreparation: {},
-  submittedUpgrade: {}
+  submittedUpgrade: {},
+  errorMessages: []
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -262,7 +263,40 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _loadPlayerVisuals = __webpack_require__(3);
+var _loadImageComplete = __webpack_require__(17);
+
+var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var dynamicLoadImage = function dynamicLoadImage(gm, pos, dims, name, dataURI) {
+  var doesKeyExist = gm.cache.checkKey(Phaser.Cache.IMAGE, name);
+  if (!doesKeyExist) {
+    // load the image; display once loaded
+    var loader = new Phaser.Loader(gm);
+    loader.image(name, dataURI + '');
+    loader.onLoadComplete.addOnce(_loadImageComplete2.default, undefined, 0, gm, pos, dims, name);
+    loader.start();
+  } else {
+    // if image was already in cache, just add the sprite (but don't load it again)
+    (0, _loadImageComplete2.default)(gm, pos, dims, name);
+  }
+};
+
+exports.default = dynamicLoadImage;
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _loadPlayerVisuals = __webpack_require__(4);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
@@ -346,7 +380,7 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
 exports.default = loadMainSockets;
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -356,7 +390,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _dynamicLoadImage = __webpack_require__(4);
+var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
@@ -377,39 +411,6 @@ var loadPlayerVisuals = function loadPlayerVisuals(gm, x, y, color, data) {
 };
 
 exports.default = loadPlayerVisuals;
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _loadImageComplete = __webpack_require__(16);
-
-var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var dynamicLoadImage = function dynamicLoadImage(gm, pos, dims, name, dataURI) {
-  var doesKeyExist = gm.cache.checkKey(Phaser.Cache.IMAGE, name);
-  if (!doesKeyExist) {
-    // load the image; display once loaded
-    var loader = new Phaser.Loader(gm);
-    loader.image(name, dataURI + '');
-    loader.onLoadComplete.addOnce(_loadImageComplete2.default, undefined, 0, gm, pos, dims, name);
-    loader.start();
-  } else {
-    // if image was already in cache, just add the sprite (but don't load it again)
-    (0, _loadImageComplete2.default)(gm, pos, dims, name);
-  }
-};
-
-exports.default = dynamicLoadImage;
 
 /***/ }),
 /* 5 */
@@ -569,6 +570,18 @@ exports.default = loadMainSockets;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 var loadWatchRoom = function loadWatchRoom(socket, serverInfo) {
   if (serverInfo.gameLoading) {
     socket.emit('finished-loading', {});
@@ -580,7 +593,7 @@ var loadWatchRoom = function loadWatchRoom(socket, serverInfo) {
 exports.default = loadWatchRoom;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -613,18 +626,6 @@ var loadRejoinRoom = function loadRejoinRoom(socket, serverInfo, div) {
 };
 
 exports.default = loadRejoinRoom;
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
 
 /***/ }),
 /* 10 */
@@ -743,15 +744,15 @@ exports.default = function (eventID, curTab, interfaceType) {
     curTab.num = num;
 };
 
-var _roleDictionary = __webpack_require__(9);
+var _roleDictionary = __webpack_require__(7);
 
 var _serverInfo = __webpack_require__(0);
 
-var _loadPrepInterface = __webpack_require__(23);
+var _loadPrepInterface = __webpack_require__(24);
 
 var _loadPrepInterface2 = _interopRequireDefault(_loadPrepInterface);
 
-var _loadPlayInterface = __webpack_require__(24);
+var _loadPlayInterface = __webpack_require__(25);
 
 var _loadPlayInterface2 = _interopRequireDefault(_loadPlayInterface);
 
@@ -786,40 +787,89 @@ var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAA
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+exports.default = loadErrorMessage;
 
-var _Menu = __webpack_require__(15);
+var _serverInfo = __webpack_require__(0);
+
+var _roleDictionary = __webpack_require__(7);
+
+function loadErrorMessage(msg, i) {
+    var msgType = msg[i][0];
+    var msgRole = _roleDictionary.ROLE_DICTIONARY[msg[i][1]];
+
+    var finalMsg = '';
+    switch (msgType) {
+        case 0:
+            finalMsg = 'Upgrade by <em>' + msgRole + '</em> failed!';
+            break;
+
+        case 1:
+            finalMsg = 'Crew allocation by <em>' + msgRole + '</em> failed!';
+            break;
+
+        case 2:
+            finalMsg = 'Buying a cannon failed!';
+            break;
+    }
+
+    var errorMsg = document.createElement("span");
+    errorMsg.classList.add("captain-error");
+    errorMsg.setAttribute('data-errorid', i);
+    errorMsg.innerHTML = "<p>" + finalMsg + "</p>";
+
+    errorMsg.addEventListener('click', function () {
+        _serverInfo.serverInfo.errorMessages[this.getAttribute('data-errorid')] = null;
+
+        this.remove();
+    });
+
+    return errorMsg;
+};
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _Menu = __webpack_require__(16);
 
 var _Menu2 = _interopRequireDefault(_Menu);
 
-var _GameLobby = __webpack_require__(17);
+var _GameLobby = __webpack_require__(18);
 
 var _GameLobby2 = _interopRequireDefault(_GameLobby);
 
-var _GamePrep = __webpack_require__(18);
+var _GamePrep = __webpack_require__(19);
 
 var _GamePrep2 = _interopRequireDefault(_GamePrep);
 
-var _GamePlay = __webpack_require__(19);
+var _GamePlay = __webpack_require__(20);
 
 var _GamePlay2 = _interopRequireDefault(_GamePlay);
 
-var _GameOver = __webpack_require__(20);
+var _GameOver = __webpack_require__(21);
 
 var _GameOver2 = _interopRequireDefault(_GameOver);
 
-var _ControllerLobby = __webpack_require__(21);
+var _ControllerLobby = __webpack_require__(22);
 
 var _ControllerLobby2 = _interopRequireDefault(_ControllerLobby);
 
-var _ControllerPrep = __webpack_require__(22);
+var _ControllerPrep = __webpack_require__(23);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(26);
+var _ControllerPlay = __webpack_require__(27);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(27);
+var _ControllerOver = __webpack_require__(28);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -886,7 +936,7 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function () {
 exports.default = SimpleGame;
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -900,7 +950,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _mainSocketsGame = __webpack_require__(2);
+var _mainSocketsGame = __webpack_require__(3);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
@@ -1097,7 +1147,7 @@ var Menu = function (_Phaser$State) {
 exports.default = Menu;
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1116,7 +1166,7 @@ var loadImageComplete = function loadImageComplete(gm, pos, dims, name) {
 exports.default = loadImageComplete;
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1130,21 +1180,21 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(4);
+var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(3);
+var _loadPlayerVisuals = __webpack_require__(4);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(2);
+var _mainSocketsGame = __webpack_require__(3);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
-var _watchRoomModule = __webpack_require__(7);
+var _watchRoomModule = __webpack_require__(8);
 
 var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
@@ -1250,7 +1300,7 @@ var GameLobby = function (_Phaser$State) {
 exports.default = GameLobby;
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1264,21 +1314,21 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(4);
+var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(3);
+var _loadPlayerVisuals = __webpack_require__(4);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(2);
+var _mainSocketsGame = __webpack_require__(3);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
-var _watchRoomModule = __webpack_require__(7);
+var _watchRoomModule = __webpack_require__(8);
 
 var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
@@ -1359,7 +1409,7 @@ var GamePrep = function (_Phaser$State) {
 exports.default = GamePrep;
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1373,21 +1423,21 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(4);
+var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(3);
+var _loadPlayerVisuals = __webpack_require__(4);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(2);
+var _mainSocketsGame = __webpack_require__(3);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
-var _watchRoomModule = __webpack_require__(7);
+var _watchRoomModule = __webpack_require__(8);
 
 var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
@@ -1461,7 +1511,7 @@ var GamePlay = function (_Phaser$State) {
 exports.default = GamePlay;
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1475,21 +1525,21 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(4);
+var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(3);
+var _loadPlayerVisuals = __webpack_require__(4);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(2);
+var _mainSocketsGame = __webpack_require__(3);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
-var _watchRoomModule = __webpack_require__(7);
+var _watchRoomModule = __webpack_require__(8);
 
 var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
@@ -1595,7 +1645,7 @@ var GameWaiting = function (_Phaser$State) {
 exports.default = GameWaiting;
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1615,7 +1665,7 @@ var _mainSocketsController = __webpack_require__(6);
 
 var _mainSocketsController2 = _interopRequireDefault(_mainSocketsController);
 
-var _rejoinRoomModule = __webpack_require__(8);
+var _rejoinRoomModule = __webpack_require__(9);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
@@ -1772,7 +1822,7 @@ var ControllerLobby = function (_Phaser$State) {
 exports.default = ControllerLobby;
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1792,11 +1842,11 @@ var _mainSocketsController = __webpack_require__(6);
 
 var _mainSocketsController2 = _interopRequireDefault(_mainSocketsController);
 
-var _rejoinRoomModule = __webpack_require__(8);
+var _rejoinRoomModule = __webpack_require__(9);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
-var _roleDictionary = __webpack_require__(9);
+var _roleDictionary = __webpack_require__(7);
 
 var _loadTab = __webpack_require__(12);
 
@@ -1932,7 +1982,7 @@ var ControllerPrep = function (_Phaser$State) {
 exports.default = ControllerPrep;
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2200,7 +2250,7 @@ function loadPrepInterface(num, cont) {
 };
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2215,7 +2265,19 @@ var _serverInfo = __webpack_require__(0);
 
 var _shipColors = __webpack_require__(13);
 
-var _upgradeDictionary = __webpack_require__(25);
+var _upgradeDictionary = __webpack_require__(26);
+
+var _roleDictionary = __webpack_require__(7);
+
+var _loadErrorMessage = __webpack_require__(14);
+
+var _loadErrorMessage2 = _interopRequireDefault(_loadErrorMessage);
+
+var _dynamicLoadImage = __webpack_require__(2);
+
+var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /*
     The functions below are HELPER FUNCTIONS for specific roles (that require interactivity beyond basic DOM stuff)
@@ -2323,7 +2385,15 @@ function mapMove(ev) {
     cv.oldMovePoint = { x: ev.pageX, y: ev.pageY };
 }
 
+/*
+
+    @parameter role => the role that wants an upgrade (every role only has one upgrade)
+    @parameter level => the level we're upgrading TOWARDS
+    @parameter serverInfo => global variable, in case we need it (for certain (cumulative) upgrades)
+*/
 function loadUpgradeButton(role, level) {
+    var targetLevel = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+
     var costs = _upgradeDictionary.UPGRADE_DICT[role][level];
     var curString = '';
 
@@ -2334,9 +2404,31 @@ function loadUpgradeButton(role, level) {
         curString += '<span class="upgradeButtonLabel">Upgrade (lv ' + level + ')</span>';
     }
 
+    // if we're buying, we need to consider cumulative costs
+    // because, the thing we buy will IMMEDIATELY be of the same level as this role's other instruments
+    if (level == 0) {
+        costs = {};
+
+        // For each level ...
+        for (var i = 0; i <= targetLevel; i++) {
+            var c = _upgradeDictionary.UPGRADE_DICT[role][i];
+
+            // Go through the different resource costs at this level ...
+            for (var key in c) {
+                // If this resource isn't in our costs yet, add it (with this value)
+                if (costs[key] == undefined) {
+                    costs[key] = c[key];
+                    // If this resource is already in the costs object, just add this value to it
+                } else {
+                    costs[key] += c[key];
+                }
+            }
+        }
+    }
+
     // display costs inside upgrade button
-    for (var key in costs) {
-        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    for (var _key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + _key + '.png" /><span>x' + costs[_key] + '</span></span>';
     }
 
     return curString;
@@ -2360,14 +2452,27 @@ function loadPlayInterface(num, cont) {
         //  => display list of tasks (changes all the time; given by server)
         //  => display ship resources (only the 4 basic ones: gold, crew, wood, guns)
         case 0:
-            // TO DO: Make buttons actually work
-            // TO DO: When you've performed a task, remove it from the interface and pop it off the task list
+            // Display error messages
+            // The loop is DESCENDING (rather than ASCENDING), because newer error messages should be displayed first
+            var msg = _serverInfo.serverInfo.errorMessages;
+            for (var i = msg.length - 1; i >= 0; i--) {
+                if (msg[i] == null) {
+                    continue;
+                }
+
+                cont.appendChild((0, _loadErrorMessage2.default)(msg, i));
+            }
 
             // Loop through all tasks
             var tasks = _serverInfo.serverInfo.taskList;
-            for (var i = 0; i < tasks.length; i++) {
-                var taskType = tasks[i][0];
-                var param = tasks[i][1];
+
+            var _loop = function _loop(_i) {
+                if (tasks[_i] == null) {
+                    return 'continue';
+                }
+
+                var taskType = tasks[_i][0];
+                var param = tasks[_i][1];
 
                 switch (taskType) {
                     // Battle => enemies are nearby
@@ -2377,10 +2482,22 @@ function loadPlayInterface(num, cont) {
                         span0.classList.add("captain-task");
                         span0.innerHTML = "<p>One or more enemies are nearby. Attack?</p>";
 
-                        // TO DO: Make button actually send the fire signal
                         var btn0 = document.createElement("button");
+                        btn0.setAttribute('data-taskid', _i);
                         btn0.innerHTML = 'FIRE!';
                         span0.appendChild(btn0);
+
+                        btn0.addEventListener('click', function () {
+                            // send signal to server
+                            socket.emit('fire');
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span0.remove();
+                        });
 
                         cont.appendChild(span0);
 
@@ -2397,10 +2514,22 @@ function loadPlayInterface(num, cont) {
                         inp1.type = "text";
                         span1.appendChild(inp1);
 
-                        // TO DO: Make button actually submit the name
                         var btn1 = document.createElement("button");
+                        btn1.setAttribute('data-taskid', _i);
                         btn1.innerHTML = 'Submit name';
                         span1.appendChild(btn1);
+
+                        btn1.addEventListener('click', function () {
+                            // send signal to server
+                            socket.emit('name-island', { name: inp1.value, island: param });
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span1.remove();
+                        });
 
                         cont.appendChild(span1);
 
@@ -2416,15 +2545,36 @@ function loadPlayInterface(num, cont) {
                         // TO DO: Actually display the proposed trade
                         span2.innerHTML += '<p><em>This feature doesn\'t work at the moment. BE PATIENT.</em></p>';
 
-                        // TO DO: Make button actually perform the trade
                         var btn2 = document.createElement("button");
+                        btn2.setAttribute('data-taskid', _i);
                         btn2.innerHTML = 'Perform trade';
                         span2.appendChild(btn2);
+
+                        btn2.addEventListener('click', function () {
+                            // send signal to server
+                            socket.emit('dock-trade');
+
+                            // TO DO 
+                            // just update the resources immediately here, then we don't need to send/receive another signal
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span2.remove();
+                        });
 
                         cont.appendChild(span2);
 
                         break;
                 }
+            };
+
+            for (var _i = 0; _i < tasks.length; _i++) {
+                var _ret = _loop(_i);
+
+                if (_ret === 'continue') continue;
             }
 
             // Display resources underneath
@@ -2435,10 +2585,10 @@ function loadPlayInterface(num, cont) {
             var resDiv = document.createElement("div");
             resDiv.id = 'shipResources';
 
-            for (var _i = 0; _i < 4; _i++) {
-                var curResVal = _serverInfo.serverInfo.resources[_i];
+            for (var _i2 = 0; _i2 < 4; _i2++) {
+                var curResVal = _serverInfo.serverInfo.resources[_i2];
 
-                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/resourceIcon' + _i + '.png"><span id="shipResource' + _i + '">' + curResVal + '</span></span>';
+                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/resourceIcon' + _i2 + '.png"><span id="shipResource' + _i2 + '">' + curResVal + '</span></span>';
             }
 
             cont.appendChild(resDiv);
@@ -2569,10 +2719,10 @@ function loadPlayInterface(num, cont) {
             // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
-            var globalMapWidth = 40;
-            var globalMapHeight = 20;
+            var globalMapWidth = 60;
+            var globalMapHeight = 30;
 
-            var globalTileSize = 40; // TO DO this is the tile size used for the map on all devices, to keep it consistent
+            var globalTileSize = 24.17; // TO DO this is the tile size used for the map on all devices, to keep it consistent
             var localTileSize = 120; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
 
             // Loop through our visible tiles
@@ -2621,6 +2771,9 @@ function loadPlayInterface(num, cont) {
 
             // Set world bounds to the map size
             canvas.myGame.world.setBounds(0, 0, mapSize * localTileSize, mapSize * localTileSize);
+
+            // Load our ship drawing/image
+            (0, _dynamicLoadImage2.default)(canvas.myGame, { x: 0, y: 0 }, { width: localTileSize, height: localTileSize }, 'myShip', _serverInfo.serverInfo.shipDrawing);
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false);
@@ -2693,10 +2846,10 @@ function loadPlayInterface(num, cont) {
             // Display numbers next to slider
             var rangeHint = document.createElement("span");
             rangeHint.style.position = 'absolute';
-            for (var _i2 = 4; _i2 >= 0; _i2--) {
+            for (var _i3 = 4; _i3 >= 0; _i3--) {
                 var tempDiv = document.createElement("div");
                 tempDiv.style.marginBottom = '15px';
-                tempDiv.innerHTML = _i2;
+                tempDiv.innerHTML = _i3;
                 rangeHint.appendChild(tempDiv);
             }
             cont.appendChild(rangeHint);
@@ -2706,7 +2859,7 @@ function loadPlayInterface(num, cont) {
             vSlider.type = 'range';
             vSlider.min = 0;
             vSlider.max = 4;
-            vSlider.value = 0;
+            vSlider.value = _serverInfo.serverInfo.roleStats[3].sailLvl;
 
             vSlider.style.transform = 'rotate(-90deg)';
             vSlider.style.marginTop = '70px';
@@ -2721,6 +2874,11 @@ function loadPlayInterface(num, cont) {
                 if (v > insLvl[0]) {
                     v = insLvl[0];
                     this.value = v;
+                }
+
+                // if it's the same as our current value, don't do anything
+                if (_serverInfo.serverInfo.roleStats[3].sailLvl == v) {
+                    return;
                 }
 
                 // ... send the new signal (a sail update)
@@ -2738,7 +2896,7 @@ function loadPlayInterface(num, cont) {
             hSlider.type = 'range';
             hSlider.min = 0;
             hSlider.max = 4;
-            hSlider.value = 0;
+            hSlider.value = _serverInfo.serverInfo.roleStats[3].peddleLvl;
 
             hSlider.style.width = '100%';
             hSlider.style.marginTop = '140px';
@@ -2750,9 +2908,9 @@ function loadPlayInterface(num, cont) {
             var rangeHint2 = document.createElement("span");
             rangeHint2.style.display = 'flex';
             rangeHint2.style.justifyContent = 'space-between';
-            for (var _i3 = 0; _i3 < 5; _i3++) {
+            for (var _i4 = 0; _i4 < 5; _i4++) {
                 var _tempDiv = document.createElement("div");
-                _tempDiv.innerHTML = _i3;
+                _tempDiv.innerHTML = _i4;
                 rangeHint2.appendChild(_tempDiv);
             }
             cont.appendChild(rangeHint2);
@@ -2765,6 +2923,11 @@ function loadPlayInterface(num, cont) {
                 if (v > insLvl[1]) {
                     v = insLvl[1];
                     this.value = v;
+                }
+
+                // if it's the same as our current value, don't do anything
+                if (_serverInfo.serverInfo.roleStats[3].peddleLvl == v) {
+                    return;
                 }
 
                 // ... send the new signal (a peddle update)
@@ -2792,7 +2955,7 @@ function loadPlayInterface(num, cont) {
             // Display cannons
             var c = _serverInfo.serverInfo.shipCannons;
 
-            var _loop = function _loop(_i4) {
+            var _loop2 = function _loop2(_i5) {
                 // Create new div
                 var cannonDiv = document.createElement("div");
                 cannonDiv.classList.add("captain-crewMember");
@@ -2800,22 +2963,36 @@ function loadPlayInterface(num, cont) {
                 // Show cannon number
                 var span = document.createElement("span");
                 span.classList.add("weaponeer-cannonNumber");
-                span.innerHTML = _i4 + 1;
+                span.innerHTML = _i5 + 1;
                 cannonDiv.appendChild(span);
 
                 // If the current load is negative, this cannon hasn't been bought yet
-                var curLoad = c[_i4];
+                var curLoad = c[_i5];
                 if (curLoad < 0) {
                     // Show "buy" button
-                    // TO DO: Send signal on click 
-                    //   => Remove buy button
-                    //   => Set current load (for this cannon) to 0
-                    // TO DO: Perform a "cumulative costs calculation": calculate the resources needed to buy a cannon at level X immediately
                     var buyBtn = document.createElement("button");
                     buyBtn.classList.add('upgradeButton');
-                    buyBtn.innerHTML = loadUpgradeButton(4, 0);
+
+                    // Because we're buying, the function calculates the cumulative costs for going to the target level immediately (3rd parameter)
+                    buyBtn.innerHTML = loadUpgradeButton(4, 0, _serverInfo.serverInfo.roleStats[4].lvl);
                     buyBtn.style.marginLeft = '40px';
+
                     cannonDiv.appendChild(buyBtn);
+
+                    // When the button is clicked ...
+                    buyBtn.addEventListener('click', function () {
+                        // send signal
+                        socket.emit('buy-cannon', _i5);
+
+                        // set load to 0 (if its positive, the cannon has been bought)
+                        _serverInfo.serverInfo.shipCannons[_i5] = 0;
+
+                        // remove this button
+                        this.remove();
+
+                        // don't allow it to load (this turn)
+                        _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i5] = true;
+                    });
                 } else {
                     // Show the current load ...
                     // ... 1) First load a background
@@ -2830,26 +3007,26 @@ function loadPlayInterface(num, cont) {
                     divLoad.appendChild(spanLoad);
 
                     // If the cannon hasn't been loaded yet, this turn, display the button
-                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i4]) {
+                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i5]) {
                         // Show "Load cannon" button
                         var loadBtn = document.createElement("button");
-                        loadBtn.innerHTML = 'LOAD';
+                        loadBtn.innerHTML = 'Load';
                         loadBtn.style.margin = '5px';
                         cannonDiv.appendChild(loadBtn);
 
                         // When the button is clicked ...
                         loadBtn.addEventListener("click", function () {
                             // send signal
-                            socket.emit('load-up', _i4);
+                            socket.emit('load-up', _i5);
 
                             // update our own load
-                            _serverInfo.serverInfo.shipCannons[_i4]++;
+                            _serverInfo.serverInfo.shipCannons[_i5]++;
 
                             // remove this button
                             this.remove();
 
                             // don't allow it to load again (this turn)
-                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i4] = true;
+                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i5] = true;
                         });
                     }
                 }
@@ -2857,8 +3034,8 @@ function loadPlayInterface(num, cont) {
                 cont.appendChild(cannonDiv);
             };
 
-            for (var _i4 = 0; _i4 < c.length; _i4++) {
-                _loop(_i4);
+            for (var _i5 = 0; _i5 < c.length; _i5++) {
+                _loop2(_i5);
             }
 
             break;
@@ -2886,7 +3063,7 @@ function loadPlayInterface(num, cont) {
 };
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2909,7 +3086,7 @@ var UPGRADE_DICT = exports.UPGRADE_DICT = [[], // captain (has no upgrades)
 ];
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2929,17 +3106,21 @@ var _mainSocketsController = __webpack_require__(6);
 
 var _mainSocketsController2 = _interopRequireDefault(_mainSocketsController);
 
-var _rejoinRoomModule = __webpack_require__(8);
+var _rejoinRoomModule = __webpack_require__(9);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
-var _roleDictionary = __webpack_require__(9);
+var _roleDictionary = __webpack_require__(7);
 
 var _loadTab = __webpack_require__(12);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
 var _timers = __webpack_require__(11);
+
+var _loadErrorMessage = __webpack_require__(14);
+
+var _loadErrorMessage2 = _interopRequireDefault(_loadErrorMessage);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2996,6 +3177,16 @@ var ControllerWaiting = function (_Phaser$State) {
               }
             });
 
+            // error-msg => error message (because another crew member screwed up)
+            socket.on('error-msg', function (msg) {
+              _serverInfo.serverInfo.errorMessages.push(msg);
+
+              // if the captain tab is currently displaying, update it with the new error
+              if (curTab.num == 0) {
+                document.getElementById('tab0').appendChild((0, _loadErrorMessage2.default)(msg, _serverInfo.serverInfo.errorMessages.length - 1));
+              }
+            });
+
             break;
 
           // First mate
@@ -3016,6 +3207,8 @@ var ControllerWaiting = function (_Phaser$State) {
           // Set instrument level to 0
           case 3:
             _serverInfo.serverInfo.roleStats[3].lvl = 0;
+            _serverInfo.serverInfo.roleStats[3].sailLvl = 0;
+            _serverInfo.serverInfo.roleStats[3].peddleLvl = 0;
 
             break;
 
@@ -3106,7 +3299,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3126,7 +3319,7 @@ var _mainSocketsController = __webpack_require__(6);
 
 var _mainSocketsController2 = _interopRequireDefault(_mainSocketsController);
 
-var _rejoinRoomModule = __webpack_require__(8);
+var _rejoinRoomModule = __webpack_require__(9);
 
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 

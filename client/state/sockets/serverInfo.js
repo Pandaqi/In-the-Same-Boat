@@ -14,6 +14,7 @@ const serverInfo = {
 
   submittedPreparation: {},
   submittedUpgrade: {},
+  errorMessages: [],
 }
 
 // language/translator object
