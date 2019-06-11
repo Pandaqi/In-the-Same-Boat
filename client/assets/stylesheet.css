@@ -293,10 +293,12 @@ button:hover {
 
     display:flex;
     margin-top:5px;
+
+    align-items: center;
 }
 
 .captain-crewMember span {
-    width:100%;
+    /*width:100%;*/
 }
 
 /*
@@ -339,12 +341,23 @@ button:hover {
 
 .weaponeer-cannonLoadBg {
   width:100px;
+  height:50px;
   min-width: 100px;
   padding-top: 2px;
   padding-bottom: 2px;
   background-color:#300;
 
   box-shadow: inset 0 0 10px #000;
+
+  margin-left:40px;
+}
+
+.weaponeer-cannonNumber {
+  position: absolute;
+  font-size: 64px;
+  color: white;
+  z-index: -1;
+  background: none;
 }
 
 

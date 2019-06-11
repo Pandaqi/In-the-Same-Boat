@@ -51,9 +51,33 @@ class ControllerWaiting extends Phaser.State {
           break;
 
         // First mate
-        // Set compass level to 1
+        // Set compass level to 0
         case 1:
           serverInfo.roleStats[1].lvl = 0;
+
+          break;
+
+        // Cartographer
+        // Set map/telescope level to 0
+        case 2:
+          serverInfo.roleStats[2].lvl = 0;
+
+          break;
+
+        // Sailor
+        // Set instrument level to 0
+        case 3:
+          serverInfo.roleStats[3].lvl = 0;
+
+          break;
+
+        // Weapon Specialist
+        // Set cannon level to 0
+        case 4:
+          serverInfo.roleStats[4].lvl = 0;
+
+          // Also, create variable that checks if cannon has already been loaded
+          serverInfo.roleStats[4].cannonsLoaded = {};
 
           break;
       }

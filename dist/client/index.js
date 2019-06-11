@@ -2227,6 +2227,8 @@ var _upgradeDictionary = __webpack_require__(25);
 
 */
 function compassMove(ev) {
+    ev.preventDefault();
+
     // rotate compass to match angle between mouse and center of compass
 
     // find center of compass
@@ -2292,6 +2294,20 @@ function compassMove(ev) {
     }
 }
 
+function startCanvasDrag(ev) {
+    // prevent actually dragging the image (which is default behaviour for most browsers in this situation)
+    ev.preventDefault();
+
+    // save the first point (on the canvas)
+    document.getElementById('canvas-container').oldMovePoint = { x: ev.pageX, y: ev.pageY };
+
+    document.addEventListener('mousemove', mapMove);
+}
+
+function stopCanvasDrag(ev) {
+    document.removeEventListener('mousemove', mapMove);
+}
+
 function mapMove(ev) {
     var cv = document.getElementById('canvas-container');
 
@@ -2318,6 +2334,7 @@ function loadUpgradeButton(role, level) {
         curString += '<span class="upgradeButtonLabel">Upgrade (lv ' + level + ')</span>';
     }
 
+    // display costs inside upgrade button
     for (var key in costs) {
         curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
     }
@@ -2433,8 +2450,6 @@ function loadPlayInterface(num, cont) {
         //  => compass (rotatable; sends info when released)
         //  => current compass level + upgrade button
         case 1:
-            // TO DO
-
             // Current orientation in background
             var bgOrient = document.createElement("img");
             bgOrient.src = "assets/shipGhostTopCompass.png";
@@ -2471,7 +2486,7 @@ function loadPlayInterface(num, cont) {
 
             // when the mouse is down, start listening to mouse movements
             compassPointer.addEventListener('mousedown', function (ev) {
-                document.addEventListener('mousemove', compassMove);
+                this.addEventListener('mousemove', compassMove);
 
                 // already register a mouse move
                 compassMove(ev);
@@ -2479,7 +2494,7 @@ function loadPlayInterface(num, cont) {
 
             // when the mouse is released, stop moving the compass, send a signal with update (only if it actually changed), update my own info (for tab switching)
             compassPointer.addEventListener('mouseup', function (ev) {
-                document.removeEventListener('mousemove', compassMove);
+                this.removeEventListener('mousemove', compassMove);
 
                 // Send signal to the server (with the new orientation)
                 var newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
@@ -2511,7 +2526,7 @@ function loadPlayInterface(num, cont) {
             cont.appendChild(canvas);
 
             // Resize canvas (simplified version of the prepInterface; we'll see if it works)
-            // THe canvas should be square, and width should be the limiting factor (never height)
+            // The canvas should be square, and width should be the limiting factor (never height)
             var paddingX = 20;
             var maxWidth = document.getElementById('shipInterface').clientWidth - paddingX * 2;
             canvas.myGame.scale.setGameSize(maxWidth, maxWidth);
@@ -2523,19 +2538,66 @@ function loadPlayInterface(num, cont) {
             // Create graphics object
             var graphics = canvas.myGame.add.graphics(0, 0);
 
-            // TO DO: Update these parameters to restrict to the part we can see, and center around our ship
-            // TO DO: Make map seamless: numbers that are too low (negative) or too high (beyond map size) should be clipped to the other side
-            var mapWidth = 20;
-            var mapHeight = 20;
-            var globalTileSize = 40; // this is the tile size used for the map on all devices, to keep it consistent
-            var localTileSize = 40; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
+            var mapSize = 3;
+            // Determine map size based on instrument level
+            switch (_serverInfo.serverInfo.roleStats[2].lvl) {
+                case 0:
+                    mapSize = 3;
+                    break;
+
+                case 1:
+                    mapSize = 5;
+                    break;
+
+                case 2:
+                    mapSize = 5;
+                    break;
+
+                case 3:
+                    mapSize = 7;
+                    break;
+
+                case 4:
+                    mapSize = 7;
+                    break;
+
+                case 5:
+                    mapSize = 9;
+                    break;
+            }
+
+            // TO DO
+            // this is the total size of the map (displayed on monitor)
+            // it should be consistent across all devices
+            var globalMapWidth = 40;
+            var globalMapHeight = 20;
+
+            var globalTileSize = 40; // TO DO this is the tile size used for the map on all devices, to keep it consistent
+            var localTileSize = 120; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
 
             // Loop through our visible tiles
+            // Make sure we center this around our ship!
             // Get the right noise value, color it correctly, display square of that color
-            for (var y = 0; y < mapHeight; y++) {
-                for (var x = 0; x < mapWidth; x++) {
-                    var nx = x * globalTileSize;
-                    var ny = y * globalTileSize;
+            for (var y = 0; y < mapSize; y++) {
+                for (var x = 0; x < mapSize; x++) {
+                    var xTile = _serverInfo.serverInfo.x - Math.floor(0.5 * mapSize) + x;
+                    if (xTile < 0) {
+                        xTile += globalMapWidth;
+                    }
+                    if (xTile >= globalMapWidth) {
+                        xTile -= globalMapWidth;
+                    }
+
+                    var yTile = _serverInfo.serverInfo.y - Math.floor(0.5 * mapSize) + y;
+                    if (yTile < 0) {
+                        yTile += globalMapHeight;
+                    }
+                    if (yTile >= globalMapHeight) {
+                        yTile -= globalMapHeight;
+                    }
+
+                    var nx = xTile * globalTileSize;
+                    var ny = yTile * globalTileSize;
 
                     var curVal = noise.perlin2(nx / 150, ny / 150);
 
@@ -2558,20 +2620,11 @@ function loadPlayInterface(num, cont) {
             }
 
             // Set world bounds to the map size
-            canvas.myGame.world.setBounds(0, 0, mapWidth * localTileSize, mapHeight * localTileSize);
+            canvas.myGame.world.setBounds(0, 0, mapSize * localTileSize, mapSize * localTileSize);
 
-            // TO DO: Remove these events when switching to a different role? Otherwise we might get event leak between different roles with a canvas and it will screw us up.
             // Make it possible to slide across the map (by moving mouse/finger over it)
-            canvas.addEventListener('mousedown', function (ev) {
-                // save the first point
-                canvas.oldMovePoint = { x: ev.pageX, y: ev.pageY };
-
-                document.addEventListener('mousemove', mapMove);
-            }, false);
-
-            canvas.addEventListener('mouseup', function (ev) {
-                document.removeEventListener('mousemove', mapMove);
-            }, false);
+            canvas.addEventListener('mousedown', startCanvasDrag, false);
+            canvas.addEventListener('mouseup', stopCanvasDrag, false);
 
             // Add circular vignet over the image, so it looks like we're watching through binoculars/a telescope
             // This is a png image, with absolute positioning over the canvas, BECAUSE PHASER WOULDN'T LET ME DO IT IN A NORMAL WAY AAAAAAH I HATE MAAAASKS
@@ -2593,6 +2646,10 @@ function loadPlayInterface(num, cont) {
         //  => current sail level + upgrade button
         case 3:
             // TO DO
+            // When server receives the signal, check if there's enough CREW for this operation
+            // (Release crew from the previous setting, then subtract for the new one.)
+            // If there is, the setting is applied, and the updated crew information is sent to the captain
+            // If there isn't ... error message?
 
             // Display ship bg (side-view, sails alongside slider)
             var bgShipSide = document.createElement("img");
@@ -2604,25 +2661,84 @@ function loadPlayInterface(num, cont) {
 
             cont.appendChild(bgShipSide);
 
+            // Determine max slider value (based on instrument level)
+            var insLvl = [0, 0];
+            switch (_serverInfo.serverInfo.roleStats[3].lvl) {
+                case 0:
+                    insLvl = [1, 1];
+                    break;
+
+                case 1:
+                    insLvl = [2, 1];
+                    break;
+
+                case 2:
+                    insLvl = [2, 2];
+                    break;
+
+                case 3:
+                    insLvl = [3, 2];
+                    break;
+
+                case 4:
+                    insLvl = [3, 3];
+                    break;
+
+                case 5:
+                    insLvl = [4, 3];
+                    break;
+            }
+
             // Vertical slider for sails
-            // TO DO: Send signal (and update my own info) onchange
+            // Display numbers next to slider
+            var rangeHint = document.createElement("span");
+            rangeHint.style.position = 'absolute';
+            for (var _i2 = 4; _i2 >= 0; _i2--) {
+                var tempDiv = document.createElement("div");
+                tempDiv.style.marginBottom = '15px';
+                tempDiv.innerHTML = _i2;
+                rangeHint.appendChild(tempDiv);
+            }
+            cont.appendChild(rangeHint);
+
+            // Create the actual slider
             var vSlider = document.createElement("input");
             vSlider.type = 'range';
             vSlider.min = 0;
             vSlider.max = 4;
+            vSlider.value = 0;
 
             vSlider.style.transform = 'rotate(-90deg)';
             vSlider.style.marginTop = '70px';
             vSlider.style.width = 'auto';
 
+            // If the slider was changed ...
+            // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus (and you can't be sure of that)
+            vSlider.addEventListener('input', function () {
+                var v = parseInt(this.value);
+
+                // if we go beyond our maximum input, snap back immediately
+                if (v > insLvl[0]) {
+                    v = insLvl[0];
+                    this.value = v;
+                }
+
+                // ... send the new signal (a sail update)
+                socket.emit('sail-up', v);
+
+                // update personal stats
+                _serverInfo.serverInfo.roleStats[3].sailLvl = v;
+            });
+
             cont.appendChild(vSlider);
 
             // Horizontal slider for paddles
-            // TO DO: Send signal (and update my own info) onchange
+            // Display the actual slider
             var hSlider = document.createElement("input");
             hSlider.type = 'range';
             hSlider.min = 0;
             hSlider.max = 4;
+            hSlider.value = 0;
 
             hSlider.style.width = '100%';
             hSlider.style.marginTop = '140px';
@@ -2630,11 +2746,39 @@ function loadPlayInterface(num, cont) {
 
             cont.appendChild(hSlider);
 
+            // Display numbers underneath slider
+            var rangeHint2 = document.createElement("span");
+            rangeHint2.style.display = 'flex';
+            rangeHint2.style.justifyContent = 'space-between';
+            for (var _i3 = 0; _i3 < 5; _i3++) {
+                var _tempDiv = document.createElement("div");
+                _tempDiv.innerHTML = _i3;
+                rangeHint2.appendChild(_tempDiv);
+            }
+            cont.appendChild(rangeHint2);
+
+            // If the slider has changed ...
+            hSlider.addEventListener('input', function () {
+                var v = parseInt(this.value);
+
+                // if we go beyond our maximum input, snap back immediately
+                if (v > insLvl[1]) {
+                    v = insLvl[1];
+                    this.value = v;
+                }
+
+                // ... send the new signal (a peddle update)
+                socket.emit('peddle-up', v);
+
+                // update personal stats
+                _serverInfo.serverInfo.roleStats[3].peddleLvl = v;
+            });
+
             break;
 
         // Weapon Specialist:
         //  => display ship (top-view; shows where each cannon is)
-        //  => display all cannons (bought or not, level + upgrade button, current load)
+        //  => display all cannons (bought or not, current load, loading button)
         case 4:
             // TO DO
 
@@ -2648,48 +2792,73 @@ function loadPlayInterface(num, cont) {
             // Display cannons
             var c = _serverInfo.serverInfo.shipCannons;
 
-            for (var _i2 = 0; _i2 < c.length; _i2++) {
+            var _loop = function _loop(_i4) {
                 // Create new div
                 var cannonDiv = document.createElement("div");
                 cannonDiv.classList.add("captain-crewMember");
 
                 // Show cannon number
                 var span = document.createElement("span");
-                span.innerHTML = _i2 + 1;
+                span.classList.add("weaponeer-cannonNumber");
+                span.innerHTML = _i4 + 1;
                 cannonDiv.appendChild(span);
 
                 // If the current load is negative, this cannon hasn't been bought yet
-                var curLoad = c[_i2];
+                var curLoad = c[_i4];
                 if (curLoad < 0) {
                     // Show "buy" button
-                    // TO DO: Send signal on click (and update my own cannonList + interface)
+                    // TO DO: Send signal on click 
+                    //   => Remove buy button
+                    //   => Set current load (for this cannon) to 0
                     // TO DO: Perform a "cumulative costs calculation": calculate the resources needed to buy a cannon at level X immediately
                     var buyBtn = document.createElement("button");
                     buyBtn.classList.add('upgradeButton');
                     buyBtn.innerHTML = loadUpgradeButton(4, 0);
+                    buyBtn.style.marginLeft = '40px';
                     cannonDiv.appendChild(buyBtn);
                 } else {
-                    // Show the current load
-
-                    // First load a background
+                    // Show the current load ...
+                    // ... 1) First load a background
                     var divLoad = document.createElement("div");
                     divLoad.classList.add("weaponeer-cannonLoadBg");
                     cannonDiv.appendChild(divLoad);
 
-                    // Then load the amount of guns/bullets/cannon balls on top
+                    // ... 2) Then load the amount of guns/bullets/cannon balls on top
                     var spanLoad = document.createElement("span");
                     spanLoad.classList.add("weaponeer-cannonLoad");
                     spanLoad.style.width = curLoad * 10 + 'px';
                     divLoad.appendChild(spanLoad);
 
-                    // Show "Load cannon" button
-                    // TO DO: Send signal on click (and update my own cannonList + interface)
-                    var loadBtn = document.createElement("button");
-                    loadBtn.innerHTML = 'LOAD';
-                    cannonDiv.appendChild(loadBtn);
+                    // If the cannon hasn't been loaded yet, this turn, display the button
+                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i4]) {
+                        // Show "Load cannon" button
+                        var loadBtn = document.createElement("button");
+                        loadBtn.innerHTML = 'LOAD';
+                        loadBtn.style.margin = '5px';
+                        cannonDiv.appendChild(loadBtn);
+
+                        // When the button is clicked ...
+                        loadBtn.addEventListener("click", function () {
+                            // send signal
+                            socket.emit('load-up', _i4);
+
+                            // update our own load
+                            _serverInfo.serverInfo.shipCannons[_i4]++;
+
+                            // remove this button
+                            this.remove();
+
+                            // don't allow it to load again (this turn)
+                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i4] = true;
+                        });
+                    }
                 }
 
                 cont.appendChild(cannonDiv);
+            };
+
+            for (var _i4 = 0; _i4 < c.length; _i4++) {
+                _loop(_i4);
             }
 
             break;
@@ -2830,9 +2999,33 @@ var ControllerWaiting = function (_Phaser$State) {
             break;
 
           // First mate
-          // Set compass level to 1
+          // Set compass level to 0
           case 1:
             _serverInfo.serverInfo.roleStats[1].lvl = 0;
+
+            break;
+
+          // Cartographer
+          // Set map/telescope level to 0
+          case 2:
+            _serverInfo.serverInfo.roleStats[2].lvl = 0;
+
+            break;
+
+          // Sailor
+          // Set instrument level to 0
+          case 3:
+            _serverInfo.serverInfo.roleStats[3].lvl = 0;
+
+            break;
+
+          // Weapon Specialist
+          // Set cannon level to 0
+          case 4:
+            _serverInfo.serverInfo.roleStats[4].lvl = 0;
+
+            // Also, create variable that checks if cannon has already been loaded
+            _serverInfo.serverInfo.roleStats[4].cannonsLoaded = {};
 
             break;
         }

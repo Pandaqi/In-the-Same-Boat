@@ -444,15 +444,35 @@ io.on('connection', socket => {
   // When someone updated their compass
   // @parameter orientation = desired orientation of the ship (integer between 0 and 8)
   socket.on('compass-up', orientation => {
-    // Find their ship, update orientation directly
-    let curShip = rooms[socket.mainRoom].playerShips[ rooms[socket.mainRoom].players[socket.id].myShip ];
-    curShip.orientation = orientation;
+    // update orientation directly
+    socket.curShip.orientation = orientation;
+  })
+
+  // When someone updated their sails
+  // @parameter lvl = desired sail level/height for the ship
+  socket.on('sail-up', lvl => {
+    // update sails directly
+    socket.curShip.roleStats[3].sailLvl = lvl;
+  })
+
+  // When someone updated their peddles
+  // @parameter lvl = desired peddle level/strength for the ship
+  socket.on('peddle-up', lvl => {
+    // update peddles directly
+    socket.curShip.roleStats[3].peddleLvl = lvl;
+  })
+
+  // When someone wants to add extra load to a cannon
+  // @parameter cannon = index of the cannon to be loaded up
+  socket.on('load-up', cannon => {
+    // Find their ship, update cannon directly
+    socket.curShip.shipCannons[cannon]++;
   })
 
   // When someone wants an upgrade
   // @parameter role = index of the role that wants an upgrade
   socket.on('upgrade', role => {
-    let curShip = rooms[socket.mainRoom].playerShips[ rooms[socket.mainRoom].players[socket.id].myShip ];
+    let curShip = socket.curShip;
     let curLevel = curShip.roleStats[role].lvl;
 
     // Check if the upgrade is possible (considering current ship resources)
@@ -476,7 +496,7 @@ io.on('connection', socket => {
       curShip.roleStats[role].lvl += 1;
 
       // inform captain
-      // IDEA: Only send change in resources during the turn (res-up) (needs edits on the client side as well, should work)
+      // IDEA: Only send _CHANGE_ in resources during the turn (res-up) (needs edits on the client side as well, should work)
       sendSignal(socket.mainRoom, false, 'res-up', curShip.resources, false, false, curShip.captain)
     } else {
       // If not possible, do nothing (... send error message that it didn't succeed?)
@@ -715,6 +735,7 @@ function createPlayerShips(room) {
   }
 
   // now we loop over it and determine player distribution
+  // the keys here are the player's socket IDs
   let curBoat = 0;
   const keys = Object.keys(room.players)
   for (const key of keys) {
@@ -723,6 +744,9 @@ function createPlayerShips(room) {
 
     // also inform the player this is his boat
     room.players[key].myShip = curBoat;
+
+    // save this ship on the socket object (for easier/faster reference in later functions)
+    io.sockets.connected[key].curShip = room.playerShips[curBoat];
 
     console.log("Player " + key + " will be on ship number " + curBoat);
     
@@ -872,7 +896,13 @@ function startTurn(room, gameStart = false) {
         case 2:
           // Map seed and other static info is already known
           // TO DO: Check units in vicinity, send them to him
-          pPack["mapSeed"] = curRoom.mapSeed; // TO DO: Map seed shouldn't be send every turn, should only be send once at the start
+
+          // Only at game start, send the map seed and our own ship's drawing
+          // TO DO: We probably want to send the monsters/other player ships in advance here?
+          if(gameStart) {
+            pPack["mapSeed"] = curRoom.mapSeed;
+            pPack['shipDrawing'] = curShip.shipDrawing;
+          }
 
           // Send our own location (?? or is this sent along with the other units?)
           pPack["x"] = curShip.x;

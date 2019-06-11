@@ -12,6 +12,8 @@ import { UPGRADE_DICT } from '../utils/upgradeDictionary'
 
 */
 function compassMove(ev) {
+    ev.preventDefault();
+
     // rotate compass to match angle between mouse and center of compass
 
     // find center of compass
@@ -78,6 +80,20 @@ function compassMove(ev) {
     
 }
 
+function startCanvasDrag(ev) {
+    // prevent actually dragging the image (which is default behaviour for most browsers in this situation)
+    ev.preventDefault();
+
+    // save the first point (on the canvas)
+    document.getElementById('canvas-container').oldMovePoint = { x: ev.pageX, y: ev.pageY};
+
+    document.addEventListener('mousemove', mapMove);
+}
+
+function stopCanvasDrag(ev) {
+    document.removeEventListener('mousemove', mapMove);
+}
+
 function mapMove(ev) {
     let cv = document.getElementById('canvas-container')
 
@@ -104,7 +120,7 @@ function loadUpgradeButton(role, level) {
         curString += '<span class="upgradeButtonLabel">Upgrade (lv ' + level + ')</span>';
     }
 
-
+    // display costs inside upgrade button
     for(let key in costs) {
         curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
     }
@@ -220,8 +236,6 @@ export default function loadPlayInterface(num, cont) {
         //  => compass (rotatable; sends info when released)
         //  => current compass level + upgrade button
         case 1:
-            // TO DO
-
             // Current orientation in background
             let bgOrient = document.createElement("img");
             bgOrient.src = "assets/shipGhostTopCompass.png";
@@ -235,7 +249,6 @@ export default function loadPlayInterface(num, cont) {
                 bgOrient.style.transform = 'rotate(' + serverInfo.oldOrientation * 45 + 'deg)';
             }
             
-
             cont.appendChild(bgOrient);
 
             // Compass on top of that
@@ -259,7 +272,7 @@ export default function loadPlayInterface(num, cont) {
 
             // when the mouse is down, start listening to mouse movements
             compassPointer.addEventListener('mousedown', function (ev) {
-                document.addEventListener('mousemove', compassMove);
+                this.addEventListener('mousemove', compassMove);
 
                 // already register a mouse move
                 compassMove(ev);
@@ -267,7 +280,7 @@ export default function loadPlayInterface(num, cont) {
 
             // when the mouse is released, stop moving the compass, send a signal with update (only if it actually changed), update my own info (for tab switching)
             compassPointer.addEventListener('mouseup', function (ev) {
-                document.removeEventListener('mousemove', compassMove);
+                this.removeEventListener('mousemove', compassMove);
 
                 // Send signal to the server (with the new orientation)
                 let newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
@@ -299,7 +312,7 @@ export default function loadPlayInterface(num, cont) {
             cont.appendChild(canvas);
 
             // Resize canvas (simplified version of the prepInterface; we'll see if it works)
-            // THe canvas should be square, and width should be the limiting factor (never height)
+            // The canvas should be square, and width should be the limiting factor (never height)
             let paddingX = 20;
             let maxWidth = document.getElementById('shipInterface').clientWidth - paddingX*2;
             canvas.myGame.scale.setGameSize(maxWidth, maxWidth)
@@ -311,19 +324,58 @@ export default function loadPlayInterface(num, cont) {
             // Create graphics object
             var graphics = canvas.myGame.add.graphics(0, 0);
 
-            // TO DO: Update these parameters to restrict to the part we can see, and center around our ship
-            // TO DO: Make map seamless: numbers that are too low (negative) or too high (beyond map size) should be clipped to the other side
-            let mapWidth = 20;
-            let mapHeight = 20;
-            let globalTileSize = 40; // this is the tile size used for the map on all devices, to keep it consistent
-            let localTileSize = 40; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
+            let mapSize = 3;
+            // Determine map size based on instrument level
+            switch(serverInfo.roleStats[2].lvl) {
+                case 0:
+                    mapSize = 3;
+                    break;
+
+                case 1:
+                    mapSize = 5
+                    break;
+
+                case 2:
+                    mapSize = 5
+                    break;
+
+                case 3:
+                    mapSize = 7
+                    break;
+
+                case 4:
+                    mapSize = 7
+                    break;
+
+                case 5:
+                    mapSize = 9
+                    break;
+            }
+
+            // TO DO
+            // this is the total size of the map (displayed on monitor)
+            // it should be consistent across all devices
+            let globalMapWidth = 40;
+            let globalMapHeight = 20;
+
+            let globalTileSize = 40; // TO DO this is the tile size used for the map on all devices, to keep it consistent
+            let localTileSize = 120; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
 
             // Loop through our visible tiles
+            // Make sure we center this around our ship!
             // Get the right noise value, color it correctly, display square of that color
-            for (let y = 0; y < mapHeight; y++) {
-                for (let x = 0; x < mapWidth; x++) {
-                    let nx = x*globalTileSize;
-                    let ny = y*globalTileSize;
+            for (let y = 0; y < mapSize; y++) {
+                for (let x = 0; x < mapSize; x++) {
+                    let xTile = serverInfo.x - Math.floor(0.5*mapSize) + x
+                    if(xTile < 0) { xTile += globalMapWidth }
+                    if(xTile >= globalMapWidth) { xTile -= globalMapWidth }
+
+                    let yTile = serverInfo.y - Math.floor(0.5*mapSize) + y
+                    if(yTile < 0) { yTile += globalMapHeight }
+                    if(yTile >= globalMapHeight) { yTile -= globalMapHeight }
+
+                    let nx = xTile*globalTileSize;
+                    let ny = yTile*globalTileSize;
 
                     let curVal = noise.perlin2(nx / 150, ny / 150);
 
@@ -346,20 +398,11 @@ export default function loadPlayInterface(num, cont) {
             }
 
             // Set world bounds to the map size
-            canvas.myGame.world.setBounds(0, 0, mapWidth*localTileSize, mapHeight*localTileSize);
+            canvas.myGame.world.setBounds(0, 0, mapSize*localTileSize, mapSize*localTileSize);
 
-            // TO DO: Remove these events when switching to a different role? Otherwise we might get event leak between different roles with a canvas and it will screw us up.
             // Make it possible to slide across the map (by moving mouse/finger over it)
-            canvas.addEventListener('mousedown', function (ev) {
-                // save the first point
-                canvas.oldMovePoint = { x: ev.pageX, y: ev.pageY};
-
-                document.addEventListener('mousemove', mapMove);
-            }, false);
-
-            canvas.addEventListener('mouseup', function (ev) {
-                document.removeEventListener('mousemove', mapMove);
-            }, false);
+            canvas.addEventListener('mousedown', startCanvasDrag, false)
+            canvas.addEventListener('mouseup', stopCanvasDrag, false)
 
             // Add circular vignet over the image, so it looks like we're watching through binoculars/a telescope
             // This is a png image, with absolute positioning over the canvas, BECAUSE PHASER WOULDN'T LET ME DO IT IN A NORMAL WAY AAAAAAH I HATE MAAAASKS
@@ -381,6 +424,10 @@ export default function loadPlayInterface(num, cont) {
         //  => current sail level + upgrade button
         case 3:
             // TO DO
+            // When server receives the signal, check if there's enough CREW for this operation
+            // (Release crew from the previous setting, then subtract for the new one.)
+            // If there is, the setting is applied, and the updated crew information is sent to the captain
+            // If there isn't ... error message?
 
             // Display ship bg (side-view, sails alongside slider)
             let bgShipSide = document.createElement("img");
@@ -392,25 +439,84 @@ export default function loadPlayInterface(num, cont) {
 
             cont.appendChild(bgShipSide);
 
+            // Determine max slider value (based on instrument level)
+            let insLvl = [0,0];
+            switch(serverInfo.roleStats[3].lvl) {
+                case 0:
+                    insLvl = [1,1];
+                    break;
+
+                case 1:
+                    insLvl = [2,1]
+                    break;
+
+                case 2:
+                    insLvl = [2,2]
+                    break;
+
+                case 3:
+                    insLvl = [3,2]
+                    break;
+
+                case 4:
+                    insLvl = [3, 3]
+                    break;
+
+                case 5:
+                    insLvl = [4, 3]
+                    break;
+            }
+
             // Vertical slider for sails
-            // TO DO: Send signal (and update my own info) onchange
+            // Display numbers next to slider
+            let rangeHint = document.createElement("span");
+            rangeHint.style.position = 'absolute';
+            for(let i = 4; i >= 0; i--) {
+                let tempDiv = document.createElement("div");
+                tempDiv.style.marginBottom = '15px';
+                tempDiv.innerHTML = i;
+                rangeHint.appendChild(tempDiv);
+            }
+            cont.appendChild(rangeHint);
+
+            // Create the actual slider
             let vSlider = document.createElement("input");
             vSlider.type = 'range'
             vSlider.min = 0
             vSlider.max = 4
+            vSlider.value = 0
 
             vSlider.style.transform = 'rotate(-90deg)';
             vSlider.style.marginTop = '70px';
             vSlider.style.width = 'auto';
 
+            // If the slider was changed ...
+            // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus (and you can't be sure of that)
+            vSlider.addEventListener('input', function() {
+                let v = parseInt(this.value);
+
+                // if we go beyond our maximum input, snap back immediately
+                if(v > insLvl[0]) {
+                    v = insLvl[0];
+                    this.value = v;
+                }
+
+                // ... send the new signal (a sail update)
+                socket.emit('sail-up', v);
+
+                // update personal stats
+                serverInfo.roleStats[3].sailLvl = v;
+            })
+
             cont.appendChild(vSlider);
 
             // Horizontal slider for paddles
-            // TO DO: Send signal (and update my own info) onchange
+            // Display the actual slider
             let hSlider = document.createElement("input")
             hSlider.type = 'range'
             hSlider.min = 0
             hSlider.max = 4
+            hSlider.value = 0
             
             hSlider.style.width = '100%';
             hSlider.style.marginTop = '140px';
@@ -418,11 +524,39 @@ export default function loadPlayInterface(num, cont) {
 
             cont.appendChild(hSlider);
 
+            // Display numbers underneath slider
+            let rangeHint2 = document.createElement("span");
+            rangeHint2.style.display = 'flex';
+            rangeHint2.style.justifyContent = 'space-between';
+            for(let i = 0; i < 5; i++) {
+                let tempDiv = document.createElement("div");
+                tempDiv.innerHTML = i;
+                rangeHint2.appendChild(tempDiv);
+            }
+            cont.appendChild(rangeHint2);
+
+            // If the slider has changed ...
+            hSlider.addEventListener('input', function() {
+                let v = parseInt(this.value);
+
+                // if we go beyond our maximum input, snap back immediately
+                if(v > insLvl[1]) {
+                    v = insLvl[1];
+                    this.value = v;
+                }
+
+                // ... send the new signal (a peddle update)
+                socket.emit('peddle-up', v);
+
+                // update personal stats
+                serverInfo.roleStats[3].peddleLvl = v;
+            })
+
             break;
 
         // Weapon Specialist:
         //  => display ship (top-view; shows where each cannon is)
-        //  => display all cannons (bought or not, level + upgrade button, current load)
+        //  => display all cannons (bought or not, current load, loading button)
         case 4:
             // TO DO
 
@@ -443,6 +577,7 @@ export default function loadPlayInterface(num, cont) {
 
                 // Show cannon number
                 let span = document.createElement("span");
+                span.classList.add("weaponeer-cannonNumber");
                 span.innerHTML = (i + 1);
                 cannonDiv.appendChild(span);
 
@@ -457,6 +592,7 @@ export default function loadPlayInterface(num, cont) {
                     let buyBtn = document.createElement("button")
                     buyBtn.classList.add('upgradeButton');
                     buyBtn.innerHTML = loadUpgradeButton(4, 0)
+                    buyBtn.style.marginLeft = '40px';
                     cannonDiv.appendChild(buyBtn);
                 } else {
                     // Show the current load ...
@@ -471,11 +607,30 @@ export default function loadPlayInterface(num, cont) {
                     spanLoad.style.width = (curLoad * 10) + 'px';
                     divLoad.appendChild(spanLoad);
 
-                    // Show "Load cannon" button
-                    // TO DO: Send signal on click (and update my own cannonList + interface)
-                    let loadBtn = document.createElement("button")
-                    loadBtn.innerHTML = 'LOAD';
-                    cannonDiv.appendChild(loadBtn);
+                    // If the cannon hasn't been loaded yet, this turn, display the button
+                    if(!serverInfo.roleStats[4].cannonsLoaded[i]) {
+                        // Show "Load cannon" button
+                        let loadBtn = document.createElement("button")
+                        loadBtn.innerHTML = 'Load';
+                        loadBtn.style.margin = '5px';
+                        cannonDiv.appendChild(loadBtn);
+
+                        // When the button is clicked ...
+                        loadBtn.addEventListener("click", function() {
+                            // send signal
+                            socket.emit('load-up', i);
+
+                            // update our own load
+                            serverInfo.shipCannons[i]++;
+
+                            // remove this button
+                            this.remove();
+
+                            // don't allow it to load again (this turn)
+                            serverInfo.roleStats[4].cannonsLoaded[i] = true;
+                        })
+                    }
+
                 }
 
                 cont.appendChild(cannonDiv);
