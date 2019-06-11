@@ -87,9 +87,16 @@ var serverInfo = {
 
   language: 'en',
 
+  // These variables are for the player interface only
+  // They keep track of what you've already done/seen/activated
   submittedPreparation: {},
   submittedUpgrade: {},
-  errorMessages: []
+  errorMessages: [],
+
+  // Backup ship drawing, in case preparation is skipped
+  unitImages: {
+    'myShip': "data:image/png;base64,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"
+  }
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -461,7 +468,10 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
 
   socket.on('next-state', function (data) {
     // set the timer
-    serverInfo.timer = data.timer;
+    if (serverInfo.vip) {
+      serverInfo.timerBackup = data.timer;
+      serverInfo.timer = data.timer;
+    }
 
     // save the canvas (otherwise it is also removed when the GUI is removed)
     var cv = document.getElementById("canvas-container");
@@ -2647,14 +2657,19 @@ function loadPlayInterface(num, cont) {
                 this.removeEventListener('mousemove', compassMove);
 
                 // Send signal to the server (with the new orientation)
+                // (below, we check if the orientation actually changed, and only THEN send the signal)
                 var newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
-                socket.emit('compass-up', newOrient);
 
                 // Update serverInfo
                 // Save the current orientation of the ship on the map (so we know what a compass change means)
                 // (this is a trick to save the old orientation once, just before we change it, but not after that)
                 if (_serverInfo.serverInfo.oldOrientation == undefined || _serverInfo.serverInfo.oldOrientation == _serverInfo.serverInfo.orientation) {
                     _serverInfo.serverInfo.oldOrientation = _serverInfo.serverInfo.orientation;
+                }
+
+                // if these two are equal, we didn't change course, so we wouldn't send a signal
+                if (newOrient != _serverInfo.serverInfo.oldOrientation) {
+                    socket.emit('compass-up', newOrient);
                 }
 
                 // Update our own orientation (to remember it when switching tabs)
@@ -2772,8 +2787,30 @@ function loadPlayInterface(num, cont) {
             // Set world bounds to the map size
             canvas.myGame.world.setBounds(0, 0, mapSize * localTileSize, mapSize * localTileSize);
 
-            // Load our ship drawing/image
-            (0, _dynamicLoadImage2.default)(canvas.myGame, { x: 0, y: 0 }, { width: localTileSize, height: localTileSize }, 'myShip', _serverInfo.serverInfo.shipDrawing);
+            // Display units (the server determines which ones you can see, based on range and instrument level)
+            // TO DO
+            // As of right now, I just display our own ship.
+            // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
+            _serverInfo.serverInfo.mapUnits = [{ x: _serverInfo.serverInfo.x, y: _serverInfo.serverInfo.y, name: 'myShip' }];
+
+            var u = _serverInfo.serverInfo.mapUnits;
+            for (var _i3 = 0; _i3 < u.length; _i3++) {
+                var unit = u[_i3];
+
+                // coordinates need to be recalculated, using our own ship as the center
+                var _x2 = unit.x - _serverInfo.serverInfo.x + Math.floor(0.5 * mapSize);
+                var _y = unit.y - _serverInfo.serverInfo.y + Math.floor(0.5 * mapSize);
+
+                // determine label for this sprite (needs to be unique for unique stuff like sea monsters, but consistent)
+                var label = unit.name;
+
+                // this label also functions as the key, used to get the correct image out of the serverInfo information
+                // this is always a dataURI, even for stuff that isn't drawn by players. (I do this to keep the code clean and consistent.)
+                var cacheKey = _serverInfo.serverInfo.unitImages[label];
+
+                // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)
+                (0, _dynamicLoadImage2.default)(canvas.myGame, { x: (_x2 + 0.5) * localTileSize, y: (_y + 0.5) * localTileSize }, { width: localTileSize, height: localTileSize }, label, cacheKey);
+            }
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false);
@@ -2846,10 +2883,10 @@ function loadPlayInterface(num, cont) {
             // Display numbers next to slider
             var rangeHint = document.createElement("span");
             rangeHint.style.position = 'absolute';
-            for (var _i3 = 4; _i3 >= 0; _i3--) {
+            for (var _i4 = 4; _i4 >= 0; _i4--) {
                 var tempDiv = document.createElement("div");
                 tempDiv.style.marginBottom = '15px';
-                tempDiv.innerHTML = _i3;
+                tempDiv.innerHTML = _i4;
                 rangeHint.appendChild(tempDiv);
             }
             cont.appendChild(rangeHint);
@@ -2866,8 +2903,9 @@ function loadPlayInterface(num, cont) {
             vSlider.style.width = 'auto';
 
             // If the slider was changed ...
-            // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus (and you can't be sure of that)
-            vSlider.addEventListener('input', function () {
+            // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus
+            // We want the latter, because we only send a signal when the user RELEASES the slider. Otherwise, we would send way too many (unnecessary) signals.
+            vSlider.addEventListener('change', function () {
                 var v = parseInt(this.value);
 
                 // if we go beyond our maximum input, snap back immediately
@@ -2908,15 +2946,15 @@ function loadPlayInterface(num, cont) {
             var rangeHint2 = document.createElement("span");
             rangeHint2.style.display = 'flex';
             rangeHint2.style.justifyContent = 'space-between';
-            for (var _i4 = 0; _i4 < 5; _i4++) {
+            for (var _i5 = 0; _i5 < 5; _i5++) {
                 var _tempDiv = document.createElement("div");
-                _tempDiv.innerHTML = _i4;
+                _tempDiv.innerHTML = _i5;
                 rangeHint2.appendChild(_tempDiv);
             }
             cont.appendChild(rangeHint2);
 
             // If the slider has changed ...
-            hSlider.addEventListener('input', function () {
+            hSlider.addEventListener('change', function () {
                 var v = parseInt(this.value);
 
                 // if we go beyond our maximum input, snap back immediately
@@ -2955,7 +2993,7 @@ function loadPlayInterface(num, cont) {
             // Display cannons
             var c = _serverInfo.serverInfo.shipCannons;
 
-            var _loop2 = function _loop2(_i5) {
+            var _loop2 = function _loop2(_i6) {
                 // Create new div
                 var cannonDiv = document.createElement("div");
                 cannonDiv.classList.add("captain-crewMember");
@@ -2963,11 +3001,11 @@ function loadPlayInterface(num, cont) {
                 // Show cannon number
                 var span = document.createElement("span");
                 span.classList.add("weaponeer-cannonNumber");
-                span.innerHTML = _i5 + 1;
+                span.innerHTML = _i6 + 1;
                 cannonDiv.appendChild(span);
 
                 // If the current load is negative, this cannon hasn't been bought yet
-                var curLoad = c[_i5];
+                var curLoad = c[_i6];
                 if (curLoad < 0) {
                     // Show "buy" button
                     var buyBtn = document.createElement("button");
@@ -2982,16 +3020,16 @@ function loadPlayInterface(num, cont) {
                     // When the button is clicked ...
                     buyBtn.addEventListener('click', function () {
                         // send signal
-                        socket.emit('buy-cannon', _i5);
+                        socket.emit('buy-cannon', _i6);
 
                         // set load to 0 (if its positive, the cannon has been bought)
-                        _serverInfo.serverInfo.shipCannons[_i5] = 0;
+                        _serverInfo.serverInfo.shipCannons[_i6] = 0;
 
                         // remove this button
                         this.remove();
 
                         // don't allow it to load (this turn)
-                        _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i5] = true;
+                        _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i6] = true;
                     });
                 } else {
                     // Show the current load ...
@@ -3007,7 +3045,7 @@ function loadPlayInterface(num, cont) {
                     divLoad.appendChild(spanLoad);
 
                     // If the cannon hasn't been loaded yet, this turn, display the button
-                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i5]) {
+                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i6]) {
                         // Show "Load cannon" button
                         var loadBtn = document.createElement("button");
                         loadBtn.innerHTML = 'Load';
@@ -3017,16 +3055,16 @@ function loadPlayInterface(num, cont) {
                         // When the button is clicked ...
                         loadBtn.addEventListener("click", function () {
                             // send signal
-                            socket.emit('load-up', _i5);
+                            socket.emit('load-up', _i6);
 
                             // update our own load
-                            _serverInfo.serverInfo.shipCannons[_i5]++;
+                            _serverInfo.serverInfo.shipCannons[_i6]++;
 
                             // remove this button
                             this.remove();
 
                             // don't allow it to load again (this turn)
-                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i5] = true;
+                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i6] = true;
                         });
                     }
                 }
@@ -3034,8 +3072,8 @@ function loadPlayInterface(num, cont) {
                 cont.appendChild(cannonDiv);
             };
 
-            for (var _i5 = 0; _i5 < c.length; _i5++) {
-                _loop2(_i5);
+            for (var _i6 = 0; _i6 < c.length; _i6++) {
+                _loop2(_i6);
             }
 
             break;
@@ -3284,6 +3322,22 @@ var ControllerWaiting = function (_Phaser$State) {
       (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
 
       console.log("Controller Play state");
+
+      // Function that is called whenever a new turn starts
+      // Resets timer, cleans interface variables, reloads first tab
+      socket.on('new-turn', function (data) {
+        // reset the timer (if you're the VIP)
+        if (_serverInfo.serverInfo.vip) {
+          _serverInfo.serverInfo.timer = _serverInfo.serverInfo.timerBackup;
+        }
+
+        // clean interface variables
+        _serverInfo.serverInfo.submittedUpgrade = {};
+        _serverInfo.serverInfo.errorMessages = {};
+
+        // reload first tab
+        (0, _loadTab2.default)("label0", curTab, 1);
+      });
     }
   }, {
     key: 'update',

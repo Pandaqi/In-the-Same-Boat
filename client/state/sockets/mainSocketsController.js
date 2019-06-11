@@ -7,7 +7,11 @@ const loadMainSockets = (socket, gm, serverInfo) => {
 
   socket.on('next-state', data => {
     // set the timer
-    serverInfo.timer = data.timer
+    if(serverInfo.vip) {
+      serverInfo.timerBackup = data.timer
+      serverInfo.timer = data.timer
+    }
+   
 
     // save the canvas (otherwise it is also removed when the GUI is removed)
     let cv = document.getElementById("canvas-container")

@@ -157,6 +157,23 @@ class ControllerWaiting extends Phaser.State {
     loadMainSockets(socket, gm, serverInfo)
 
     console.log("Controller Play state");
+
+    // Function that is called whenever a new turn starts
+    // Resets timer, cleans interface variables, reloads first tab
+    socket.on('new-turn', data => {
+      // reset the timer (if you're the VIP)
+      if(serverInfo.vip) {
+        serverInfo.timer = serverInfo.timerBackup;
+      }
+
+      // clean interface variables
+      serverInfo.submittedUpgrade = {}
+      serverInfo.errorMessages = []
+
+      // reload first tab
+      LOAD_TAB("label0", curTab, 1)
+    })
+
   }
 
   update () {

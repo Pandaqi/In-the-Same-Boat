@@ -55,7 +55,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: false,
+      prepSkip: true,
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -640,7 +640,7 @@ io.on('connection', socket => {
         startTurn(room, true);
         
         // set turn timer
-        timer = 120;
+        timer = 30;
         break;
 
       // If the next state is the game over (aka "end of round") state ...
@@ -836,8 +836,6 @@ function createPlayerShips(room) {
 function resourceCheck(socket, role, curLevel, costs = null) {
   let curShip = socket.curShip
 
-  console.log(role + ' - ' + curLevel + ' - ' + JSON.stringify(costs))
-
   /**** GET THE COST ****/
 
   // If we haven't been given a predetermined cost (by some other function), calculate it ourselves (as an UPGRADE)
@@ -868,8 +866,6 @@ function resourceCheck(socket, role, curLevel, costs = null) {
       costs = UPGRADE_DICT[role][(curLevel + 1)]
     }
   }
-
-  console.log(costs);
 
   /**** CHECK COST AGAINST SHIP RESOURCES ****/
   let upgradePossible = true;
@@ -1035,7 +1031,7 @@ function startTurn(room, gameStart = false) {
         // Weapon Specialist
         case 4:
           // All cannons have the same level; this level is known by the player??
-          // TO DO: Send the correct cannon load (just a number, negative means the cannon hasn't been bought yet)
+          // Send the correct cannon load (just a number, negative means the cannon hasn't been bought yet)
           pPack["shipCannons"] = curShip.cannons;
 
           break;
@@ -1044,6 +1040,14 @@ function startTurn(room, gameStart = false) {
 
     // send the whole package
     sendSignal(room, false, 'pre-signal', pPack, true, true, playerID);
+
+    // if it isn't the start of the game (and thus a "state switch" to the Play state) ...
+    if(!gameStart) {
+      // ... tell everyone (both monitors and controllers) to start the new turn
+      sendSignal(room, false, 'new-turn', {}, false, false)
+      sendSignal(room, true, 'new-turn', {}, false, false)
+    }
+    
   }
 
 }

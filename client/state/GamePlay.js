@@ -42,6 +42,16 @@ class GamePlay extends Phaser.State {
 
     loadWatchRoom(socket, serverInfo)
 
+    // Function that is called whenever a new turn starts
+    // Resets timer, resets other stuff, displays new situation, etc.
+    socket.on('new-turn', data => {
+      // reset the timer 
+      serverInfo.timer = serverInfo.timerBackup;
+
+      // TO DO
+      // Reset stuffiebuffie
+    })
+
     console.log("Game Play state")
   }
 

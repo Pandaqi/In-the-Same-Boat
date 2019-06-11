@@ -368,14 +368,19 @@ export default function loadPlayInterface(num, cont) {
                 this.removeEventListener('mousemove', compassMove);
 
                 // Send signal to the server (with the new orientation)
+                // (below, we check if the orientation actually changed, and only THEN send the signal)
                 let newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
-                socket.emit('compass-up', newOrient);
 
                 // Update serverInfo
                 // Save the current orientation of the ship on the map (so we know what a compass change means)
                 // (this is a trick to save the old orientation once, just before we change it, but not after that)
                 if((serverInfo.oldOrientation == undefined) || (serverInfo.oldOrientation == serverInfo.orientation)) {
                     serverInfo.oldOrientation = serverInfo.orientation
+                }
+
+                // if these two are equal, we didn't change course, so we wouldn't send a signal
+                if(newOrient != serverInfo.oldOrientation) {
+                    socket.emit('compass-up', newOrient);
                 }
 
                 // Update our own orientation (to remember it when switching tabs)
@@ -485,8 +490,30 @@ export default function loadPlayInterface(num, cont) {
             // Set world bounds to the map size
             canvas.myGame.world.setBounds(0, 0, mapSize*localTileSize, mapSize*localTileSize);
 
-            // Load our ship drawing/image
-            dynamicLoadImage(canvas.myGame, {x: 0, y: 0 }, { width: localTileSize, height: localTileSize }, 'myShip', serverInfo.shipDrawing)
+            // Display units (the server determines which ones you can see, based on range and instrument level)
+            // TO DO
+            // As of right now, I just display our own ship.
+            // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
+            serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, name: 'myShip' } ];
+
+            let u = serverInfo.mapUnits;
+            for(let i = 0; i < u.length; i++) {
+                let unit = u[i];
+
+                // coordinates need to be recalculated, using our own ship as the center
+                let x = unit.x - serverInfo.x + Math.floor(0.5*mapSize);
+                let y = unit.y - serverInfo.y + Math.floor(0.5*mapSize);
+
+                // determine label for this sprite (needs to be unique for unique stuff like sea monsters, but consistent)
+                let label = unit.name;
+
+                // this label also functions as the key, used to get the correct image out of the serverInfo information
+                // this is always a dataURI, even for stuff that isn't drawn by players. (I do this to keep the code clean and consistent.)
+                let cacheKey = serverInfo.unitImages[label];
+
+                // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)
+                dynamicLoadImage(canvas.myGame, { x: (x + 0.5)*localTileSize, y: (y + 0.5)*localTileSize }, { width: localTileSize, height: localTileSize }, label, cacheKey)
+            }
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false)
@@ -579,8 +606,9 @@ export default function loadPlayInterface(num, cont) {
             vSlider.style.width = 'auto';
 
             // If the slider was changed ...
-            // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus (and you can't be sure of that)
-            vSlider.addEventListener('input', function() {
+            // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus
+            // We want the latter, because we only send a signal when the user RELEASES the slider. Otherwise, we would send way too many (unnecessary) signals.
+            vSlider.addEventListener('change', function() {
                 let v = parseInt(this.value);
 
                 // if we go beyond our maximum input, snap back immediately
@@ -629,7 +657,7 @@ export default function loadPlayInterface(num, cont) {
             cont.appendChild(rangeHint2);
 
             // If the slider has changed ...
-            hSlider.addEventListener('input', function() {
+            hSlider.addEventListener('change', function() {
                 let v = parseInt(this.value);
 
                 // if we go beyond our maximum input, snap back immediately
