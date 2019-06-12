@@ -458,11 +458,11 @@ export default function loadPlayInterface(num, cont) {
                 for (let x = 0; x < mapSize; x++) {
                     let xTile = serverInfo.x - Math.floor(0.5*mapSize) + x
                     if(xTile < 0) { xTile += globalMapWidth }
-                    if(xTile >= globalMapWidth) { xTile -= globalMapWidth }
+                    else if(xTile >= globalMapWidth) { xTile -= globalMapWidth }
 
                     let yTile = serverInfo.y - Math.floor(0.5*mapSize) + y
                     if(yTile < 0) { yTile += globalMapHeight }
-                    if(yTile >= globalMapHeight) { yTile -= globalMapHeight }
+                    else if(yTile >= globalMapHeight) { yTile -= globalMapHeight }
 
                     let nx = xTile*globalTileSize;
                     let ny = yTile*globalTileSize;

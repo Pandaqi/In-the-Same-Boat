@@ -19,6 +19,8 @@ var gameScene = new Phaser.Class({
 
     	this.tileSize = Math.min(window.innerWidth / this.mapWidth, window.innerHeight / this.mapHeight);
 
+    	console.log(this.tileSize);
+
     	this.map = [];
     	this.checkedTiles = {};
     	this.islands = [];
