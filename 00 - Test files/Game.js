@@ -69,7 +69,7 @@ var gameScene = new Phaser.Class({
 
 	    		// calculate the new cost
 	    		// movement is always 1, in our world 
-	    		let new_cost = cost_so_far.get(currentLabel) + 1
+	    		let new_cost = cost_so_far.get(currentLabel) + 1;
 
 	    		// get the tile
 	    		let next = [tempX, tempY];
@@ -91,11 +91,14 @@ var gameScene = new Phaser.Class({
 
 	    			let dY = Math.abs(tempY - end[1]);
 	    			if(dY > 0.5*this.mapHeight) { dY = (this.mapHeight - dY) }
+
+    				// 2) Shallow water has a higher cost than deep water
 	    			
-	    			let heuristic = (dX + dY)
+	    			let heuristic = (dX + dY) + this.map[tempY][tempX]*20;
 
 	    			// add this tile to the priority queue
-	    			let priority = new_cost + heuristic;
+	    			// 3) Tie-breaker: Add a small number (1.01) to incentivice the algorithm to explore tiles more near the target, instead of at the start
+	    			let priority = new_cost + heuristic * (1.0 + 0.01);
 	    			Q.put(next, priority);
 
 	    			// save where we came from
@@ -354,10 +357,33 @@ var gameScene = new Phaser.Class({
 			}
 		}
 
+		/*** DETERMINE MONSTER POSITIONS ***/
+		let numMonsters = 10;
+		this.monsters = [];
+		for(let i = 0; i < numMonsters; i++) {
+			// monsters only spawn in sea that is deep enough
+			// so keep trying, until we found a position
+			let rX, rY;
+			do {
+				rX = Math.floor(Math.random() * this.mapWidth);
+				rY = Math.floor(Math.random() * this.mapHeight);
+			} while (this.map[rY][rX] >= -0.2);
+
+			this.monsters.push( { x: rX, y: rY, id: 'mon'+i, hp: 3, atk: 5 } );
+		}
+
+		/*** DETERMINE SHIP POSITIONS ***/
+		let numPlayerShips = 3;
+		this.playerShips = [];
+		for(let i = 0; i < numPlayerShips; i++) {
+			
+		}
+
 		console.log(this.islands);
 		console.log(this.docks);
 
 		/*** CALCULATE ROUTES BETWEEN HARBORS ****/
+		/*
 		let numDocks = this.docks.length;
 		for(let i = 0; i < numDocks; i++) {
 			// pick a few other routes, based on SQUARE ROOT of ISLAND SIZE
@@ -380,6 +406,7 @@ var gameScene = new Phaser.Class({
 				console.timeEnd('Calculating route ' + j + ' on dock ' + i + '!');
 			}
 		}
+		*/
 
 		/*** CREATE MAP VISUALS ***/
 
@@ -430,6 +457,7 @@ var gameScene = new Phaser.Class({
 			let dockSize = this.docks[i].size;
 			this.add.text(x*this.tileSize, y*this.tileSize, dockSize, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
 
+			/*
 			// display its routes
 			for(let a = 0; a < this.docks[i].routes.length; a++) {
 				let r = this.docks[i].routes[a];
@@ -443,6 +471,7 @@ var gameScene = new Phaser.Class({
 					graphics.fillRect((routeX + 0.25)*this.tileSize, (routeY + 0.25)*this.tileSize, 0.5*this.tileSize, 0.5*this.tileSize);
 				}
 			}
+			*/
 		}
 		
 		// set stroke style (beige, slightly transparent, not too thick)
@@ -475,6 +504,17 @@ var gameScene = new Phaser.Class({
 			graphics.strokeLineShape(line);
 
 			this.add.text(this.tileSize*0.5, (y+0.5)*this.tileSize, y, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
+		}
+
+		// display the monsters
+		for(let i = 0; i < numMonsters; i++) {
+			let curMon = this.monsters[i];
+
+			graphics.lineStyle(2, 0x000000, 1.0);
+			graphics.fillStyle(0xFF0000, 1.0);
+
+			graphics.fillRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
+			graphics.strokeRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
 		}
 
 		window.graphics = graphics;
