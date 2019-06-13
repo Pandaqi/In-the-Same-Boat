@@ -17,8 +17,8 @@
 (function(global){
   var module = global.noise = {};
 
-  function Grad(x, y, z) {
-    this.x = x; this.y = y; this.z = z;
+  function Grad(x, y, z, w = 0) {
+    this.x = x; this.y = y; this.z = z; this.w = w;
   }
   
   Grad.prototype.dot2 = function(x, y) {
@@ -29,9 +29,26 @@
     return this.x*x + this.y*y + this.z*z;
   };
 
+  Grad.prototype.dot4 = function(x, y, z, w) {
+    return this.x*x + this.y*y + this.z*z + this.w*w;
+  };
+
+
   var grad3 = [new Grad(1,1,0),new Grad(-1,1,0),new Grad(1,-1,0),new Grad(-1,-1,0),
                new Grad(1,0,1),new Grad(-1,0,1),new Grad(1,0,-1),new Grad(-1,0,-1),
                new Grad(0,1,1),new Grad(0,-1,1),new Grad(0,1,-1),new Grad(0,-1,-1)];
+
+  var grad4 = [new Grad(1,1,1,0),new Grad(-1,1,1,0),new Grad(1,-1,1,0),new Grad(1,1,-1,0),
+               new Grad(-1,-1,1,0),new Grad(1,-1,-1,0),new Grad(-1,1,-1,0),new Grad(-1,-1,-1,0),
+
+               new Grad(1,1,0,1),new Grad(-1,1,0,1),new Grad(1,-1,0,1),new Grad(1,1,0,-1),
+               new Grad(-1,-1,0,1),new Grad(1,-1,0,-1),new Grad(-1,1,0,-1),new Grad(-1,-1,0,-1),
+
+               new Grad(1,0,1,1),new Grad(-1,0,1,1),new Grad(1,0,-1,1),new Grad(1,0,1,-1),
+               new Grad(-1,0,-1,1),new Grad(1,0,-1,-1),new Grad(-1,0,1,-1),new Grad(-1,0,-1,-1),
+
+               new Grad(0,1,1,1),new Grad(0,-1,1,1),new Grad(0,1,-1,1),new Grad(0,1,1,-1),
+               new Grad(0,-1,-1,1),new Grad(0,1,-1,-1),new Grad(0,-1,1,-1),new Grad(0,-1,-1,-1)];
 
   var p = [151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -72,7 +89,7 @@
       }
 
       perm[i] = perm[i + 256] = v;
-      gradP[i] = gradP[i + 256] = grad3[v % 12];
+      gradP[i] = gradP[i + 256] = grad4[v % 32] //= grad3[v % 12];
     }
   };
 
@@ -247,21 +264,6 @@
     return (1-t)*a + t*b;
   }
 
-  function grad4(  hash,  x,  y,  z,  t ) {
-    let h = hash & 31;      // Convert low 5 bits of hash code into 32 simple
-    let u = h<24 ? x : y; // gradient directions, and compute dot product.
-    let v = h<16 ? y : z;
-    let w = h<8 ? z : t;
-    return ((h&1)? -u : u) + ((h&2)? -v : v) + ((h&4)? -w : w);
-  }
-
-  // was supposed to scale the result back to 0->1
-  // does nothing now
-  function scale(n) {
-    return n;
-    //return (1 + n) / 2;
-  }
-
   // 2D Perlin Noise
   module.perlin2 = function(x, y) {
     // Find unit grid cell containing point
@@ -324,82 +326,66 @@
 
   // 4d perlin noise
   module.perlin4 = function(  x,  y,  z,  w ) {
-    let ix0, iy0, iz0, iw0, ix1, iy1, iz1, iw1;
-    let fx0, fy0, fz0, fw0, fx1, fy1, fz1, fw1;
-    let s, t, r, q;
-    let nxyz0, nxyz1, nxy0, nxy1, nx0, nx1, n0, n1;
+    // Find unit grid cell containing point
+    var X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z), W = Math.floor(w);
+    // Get relative xyzw coordinates of point within that cell
+    x = x - X; y = y - Y; z = z - Z; w = w - W;
+    // Wrap the integer cells at 255 (smaller integer period can be introduced here)
+    X = X & 255; Y = Y & 255; Z = Z & 255; W = W & 255;
 
-    ix0 = Math.floor( x ); // Integer part of x
-    iy0 = Math.floor( y ); // Integer part of y
-    iz0 = Math.floor( z ); // Integer part of y
-    iw0 = Math.floor( w ); // Integer part of w
-    fx0 = x - ix0;        // Fractional part of x
-    fy0 = y - iy0;        // Fractional part of y
-    fz0 = z - iz0;        // Fractional part of z
-    fw0 = w - iw0;        // Fractional part of w
-    fx1 = fx0 - 1.0;
-    fy1 = fy0 - 1.0;
-    fz1 = fz0 - 1.0;
-    fw1 = fw0 - 1.0;
-    ix1 = ( ix0 + 1 ) & 0xff;  // Wrap to 0..255
-    iy1 = ( iy0 + 1 ) & 0xff;
-    iz1 = ( iz0 + 1 ) & 0xff;
-    iw1 = ( iw0 + 1 ) & 0xff;
-    ix0 = ix0 & 0xff;
-    iy0 = iy0 & 0xff;
-    iz0 = iz0 & 0xff;
-    iw0 = iw0 & 0xff;
+    // Calculate noise contributions from each of the SIXTEEN corners
+    // (Just follow the patterns; every unique combination must appear exactly once)
+    var n0000 = gradP[X+  perm[Y+  perm[Z+  perm[W  ]]]].dot4(x,     y,     z,     w);
+    var n0001 = gradP[X+  perm[Y+  perm[Z+  perm[W+1]]]].dot4(x,     y,     z,     w-1);
+    var n0010 = gradP[X+  perm[Y+  perm[Z+1+perm[W  ]]]].dot4(x,     y,     z-1,   w);
+    var n0011 = gradP[X+  perm[Y+  perm[Z+1+perm[W+1]]]].dot4(x,     y,     z-1,   w-1);
+    var n0100 = gradP[X+  perm[Y+1+perm[Z+  perm[W  ]]]].dot4(x,     y-1,   z,     w);
+    var n0101 = gradP[X+  perm[Y+1+perm[Z+  perm[W+1]]]].dot4(x,     y-1,   z,     w-1);
+    var n0110 = gradP[X+  perm[Y+1+perm[Z+1+perm[W  ]]]].dot4(x,     y-1,   z-1,   w);
+    var n0111 = gradP[X+  perm[Y+1+perm[Z+1+perm[W+1]]]].dot4(x,     y-1,   z-1,   w-1);
+    var n1000 = gradP[X+1+perm[Y+  perm[Z+  perm[W  ]]]].dot4(x-1,   y,     z,     w);
+    var n1001 = gradP[X+1+perm[Y+  perm[Z+  perm[W+1]]]].dot4(x-1,   y,     z,     w-1);
+    var n1010 = gradP[X+1+perm[Y+  perm[Z+1+perm[W  ]]]].dot4(x-1,   y,     z-1,   w);
+    var n1011 = gradP[X+1+perm[Y+  perm[Z+1+perm[W+1]]]].dot4(x-1,   y,     z-1,   w-1);
+    var n1100 = gradP[X+1+perm[Y+1+perm[Z+  perm[W  ]]]].dot4(x-1,   y-1,   z,     w);
+    var n1101 = gradP[X+1+perm[Y+1+perm[Z+  perm[W+1]]]].dot4(x-1,   y-1,   z,     w-1);
+    var n1110 = gradP[X+1+perm[Y+1+perm[Z+1+perm[W  ]]]].dot4(x-1,   y-1,   z-1,   w);
+    var n1111 = gradP[X+1+perm[Y+1+perm[Z+1+perm[W+1]]]].dot4(x-1,   y-1,   z-1,   w-1);
 
-    q = fade( fw0 );
-    r = fade( fz0 );
-    t = fade( fy0 );
-    s = fade( fx0 );
+    // Compute the fade curve value for x, y, z, w
+    var a = fade(x);
+    var b = fade(y);
+    var c = fade(z);
+    var d = fade(w);
 
-    nxyz0 = grad4(perm[ix0 + perm[iy0 + perm[iz0 + perm[iw0]]]], fx0, fy0, fz0, fw0);
-    nxyz1 = grad4(perm[ix0 + perm[iy0 + perm[iz0 + perm[iw1]]]], fx0, fy0, fz0, fw1);
-    nxy0 = lerp( q, nxyz0, nxyz1 );
+    return lerp(
+            lerp(
+                lerp(
+                    lerp(n0000, n0001, d),
+                    lerp(n0010, n0011, d),
+                    c),
 
-    nxyz0 = grad4(perm[ix0 + perm[iy0 + perm[iz1 + perm[iw0]]]], fx0, fy0, fz1, fw0);
-    nxyz1 = grad4(perm[ix0 + perm[iy0 + perm[iz1 + perm[iw1]]]], fx0, fy0, fz1, fw1);
-    nxy1 = lerp( q, nxyz0, nxyz1 );
+                lerp(
+                    lerp(n0100, n0101, d),
+                    lerp(n0110, n0111, d),
+                    c),
+                
+                b), 
 
-    nx0 = lerp ( r, nxy0, nxy1 );
+            lerp(
+                lerp(
+                    lerp(n1000, n1001, d),
+                    lerp(n1010, n1011, d),
+                    c),
+                
+                lerp(
+                    lerp(n1100, n1101, d),
+                    lerp(n1110, n1111, d),
+                    c),
 
-    nxyz0 = grad4(perm[ix0 + perm[iy1 + perm[iz0 + perm[iw0]]]], fx0, fy1, fz0, fw0);
-    nxyz1 = grad4(perm[ix0 + perm[iy1 + perm[iz0 + perm[iw1]]]], fx0, fy1, fz0, fw1);
-    nxy0 = lerp( q, nxyz0, nxyz1 );
+                b),
 
-    nxyz0 = grad4(perm[ix0 + perm[iy1 + perm[iz1 + perm[iw0]]]], fx0, fy1, fz1, fw0);
-    nxyz1 = grad4(perm[ix0 + perm[iy1 + perm[iz1 + perm[iw1]]]], fx0, fy1, fz1, fw1);
-    nxy1 = lerp( q, nxyz0, nxyz1 );
-
-    nx1 = lerp ( r, nxy0, nxy1 );
-
-    n0 = lerp( t, nx0, nx1 );
-
-    nxyz0 = grad4(perm[ix1 + perm[iy0 + perm[iz0 + perm[iw0]]]], fx1, fy0, fz0, fw0);
-    nxyz1 = grad4(perm[ix1 + perm[iy0 + perm[iz0 + perm[iw1]]]], fx1, fy0, fz0, fw1);
-    nxy0 = lerp( q, nxyz0, nxyz1 );
-
-    nxyz0 = grad4(perm[ix1 + perm[iy0 + perm[iz1 + perm[iw0]]]], fx1, fy0, fz1, fw0);
-    nxyz1 = grad4(perm[ix1 + perm[iy0 + perm[iz1 + perm[iw1]]]], fx1, fy0, fz1, fw1);
-    nxy1 = lerp( q, nxyz0, nxyz1 );
-
-    nx0 = lerp ( r, nxy0, nxy1 );
-
-    nxyz0 = grad4(perm[ix1 + perm[iy1 + perm[iz0 + perm[iw0]]]], fx1, fy1, fz0, fw0);
-    nxyz1 = grad4(perm[ix1 + perm[iy1 + perm[iz0 + perm[iw1]]]], fx1, fy1, fz0, fw1);
-    nxy0 = lerp( q, nxyz0, nxyz1 );
-
-    nxyz0 = grad4(perm[ix1 + perm[iy1 + perm[iz1 + perm[iw0]]]], fx1, fy1, fz1, fw0);
-    nxyz1 = grad4(perm[ix1 + perm[iy1 + perm[iz1 + perm[iw1]]]], fx1, fy1, fz1, fw1);
-    nxy1 = lerp( q, nxyz0, nxyz1 );
-
-    nx1 = lerp ( r, nxy0, nxy1 );
-
-    n1 = lerp( t, nx0, nx1 );
-
-    return scale(0.87 * ( lerp( s, n0, n1 ) ));
-  };
+            a)
+}
 
 })(this);

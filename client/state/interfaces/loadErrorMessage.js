@@ -16,7 +16,7 @@ export default function loadErrorMessage(msg, i) {
             break;
 
         case 2:
-            finalMsg = 'Buying a cannon failed!';
+            finalMsg = 'Purchase by <em>' + msgRole + '</em> failed!';
             break;
     }
 

@@ -456,7 +456,7 @@ io.on('connection', socket => {
 
     // check if we can "spend" the extra crew
     // (this should automatically work for a negative delta, in which case resources will just be added)
-    if( resourceCheck(socket, 3, -1, { 1: deltaCrew }) ) {
+    if( resourceCheck(socket, 3, -1, { 1: deltaCrew }, 1) ) {
       // update sails to the new level
       socket.curShip.roleStats[3].sailLvl = lvl;
     }
@@ -471,7 +471,7 @@ io.on('connection', socket => {
     let deltaCrew = (lvl*2 - socket.curShip.roleStats[3].peddleLvl*2);
 
     // check if we can "spend" the extra crew
-    if( resourceCheck(socket, 3, -1, { 1: deltaCrew }) ) {
+    if( resourceCheck(socket, 3, -1, { 1: deltaCrew }, 1) ) {
       // update sails to the new level
       socket.curShip.roleStats[3].peddleLvl = lvl;
     }
@@ -492,7 +492,7 @@ io.on('connection', socket => {
   // @parameter cannon = index of the cannon to be bought
   socket.on('buy-cannon', cannon => {
     // If we have the resources for a (cumulative) cannon purchase ...
-    if( resourceCheck(socket, 4, -1) ) {
+    if( resourceCheck(socket, 4, -1, null, 2) ) {
       // ... set cannon load to 0 (negative means unbought, positive means bought)
       socket.curShip.cannons[cannon] = 0;
     }
@@ -833,7 +833,7 @@ function createPlayerShips(room) {
   @parameter gameStart => if true, this means it is the first signal of the game, and some extra info needs to be sent.
 
 */
-function resourceCheck(socket, role, curLevel, costs = null) {
+function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
   let curShip = socket.curShip
 
   /**** GET THE COST ****/
@@ -894,8 +894,9 @@ function resourceCheck(socket, role, curLevel, costs = null) {
     // send the captain an error message (informing him of the failure) 
     // Error messages have this form: Array (2); 0 = message type, 1 = role that created the error
 
-    // TO DO: Differentiate error messages! Now it only sends type 0 -> upgrade failed
-    sendSignal(socket.mainRoom, false, 'error-msg', [0, role], false, false, curShip.captain)
+    // TO DO/REMARK: it takes the actionType (which determines the error message) directly from this function.
+    // In the future, I might want to differentiate or performe extra checks
+    sendSignal(socket.mainRoom, false, 'error-msg', [actionType, role], false, false, curShip.captain)
   }
 
   return upgradePossible;

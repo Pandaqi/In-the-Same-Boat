@@ -290,6 +290,7 @@ var gameScene = new Phaser.Class({
 	    			this.exploreIsland(tempX, tempY, island);
 	    		}
     		} else {
+    			// if this tile is not an island (a free tile, water), save it
     			freeTiles.push([tempX, tempY]);
     		}
     	}
@@ -297,7 +298,9 @@ var gameScene = new Phaser.Class({
     	// If there's at least one non-land tile, this tile should be on the edge of the island
     	if(freeTiles.length > 0) {
     		// Pick one of the free spots, add it to the possible docks
-    		this.possibleDocks.push( freeTiles[ Math.floor(Math.random() * freeTiles.length) ] )
+    		let randFreeSpot = freeTiles[ Math.floor(Math.random() * freeTiles.length) ];
+
+    		this.possibleDocks.push( randFreeSpot )
     	}
 
     	return island;
@@ -306,6 +309,8 @@ var gameScene = new Phaser.Class({
 	create: function() {
 		// create new noise object
 		//let gen = new SimplexNoise();
+		//noise = new NOISE();
+		
 		noise.seed(Math.random());
 
 		let pixelHeight = this.mapHeight*this.tileSize;
@@ -314,12 +319,38 @@ var gameScene = new Phaser.Class({
 		let halfPxHeight = 0.5*pixelHeight;
 
 		// generate map (according to noise object)
+		let x1=0, y1=0, x2=150, y2=150
 		for (let y = 0; y < this.mapHeight; y++) {
 			this.map[y] = [];
 			for (let x = 0; x < this.mapWidth; x++) { 
-				let nx = x*this.tileSize;
-				let ny = y*this.tileSize;
 
+				// OLD CODE (2D noise)
+				// let zoom = 150;
+				//let nx = x*this.tileSize / zoom;
+				//let ny = y*this.tileSize / zoom;
+				//this.map[y][x] = noise.perlin2(nx, ny)
+
+				// NEW CODE
+				// 4D noise => wraps back to 2D map, SEAMLESS
+				let s = x / this.mapWidth
+		        let t = y / this.mapHeight
+		        let dx = (x2 - x1)
+		        let dy = (y2 - y1)
+		        let pi = Math.PI
+
+		        // Walk over two independent circles (perpendicular to each other)
+		        let nx = x1 + Math.cos(s*2*pi) * dx / (2*pi)
+		        let nz = y1 + Math.sin(s*2*pi) * dy / (2*pi)
+
+		        let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
+		        let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
+
+		        console.log(nx, ny, nz, nw)
+
+				this.map[y][x] = noise.perlin4(nx, ny, nz, nw);
+				//this.map[y][x] = NOISE.Simplex.prototype.noise(nx, ny, nz, nw);
+
+		        /*
 				// subtract RADIAL GRADIENT
 				// value is the distance to the center by X and Y, and then taking the mean
 				// this is too harsh => set all center values to 0, and bump the outside values up by 0.5 => creates a nice rolloff
@@ -331,8 +362,11 @@ var gameScene = new Phaser.Class({
 				}
 
 				this.map[y][x] = noise.perlin2(nx / 150, ny / 150) - radialValue;
+				*/
 			}
 		}
+
+		this.aiShips = [];
 
 		/*** DETERMINE ISLANDS ***/
 		// loop through the map
@@ -351,33 +385,109 @@ var gameScene = new Phaser.Class({
 						// pick a random dock for this island
 						// get island size => determines dock size
 						let islandSize = this.islands[this.islands.length - 1].length;
-						this.docks.push( { pos: this.possibleDocks[ Math.floor(Math.random() * this.possibleDocks.length)], size: islandSize, deal: [[0, 4], [2, 6]] } );
+						let randDock = this.possibleDocks[ Math.floor(Math.random() * this.possibleDocks.length)]
+
+						this.docks.push( { pos: randDock, size: islandSize, deal: [[0, 4], [2, 6]] } );
+
+						// place an AI ship next to this harbor => get a free spot next to this port
+			    		// this "harborSpot" is used by the AI ships: they start on such a spot.
+			    		// I DON'T need to use these in routes: I can just chop off the final movement of the route, to ensure AI ships stop _before_ a dock (instead of _on_ it)
+			    		let harborSpot = [];
+			    		let positions = [[-1,0],[1,0],[0,1],[0,-1]]
+			    		for(let a = 0; a < 4; a++) {
+				    		let tempX = randDock[0] + positions[a][0];
+				    		let tempY = randDock[1] + positions[a][1];
+
+				    		// the map is seemless => top stitches to the bottom, left stitches to the right
+				    		if(tempX < 0) { tempX += this.mapWidth; } else if(tempX >= this.mapWidth) { tempX -= this.mapWidth;}
+				    		if(tempY < 0) { tempY += this.mapHeight; } else if(tempY >= this.mapHeight) {tempY -= this.mapHeight;}
+
+				    		if(this.map[tempY][tempX] < 0.2) {
+				    			harborSpot = [tempX, tempY]
+				    			break;
+				    		}
+				    	}
+
+				    	// ai starts next to the dock, saves the index of the dock it started (to get route), 
+				    	// TO DO: Save resources, attack/defense value, movement speed.
+				    	this.aiShips.push( { x: harborSpot[0], y: harborSpot[1], startDock: (this.docks.length - 1) });
 					}
 				}
 			}
 		}
 
-		/*** DETERMINE MONSTER POSITIONS ***/
-		let numMonsters = 10;
+		/*** Place MONSTERS and PLAYER SHIPS ***/
+		// determine amount of blocks needed
+		let numMonsters = 0;
+		let numPlayers = 0;
+		let totalBlocks = numMonsters + numPlayers;
+
+		// the ratio must be 3:1 (x to y), so, after solving the equality, this formula follows
+		let blocksX = Math.sqrt(3 * totalBlocks);
+		let blocksY = 1/3 * blocksX;
+
+		// when rounding, we might get a number too far below or above the right one
+		// that's why we need to differentiate between how we round the variables
+
+		if(Math.ceil(blocksX)*Math.floor(blocksY) < totalBlocks) {
+			blocksX = Math.floor(blocksX);
+			blocksY = Math.ceil(blocksY);
+		} else {
+			blocksX = Math.ceil(blocksX);
+			blocksY = Math.floor(blocksY);
+		}
+
+		console.log(blocksX, ' - ', blocksY)
+
+		// populate block array
+		let blockArr = [];
+		for(let i = 0; i < blocksX; i++) {
+			for(let j = 0; j < blocksY; j++) {
+				blockArr.push({ x: i, y: j });
+			}
+		}
+		
+		console.time("Placing monsters and ships");
+
+		// place monsters AND ships
 		this.monsters = [];
-		for(let i = 0; i < numMonsters; i++) {
+		this.playerShips = [];
+		for(let i = 0; i < totalBlocks; i++) {
 			// monsters only spawn in sea that is deep enough
 			// so keep trying, until we found a position
+			let randIndex = Math.floor(Math.random() * blockArr.length);
+			let randomBlock = blockArr.splice(randIndex, 1)[0];
+			let numTries = 0;
+			let maxTries = 10;
+
+			// we have a maximum of 10 tries. 
+			// If we haven't found a spot then, there's probably (almost) no correct spot within this sector
 			let rX, rY;
 			do {
-				rX = Math.floor(Math.random() * this.mapWidth);
-				rY = Math.floor(Math.random() * this.mapHeight);
-			} while (this.map[rY][rX] >= -0.2);
+				rX = Math.floor( (randomBlock.x + Math.random()) * (this.mapWidth / blocksX) );
+				rY = Math.floor( (randomBlock.y + Math.random()) * (this.mapHeight / blocksY) );
 
-			this.monsters.push( { x: rX, y: rY, id: 'mon'+i, hp: 3, atk: 5 } );
+				numTries++;
+			} while (this.map[rY][rX] >= -0.2 && numTries <= maxTries);
+
+			// If we've exceeded our tries, just pick a random spot on the MAP, not within our own sector
+			// This should always succeed, even if it takes 50 or 100 tries, and is reasonably fast
+			if(numTries > maxTries) {
+				do {
+					rX = Math.floor( Math.random() * this.mapWidth );
+					rY = Math.floor( Math.random() * this.mapHeight );
+				} while (this.map[rY][rX] >= -0.2);
+			}
+
+			if(i < numMonsters) {
+				this.monsters.push( { x: rX, y: rY, id: 'mon'+i, class: 0, hp: 3, atk: 5 } );
+			} else {
+				this.playerShips.push( { x: rX, y: rY });
+			}
+
 		}
 
-		/*** DETERMINE SHIP POSITIONS ***/
-		let numPlayerShips = 3;
-		this.playerShips = [];
-		for(let i = 0; i < numPlayerShips; i++) {
-			
-		}
+		console.timeEnd("Placing monsters and ships");
 
 		console.log(this.islands);
 		console.log(this.docks);
@@ -515,6 +625,28 @@ var gameScene = new Phaser.Class({
 
 			graphics.fillRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
 			graphics.strokeRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
+		}
+
+		// display the ships
+		for(let i = 0; i < numPlayers; i++) {
+			let curShip = this.playerShips[i];
+
+			graphics.lineStyle(2, 0x0000FF, 1.0);
+			graphics.fillStyle(0x00FFFF, 1.0);
+
+			graphics.fillRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
+			graphics.strokeRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
+		}
+
+		// display the AI ships
+		for(let i = 0; i < this.aiShips.length; i++) {
+			let curShip = this.aiShips[i];
+
+			graphics.lineStyle(2, 0x00FF00, 1.0);
+			graphics.fillStyle(0x000000, 1.0);
+
+			graphics.fillRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
+			graphics.strokeRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
 		}
 
 		window.graphics = graphics;
