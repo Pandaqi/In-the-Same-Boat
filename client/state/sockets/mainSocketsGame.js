@@ -26,7 +26,7 @@ const loadMainSockets = (socket, gm, serverInfo) => {
   // the server gives us (within data) the name of this next state
   socket.on('next-state', data => {
     // set the timer
-    serverInfo.backupTimer = data.timer
+    serverInfo.timerBackup = data.timer
     serverInfo.timer = data.timer
 
     // start the next state

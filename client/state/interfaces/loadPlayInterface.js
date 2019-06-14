@@ -537,6 +537,15 @@ export default function loadPlayInterface(num, cont) {
                 } else if(unit.myType == 1) {
                     dataURI = serverInfo.monsterDrawings[unit.index];
                     label = 'monsterNum' + unit.index;
+                } else if(unit.myType == 2) {
+                    dataURI = serverInfo.aiShipDrawings[unit.index];
+                    label = 'aiShipNum' + unit.index;
+                } else if(unit.myType == 3) {
+                    dataURI = serverInfo.dockDrawing;
+                    label = 'dock';
+
+                    //dataURI = serverInfo.dockDrawings[unit.index];
+                    //label = 'aiShipNum' + unit.index;
                 }
 
                 // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)

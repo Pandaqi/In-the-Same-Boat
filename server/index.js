@@ -62,8 +62,6 @@ io.on('connection', socket => {
       monsterTypes: [],
 
       shipDrawings: [],
-
-      docks: [],
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -1071,7 +1069,105 @@ function startTurn(room, gameStart = false) {
             pPack['shipDrawings'] = curRoom.shipDrawings;
           }
 
-          // TO DO: Check units in vicinity, send only those
+          // Get the map range AND what units are visible
+          let mapSize = 3;
+          let sightLvl = 0;
+
+          // Determine map size and visible units based on instrument level
+          switch(serverInfo.roleStats[2].lvl) {
+              case 0:
+                  mapSize = 3;
+                  sightLvl = 0;
+                  break;
+
+              case 1:
+                  mapSize = 5
+                  sightLvl = 0
+                  break;
+
+              case 2:
+                  mapSize = 5
+                  sightLvl = 1
+                  break;
+
+              case 3:
+                  mapSize = 7
+                  sightLvl = 1
+                  break;
+
+              case 4:
+                  mapSize = 7
+                  sightLvl = 2
+                  break;
+
+              case 5:
+                  mapSize = 9
+                  sightLvl = 2
+                  break;
+          }
+
+          // Loop through these tiles to find all units within them
+          // Generate a 2D array with a "personalized" view of all the units
+          let personalUnits = [];
+          let transX = curShip.x - Math.floor(0.5*mapSize), transY = curShip.y - Math.floor(0.5*mapSize);
+          
+          // The client only needs to know what image to display and where to display it. (Cartographer doesn't even need dock deals, for example.)
+          //       => The "where" is in the "x" and "y" values
+          //       => The "which drawing is it" is in the index
+          // It's created as a flat 1D array, because that is probably more efficient. (There'll probably only be a few units around you, so no need for a large 2D array.)
+
+          for(let y = 0; y < mapSize; y++) {
+            for(let x = 0; x < mapSize; x++) {
+              // transform coordinates so that our ship is centered
+              let xTile = x + transX;
+              if(xTile < 0) { xTile += room.mapWidth } else if(xTile >= room.mapWidth) { xTile -= room.mapWidth }
+
+              let yTile = y + transY;
+              if(yTile < 0) { yTile += room.mapHeight } else if(yTile >= room.mapHeight) { yTile -= room.mapHeight }
+
+              let mapTile = room.map[yTile][xTile];
+
+              // if our sight is at least level 1, we can see docks and AI ships
+              if(sightLvl >= 1) {
+                // if this tile has a dock, add it
+                if(mapTile.dock != null) {
+                  personalUnits.push({ myType: 3, index: 0, x: x, y: y });
+                }
+
+                // if this tile has ai ships, add them
+                if(mapTile.aiShips.length > 0) {
+                  // send the type of this object AND the drawing index (or "AI type")
+                  for(let aa = 0; aa < mapTile.aiShips.length; aa++) {
+                    const myIndex = mapTile.aiShips[aa];
+                    personalUnits.push({ myType: 2, index: room.aiShips[myIndex].myShipType, x: x, y: y });
+                  }
+                }
+              }
+
+              // if our sight is at least level 2, we can see monsters and player ships as well!
+              if(sightLvl >= 2) {
+                // if this tile has monsters, add them
+                if(mapTile.monsters.length > 0) {
+                  for(let aa = 0; aa < mapTile.monsters.length; aa++) {
+                    const myIndex = mapTile.monsters[aa];
+                    personalUnits.push({ myType: 1, index: room.monsters[myIndex].myMonsterType, x: x, y: y });
+                  }
+                }
+
+                // if this tile has player ships, add them
+                if(mapTile.playerShips.length > 0) {
+                  for(let aa = 0; aa < mapTile.playerShips.length; aa++) {
+                    const myIndex = mapTile.playerShips[aa];
+                    personalUnits.push({ myType: 0, index: room.playerShips[myIndex].num, x: x, y: y });
+                  }
+                }
+              }
+            }
+          }
+
+          // send the whole unit thing to the client
+          // he saves it in mapUnits, should display it properly on his map
+          pPack["mapUnits"] = personalUnits;
 
           // Send our own location (?? or is this sent along with the other units?)
           pPack["x"] = curShip.x;
@@ -1102,7 +1198,7 @@ function startTurn(room, gameStart = false) {
     // send the whole package
     sendSignal(room, false, 'pre-signal', pPack, true, true, playerID);
 
-    // if it isn't the start of the game (which would mean a "state switch" to the Play state) ...
+    // if it isn't the start of the game (which would INSTEAD mean a "state switch" to the Play state) ...
     if(!gameStart) {
       // ... tell everyone (both monitors and controllers) to start the new turn
       sendSignal(room, false, 'new-turn', {}, false, false)
@@ -1236,7 +1332,10 @@ function createShip(index) {
   @parameter uType => the type of unit (which determines where/how it's saved)
 
 */
-function placeUnit(obj, x, y, uType) {
+function placeUnit(room, obj, x, y, uType) {
+  // get the map (from this room)
+  let map = room.map;
+
   // if this object has a position ...
   if(obj.x >= 0 && obj.y >= 0) {
     // ... remove it from that position
@@ -1276,6 +1375,8 @@ function createBaseMap(room) {
   room.mapWidth = mapWidth;
   room.mapHeight = mapHeight;
 
+  room.map = []; //initialize map variable (I almost forgot)
+
   // loop through all tiles, determine noise level, and save it
   for (let y = 0; y < mapHeight; y++) {
     room.map[y] = [];
@@ -1302,8 +1403,11 @@ function createBaseMap(room) {
 /*** == Begin of DISCOVERING and SAVING islands + docks == ***/
 
 function discoverIslands(room) {
-  for (let y = 0; y < room.mapWidth; y++) {
-    for (let x = 0; x < room.mapHeight; x++) { 
+  room.islands = []; // initialize islands variable
+  room.docks = []; // initialize docks variable
+
+  for (let y = 0; y < room.mapHeight; y++) {
+    for (let x = 0; x < room.mapWidth; x++) { 
       let curTile = room.map[y][x];
 
       // if this tile is an island, but hasn't been checked yet, let's start a new island!
@@ -1314,7 +1418,7 @@ function discoverIslands(room) {
         room.islands.push( { name: 'Undiscovered Island', freeSpots: [] } );
 
         // explore this tile (which automatically leads to the whole island)
-        exploreTile(curTile, islandIndex)
+        exploreTile(room, curTile, x, y, islandIndex)
 
         // pick random spot for a dock
         // get the amount of free spots => indicator of island size => determines dock size
@@ -1339,7 +1443,7 @@ function isChecked(obj) {
   return (obj.checked == true);
 }
 
-function exploreTile(tile, islandIndex) {
+function exploreTile(room, tile, x, y, islandIndex) {
   // add this tile to the island
   tile.island = islandIndex;
 
@@ -1361,9 +1465,9 @@ function exploreTile(tile, islandIndex) {
 
     const newTile = room.map[tempY][tempX];
     // if tile is an island, and hasn't been checked, explore it!
-    if(isIsland(newTile))
+    if(isIsland(newTile)) {
       if(!isChecked(newTile)) {
-        exploreTile(newTile, islandIndex)
+        exploreTile(room, newTile, tempX, tempY, islandIndex)
       }
     } else {
       // if this tile is not an island (a free tile, water), save it
@@ -1376,7 +1480,7 @@ function exploreTile(tile, islandIndex) {
     // Pick one of the free spots, add it to the possible docks
     let randFreeSpot = freeTiles[ Math.floor(Math.random() * freeTiles.length) ];
 
-    room.islands[islandIndex].push( randFreeSpot )
+    room.islands[islandIndex].freeSpots.push( randFreeSpot )
   }
 }
 
@@ -1421,10 +1525,10 @@ function createDockRoutes(room) {
         continue;
       } else {
         // otherwise, make the connection!
-        let startPos = room.docks[i].pos;
-        let endPos = room.docks[j].pos;
+        let startPos = [room.docks[i].x, room.docks[i].y];
+        let endPos = [room.docks[j].x, room.docks[j].y];
 
-        let route = calculateRoute(startPos, endPos)
+        let route = calculateRoute(room, startPos, endPos)
 
         // shave first and last bit from the route
         route.splice(0, 1);
@@ -1444,6 +1548,8 @@ function createDockRoutes(room) {
     }
 
     // if this dock has routes, place an AI ship on each of them
+    room.aiShips = [];
+
     let numRoutes = room.docks[i].routes.length;
     if(numRoutes > 0) {
       for(let r = 0; r < numRoutes; r++) {
@@ -1457,7 +1563,7 @@ function createDockRoutes(room) {
         room.aiShips.push( { x: randRoute[0], y: randRoute[1], routeIndex: [i, r], routePointer: 0 } );
 
         // also place the AI ship on the map
-        placeUnit( { x: -1, y: -1, index: (room.aiShips.length-1) }, randRoute[0], randRoute[1], 'aiShips');
+        placeUnit(room, { x: -1, y: -1, index: (room.aiShips.length-1) }, randRoute[0], randRoute[1], 'aiShips');
       }
 
     }
@@ -1465,7 +1571,7 @@ function createDockRoutes(room) {
   }
 }
 
-function calculateRoute(start, end) {
+function calculateRoute(room, start, end) {
   let Q = new PriorityQueue();
 
   Q.put(start, 0);

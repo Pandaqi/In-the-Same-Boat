@@ -2466,24 +2466,16 @@ function loadUpgradeButton(role, level) {
 }
 
 function loadFireButton() {
-    var cannonLevel = _serverInfo.serverInfo.roleStats[4].lvl;
-    var numberOfCannons = 0;
-    for (var i = 0; i < 4; i++) {
-        if (_serverInfo.serverInfo.shipCannons[i] >= 0) {
-            numberOfCannons++;
-        }
-    }
-
     // display the word 'FIRE!' (so the user knows what this button is doing)
     var curString = '<span class="upgradeButtonLabel">FIRE!</span>';
 
     // calculate the crew costs for firing the weapons
     // formula is this: for each added level, we need 1/2 crew member more PER CANNON
     // as a result, by rounding, the required crew per cannon ranges from 1 to 4.
-    var costs = { 1: Math.round((cannonLevel + 1) / 2) * numberOfCannons
+    var costs = { 1: _serverInfo.serverInfo.firingCosts };
 
-        // display costs inside upgrade button
-    };for (var key in costs) {
+    // display costs inside upgrade button
+    for (var key in costs) {
         curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
     }
 
