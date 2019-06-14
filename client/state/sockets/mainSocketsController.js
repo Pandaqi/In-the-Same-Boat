@@ -30,7 +30,13 @@ const loadMainSockets = (socket, gm, serverInfo) => {
   // (this always happens before a state change, thus the name presignal)
   socket.on('pre-signal', data => {
   	for (var key in data) {
-  		serverInfo[key] = data[key];
+      // if it's a roleUpdate => permanently update our level!
+      if(key == 'roleUpdate') {
+        serverInfo.roleStats[serverInfo.myRole].lvl++;
+      } else {
+        // otherwise, just blindly set the key to this value
+        serverInfo[key] = data[key];
+      }
   	}
   })
 

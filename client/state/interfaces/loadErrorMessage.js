@@ -18,6 +18,10 @@ export default function loadErrorMessage(msg, i) {
         case 2:
             finalMsg = 'Purchase by <em>' + msgRole + '</em> failed!';
             break;
+
+        case 3:
+            finalMsg = "You don't have enough crew to fire the cannons!";
+            break;
     }
 
     let errorMsg = document.createElement("span")

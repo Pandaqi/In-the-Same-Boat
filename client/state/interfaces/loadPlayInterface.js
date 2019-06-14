@@ -1,6 +1,6 @@
 import { serverInfo } from '../sockets/serverInfo'
 import { SHIP_COLORS } from '../utils/shipColors'
-import { UPGRADE_DICT } from '../utils/upgradeDictionary'
+import UPGRADE_DICT from '../../../vendor/upgradeDictionary'
 import { ROLE_DICTIONARY } from '../utils/roleDictionary'
 import LOAD_ERROR_MESSAGE from './loadErrorMessage'
 
@@ -161,6 +161,23 @@ function loadUpgradeButton(role, level, targetLevel = 0) {
     return curString;
 }
 
+function loadFireButton() {
+    // display the word 'FIRE!' (so the user knows what this button is doing)
+    let curString = '<span class="upgradeButtonLabel">FIRE!</span>';
+
+    // calculate the crew costs for firing the weapons
+    // formula is this: for each added level, we need 1/2 crew member more PER CANNON
+    // as a result, by rounding, the required crew per cannon ranges from 1 to 4.
+    let costs = { 1: serverInfo.firingCosts };
+
+    // display costs inside upgrade button
+    for(let key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    }
+
+    return curString;
+}
+
 /*
     This function loads the preparation interface for each role
 
@@ -211,7 +228,8 @@ export default function loadPlayInterface(num, cont) {
 
                         let btn0 = document.createElement("button")
                         btn0.setAttribute('data-taskid', i);
-                        btn0.innerHTML = 'FIRE!'
+                        btn0.classList.add('upgradeButton');
+                        btn0.innerHTML = loadFireButton();
                         span0.appendChild(btn0);
 
                         btn0.addEventListener('click', function() {
@@ -239,6 +257,7 @@ export default function loadPlayInterface(num, cont) {
 
                         let inp1 = document.createElement("input")
                         inp1.type = "text"
+                        inp1.placeholder = "Tortuga";
                         span1.appendChild(inp1)
 
                         let btn1 = document.createElement("button")
@@ -247,6 +266,11 @@ export default function loadPlayInterface(num, cont) {
                         span1.appendChild(btn1)
 
                         btn1.addEventListener('click', function() {
+                            // prevent submitting an empty name
+                            if(inp1.value.length < 1) {
+                                return;
+                            }
+
                             // send signal to server
                             socket.emit('name-island', { name: inp1.value, island: param } );
 
@@ -394,8 +418,6 @@ export default function loadPlayInterface(num, cont) {
         //  => arrows to move around
         //  => current map level + upgrade button
         case 2:
-            // TO DO
-
             // Get the canvas back
             let canvas = document.getElementById("canvas-container")
             canvas.style.display = 'block';
@@ -457,12 +479,10 @@ export default function loadPlayInterface(num, cont) {
             for (let y = 0; y < mapSize; y++) {
                 for (let x = 0; x < mapSize; x++) {
                     let xTile = serverInfo.x - Math.floor(0.5*mapSize) + x
-                    if(xTile < 0) { xTile += globalMapWidth }
-                    else if(xTile >= globalMapWidth) { xTile -= globalMapWidth }
+                    if(xTile < 0) { xTile += globalMapWidth } else if(xTile >= globalMapWidth) { xTile -= globalMapWidth }
 
                     let yTile = serverInfo.y - Math.floor(0.5*mapSize) + y
-                    if(yTile < 0) { yTile += globalMapHeight }
-                    else if(yTile >= globalMapHeight) { yTile -= globalMapHeight }
+                    if(yTile < 0) { yTile += globalMapHeight } else if(yTile >= globalMapHeight) { yTile -= globalMapHeight }
 
                     let nx = xTile*globalTileSize;
                     let ny = yTile*globalTileSize;
@@ -491,10 +511,12 @@ export default function loadPlayInterface(num, cont) {
             canvas.myGame.world.setBounds(0, 0, mapSize*localTileSize, mapSize*localTileSize);
 
             // Display units (the server determines which ones you can see, based on range and instrument level)
+            
             // TO DO
-            // As of right now, I just display our own ship.
+            // As of right now, I just displays our own ship.
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
-            serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, name: 'myShip' } ];
+            // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
+            serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
 
             let u = serverInfo.mapUnits;
             for(let i = 0; i < u.length; i++) {
@@ -504,15 +526,21 @@ export default function loadPlayInterface(num, cont) {
                 let x = unit.x - serverInfo.x + Math.floor(0.5*mapSize);
                 let y = unit.y - serverInfo.y + Math.floor(0.5*mapSize);
 
-                // determine label for this sprite (needs to be unique for unique stuff like sea monsters, but consistent)
-                let label = unit.name;
-
-                // this label also functions as the key, used to get the correct image out of the serverInfo information
-                // this is always a dataURI, even for stuff that isn't drawn by players. (I do this to keep the code clean and consistent.)
-                let cacheKey = serverInfo.unitImages[label];
+                // Fetch image from a different list, based on unit type (this is always a dataURI, even for stuff that isn't drawn by the players)
+                // ALso determine the UNIQUE label for this unit type
+                // 0 = ship, 1 = monster, 2 = ai ship, 3 = dock
+                let dataURI;
+                let label;
+                if(unit.myType == 0) {
+                    dataURI = serverInfo.shipDrawings[unit.index];
+                    label = 'shipNum' + unit.index; 
+                } else if(unit.myType == 1) {
+                    dataURI = serverInfo.monsterDrawings[unit.index];
+                    label = 'monsterNum' + unit.index;
+                }
 
                 // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)
-                dynamicLoadImage(canvas.myGame, { x: (x + 0.5)*localTileSize, y: (y + 0.5)*localTileSize }, { width: localTileSize, height: localTileSize }, label, cacheKey)
+                dynamicLoadImage(canvas.myGame, { x: (x + 0.5)*localTileSize, y: (y + 0.5)*localTileSize }, { width: localTileSize, height: localTileSize }, label, dataURI)
             }
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
@@ -538,12 +566,6 @@ export default function loadPlayInterface(num, cont) {
         //  => horizontal slider for choosing paddle strength
         //  => current sail level + upgrade button
         case 3:
-            // TO DO
-            // When server receives the signal, check if there's enough CREW for this operation
-            // (Release crew from the previous setting, then subtract for the new one.)
-            // If there is, the setting is applied, and the updated crew information is sent to the captain
-            // If there isn't ... error message?
-
             // Display ship bg (side-view, sails alongside slider)
             let bgShipSide = document.createElement("img");
             bgShipSide.src = "assets/shipGhostSide.png";
@@ -684,8 +706,6 @@ export default function loadPlayInterface(num, cont) {
         //  => display ship (top-view; shows where each cannon is)
         //  => display all cannons (bought or not, current load, loading button)
         case 4:
-            // TO DO
-
             // Display ship (top-view, cannons numbered)
             let shipImg = document.createElement("img");
             shipImg.src = "assets/shipGhostTopCannons.png";
@@ -727,6 +747,11 @@ export default function loadPlayInterface(num, cont) {
 
                         // set load to 0 (if its positive, the cannon has been bought)
                         serverInfo.shipCannons[i] = 0;
+
+                        // display a message (to fill space AND to notify the user that he/she did something)
+                        let tempParagraph = document.createElement('p');
+                        tempParagraph.innerHTML = 'A purchase request has been sent.';
+                        cannonDiv.appendChild(tempParagraph);
 
                         // remove this button
                         this.remove();

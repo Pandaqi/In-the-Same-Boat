@@ -10,7 +10,8 @@ Server.listen(PORT, () => console.log('Game server running on:', PORT))
 // this variable will hold all current game rooms (and thus all games that are currently being played)
 const rooms = {}
 
-const UPGRADE_DICT = require('./upgradeDictionary.js')
+const UPGRADE_DICT = require('../vendor/upgradeDictionary.js')
+const noise = require('../vendor/perlinImproved.js');
 
 io.on('connection', socket => {
 
@@ -56,6 +57,13 @@ io.on('connection', socket => {
 
       prepProgress: 0,
       prepSkip: true,
+
+      monsterDrawings: [],
+      monsterTypes: [],
+
+      shipDrawings: [],
+
+      docks: [],
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -441,6 +449,13 @@ io.on('connection', socket => {
     sendSignal(room, true, 'player-updated-profile', curPlayer)
   })
 
+  /***
+   *
+   * These signals below are very specific signals for each role 
+   * (adjusting the compass, lowering the sails, firing the cannons, buying a new cannon, etc.)
+   *
+   */
+
   // When someone updated their compass
   // @parameter orientation = desired orientation of the ship (integer between 0 and 8)
   socket.on('compass-up', orientation => {
@@ -501,14 +516,29 @@ io.on('connection', socket => {
   // When someone orders their ship to fire
   // This signal is dataless, that's why it has a function without parameters
   socket.on('fire', function() {
-    // Remember that the ship will fire, when the new turn starts
-    socket.curShip.willFire = true;
+    // calculate required resources
+    let cannonLevel = socket.curShip.roleStats[4].lvl;
+    let numberOfCannons = 0;
+    for(let i = 0; i < 4; i++) {
+        if(socket.curShip.cannons[i] >= 0) {
+            numberOfCannons++;
+        }
+    }
+
+    let costs = { 1: Math.round((cannonLevel + 1) / 2) * numberOfCannons }
+
+    // Check if we have the resources to fire
+    if( resourceCheck(socket, 0, -1, costs, 3) ) {
+      // Remember that the ship will fire, when the new turn starts
+      socket.curShip.willFire = true;
+    }
+
   });
 
   socket.on('name-island', data => {
     // TO DO
     // data.name holds the desired name (a string)
-    // data.island holds the index of the island to be name (an integer)
+    // data.island holds the index of the island to be named (an integer)
   });
 
   socket.on('dock-trade', function() {
@@ -532,6 +562,7 @@ io.on('connection', socket => {
     if( resourceCheck(socket, role, curLevel) ) {
       // ... execute upgrade
       curShip.roleStats[role].lvl += 1;
+      curShip.roleStates[role].lvlUp = true;
     }
   })
 
@@ -544,31 +575,44 @@ io.on('connection', socket => {
     // The info submitted depends on the role (captain does title and ship, for example)
     // ... but it's ALWAYS an object 
     let room = socket.mainRoom
-    let curPlayer = rooms[room].players[socket.id]
-
-    // Find the corresponding SHIP 
-    let curShip = curPlayer.myShip;
+    let curRoom = rooms[room]
 
     // ... sets the right values on this ship
     for(var key in state) {
       // if it's a resource ... add it!
       if(key.substring(0,3) == 'res') {
         let i = parseInt( key.substring(3,4) ); // which resource? numerical index
-        rooms[room].playerShips[curShip].resources[i] += parseInt( state[key] );
+        socket.curShip.resources[i] += parseInt( state[key] );
 
+      // if it's a monster drawing, add it to the monster _drawings_ array
+      } else if(key == 'shipMonsterDrawing') {
+        curRoom.monsterDrawings.push( state[key] );
+
+      // if it's a monster title, add the monster (with that title) to the array with POSSIBLE monsters (not actual monsters)
+      // NOTE: Because title + drawing are sent at the same time, they will automatically receive the same index
+      } else if(key == 'shipMonster') {
+        curRoom.monsterTypes.push( state[key] );
+        //curRoom.monsters.push( createMonster( state[key], curRoom.monsters.length ) );
+
+      } else if(key == 'shipDrawing') {
+        // save the ship's drawing, at the correct index
+        curRoom.shipDrawings[socket.curShip.num] = state[key];
+
+        // also save the drawing on the ship itself, for easy reference
+        socket.curShip[key] = state[key];
       // otherwise, just copy the VALUE directly to the ship, and put it on index KEY
       } else {
-       rooms[room].playerShips[curShip][key] = state[key];
+        socket.curShip[key] = state[key];
       }     
     }
 
     // ... and saves preparation progress
-    rooms[room].prepProgress++;
+    curRoom.prepProgress++;
     let tempProgress = rooms[room].prepProgress;
 
     // if everyone has submitted their preparation, start the game immediately!
     // preparation needed = number of ships * number of roles per ship
-    let prepNeeded = rooms[room].playerShips.length * 5;
+    let prepNeeded = curRoom.playerShips.length * 5;
 
     if(tempProgress == prepNeeded) {
       // START THE GAME!
@@ -615,7 +659,6 @@ io.on('connection', socket => {
     // clear player signals
     for(let player in curRoom.players) { 
       curRoom.players[player].preSignal = null
-      curRoom.players[player].done = false
     }
     
     switch(nextState) {
@@ -643,7 +686,7 @@ io.on('connection', socket => {
         timer = 30;
         break;
 
-      // If the next state is the game over (aka "end of round") state ...
+      // If the next state is the game over state ...
       case 'Over':
         // TO DO
         break;
@@ -731,40 +774,20 @@ function createPlayerShips(room) {
   const num = room.playerCount;
   let numberBoats = Math.round(Math.sqrt(num)) + Math.round( (Math.random()-0.5)*Math.sqrt(num) )
 
+  // there can never be fewer than two boats
   if(numberBoats < 2) {
     numberBoats = 2;
   }
 
+  // exception: if 1 player, number of boats is always 1. For debugging on my own :(
   if(num == 1) {
     numberBoats = 1;
   }
 
-  /* 
-    Create a ship object for each ship
-    Each ship object has:
-    => index number (determines color, makes referencing easier)
-    => list of players
-    => coordinates (tile => x,y)
-    => orientation (number from 0 to 7; 0 is pointing to the right)
-    => resources (gold, crew, wood, guns)
-    => health 
-    => roleStats (the level of each role's instrument)
-   */
+  // create ship (object) for each ship
   room.playerShips = [];
   for(let i = 0; i < numberBoats; i++) {
-    let newShip = { 
-      num: i, 
-      players: [], 
-      resources: [5,1,1,0], 
-      x: 0, 
-      y: 0, 
-      orientation: 0, 
-      health: 100, 
-      roleStats: [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0, sailLvl: 0, peddleLvl: 0 }, { lvl: 0 } ], 
-      cannons: [2, -1, -1, -1]
-    }
-
-    room.playerShips.push(newShip);
+    room.playerShips.push( createShip(i) );
   }
 
   // now we loop over it and determine player distribution
@@ -924,23 +947,50 @@ function startTurn(room, gameStart = false) {
    => New deals at the docks
    => ...
 
-  Only information that has _CHANGED_ is sent. 
+  In many cases, only information that has _CHANGED_ is sent. 
   
   */
 
   // variable that will hold the monitor package (thus mPack)
   let mPack = {}
 
-  // at game start, we need to send initial information
-  //  => seed of the map
-  //  => locations/deals on docks (island groups only need to be saved on server)
-  //  => locations of all units
-  //  => overview of players and their ships (+ titles/flags)
+  /*
 
+    This is where GAME INITIALIZATION takes place
+
+    The comments speak for themselves. 
+    It simply creates the map and everything on it, including resources, docks (and their trading routes), etc.
+
+  */
   // TO DO
   if(gameStart) {
+    // send the map seed
     mPack["mapSeed"] = curRoom.mapSeed;
+
+    // create the actual BASE MAP (sea and islands)
+    createBaseMap(curRoom)
+
+    // discover ISLANDS
+    // these only need to be saved inside the map (for each tile that's part of an island, save its island index)
+    // this function also adds a DOCK to each island
+    discoverIslands(curRoom)
+
+    // create routes between docks
+    // save the routes themselves within the dock
+    // create an AI ship for each dock, pick a random route, place the ship at the start of the route
+    createDockRoutes(curRoom);
+
+    // create all monsters (individual array)
+
+    // distribute MONSTERS and PLAYERS (both already have their individual array; update that and now place them inside the map)
+
+    // add ALL this information to the "mPackage": the seed, the drawings of creatures/ships, dock position, etc.
+
   }
+
+  // send UPDATED information about all units
+  //  => their new position
+  //  => ?? anything else ??
 
   // send the mPack to all monitors
   sendSignal(room, true, 'pre-signal', mPack, true)
@@ -995,54 +1045,64 @@ function startTurn(room, gameStart = false) {
           pPack["resources"] = curShip.resources;
 
           // List of current tasks
+          // TO DO: Determine the current tasks
+          // TO DO: If one of the tasks is FIRING, we also need to send cannon info (weaponeer level AND cannon loads)
           pPack["taskList"] = [[0, 0], [1, 5], [2, 7]];
+
+          // reduce function calculates the number of cannons (positive loads), multiplies by (half) the current weaponeer value
+          let numCannons = curShip.cannons.reduce(function(tot, cur) { if(cur >= 0) { return tot + 1; } else { return tot; } }, 0)
+          pPack["firingCosts"] = Math.round((curShip.roleStats[4].lvl + 1) / 2) * numCannons;
           break;
 
         // First Mate
         case 1:
           // Current ship orientation
           pPack["orientation"] = curShip.orientation;
-
           break;
 
         // Cartographer
         case 2:
-          // Map seed and other static info is already known
-          // TO DO: Check units in vicinity, send them to him
-
-          // Only at game start, send the map seed and our own ship's drawing
-          // TO DO: We probably want to send the monsters/other player ships in advance here?
+          // Only at game start, send initial map information (like the seed and some drawings)
           if(gameStart) {
             pPack["mapSeed"] = curRoom.mapSeed;
-            pPack['shipDrawing'] = curShip.shipDrawing;
+
+            // send all drawings in advance (this includes our own ship's drawing)
+            pPack['monsterDrawings'] = curRoom.monsterDrawings;
+            pPack['shipDrawings'] = curRoom.shipDrawings;
           }
+
+          // TO DO: Check units in vicinity, send only those
 
           // Send our own location (?? or is this sent along with the other units?)
           pPack["x"] = curShip.x;
           pPack["y"] = curShip.y;
-
           break;
 
         // Sailor
         case 3:
           // TO DO?? I think the sailor doesn't need to know anything extra
-
+          // Perhaps, they could receive the previous setting on their sails, but doesn't feel really necessary
           break;
 
         // Weapon Specialist
         case 4:
-          // All cannons have the same level; this level is known by the player??
           // Send the correct cannon load (just a number, negative means the cannon hasn't been bought yet)
           pPack["shipCannons"] = curShip.cannons;
-
           break;
+      }
+
+      // If this role was upgraded last turn, solidify the upgrade (this is true for ALL roles)
+      // Send the new level back to the role
+      if(curShip.roleStats[role].lvlUp) {
+        pPack["roleUpdate"] = true;
+        curShip.roleStats[role].lvlUp = false;
       }
     }
 
     // send the whole package
     sendSignal(room, false, 'pre-signal', pPack, true, true, playerID);
 
-    // if it isn't the start of the game (and thus a "state switch" to the Play state) ...
+    // if it isn't the start of the game (which would mean a "state switch" to the Play state) ...
     if(!gameStart) {
       // ... tell everyone (both monitors and controllers) to start the new turn
       sendSignal(room, false, 'new-turn', {}, false, false)
@@ -1065,9 +1125,9 @@ function finishTurn(room) {
 
   // Fight battles
 
-  // Move ships
+  // Move player ships
 
-  // Solidify upgrades (to instruments)
+  // Move monsters + AI ships
 
   // Replenish crew
 
@@ -1076,3 +1136,468 @@ function finishTurn(room) {
   // Start next turn
   startTurn(room)
 }
+
+/*
+
+  This function creates a new MONSTER (object)
+
+  Each monster has the following properties:
+    => INDEX (within the monster array)
+    => NAME
+    => COORDINATES (x and y)
+    => LEVEL
+    => DNA
+
+  The level ranges from 0 up to (and including) 4. With each level, all stats of the monster increase.
+
+  The dna determines the "specialization" (or "type") of the monster. It controls these statistics:
+    => Attack
+    => Attack range
+    => Health
+    => Speed (movement)
+    => Loot (size)
+
+  If the dna has a 0 for a certain value, it gets the minimum value (for the level).
+  If it has a 1, it has talent for this, and gets a buff for this property.
+
+*/
+function createMonster(name, index) {
+  // TO DO: Stats are differentiated, once in combat, based on the monster LEVEL and DNA (or "fingerprint")
+
+  // create dna
+  // NOTE: Right now, points are distributed equally. No property has more than 1, or less than 0.
+  // In the future, I might allow more extreme distributions like [3,0,0,0,0]
+  let pointsLeft = 3;
+  let dna = [0,0,0,0,0];
+  while(pointsLeft > 0) {
+    // pick random part of the dna
+    let rDna = Math.floor(Math.random() * dna.length);
+
+    // if that part hasn't been improved yet, improve it
+    if(dna[rDna] == 0) {
+      dna[rDna]++;
+      pointsLeft--;
+    }
+  }
+
+  return {
+    index: index,
+    title: name,
+    x: 0,
+    y: 0,
+    level: Math.round(Math.random() * 4), // generates a random level for this monster
+    dna: dna
+  }
+}
+
+/* 
+  This function creates a new SHIP (object)
+
+  Each ship object has:
+  => index number (determines color, makes referencing easier)
+  => list of players
+  => coordinates (tile => x,y)
+  => orientation (number from 0 to 7; 0 is pointing to the right)
+  => resources (gold, crew, wood, guns)
+  => health 
+  => roleStats (the level of each role's instrument)
+  => cannons (the load of cannons; negative indicates the cannon hasn't been bought yet)
+ */
+function createShip(index) {
+
+  return {
+    num: index, 
+    players: [], 
+    resources: [5,1,1,0], 
+    x: 0, 
+    y: 0, 
+    orientation: 0, 
+    health: 100, 
+    roleStats: [
+      { lvl: 0, lvlUp: false }, 
+      { lvl: 0, lvlUp: false }, 
+      { lvl: 0, lvlUp: false }, 
+      { lvl: 0, lvlUp: false, sailLvl: 0, peddleLvl: 0 }, 
+      { lvl: 0, lvlUp: false } ], 
+    cannons: [2, -1, -1, -1]
+  }
+
+}
+
+/*
+
+  This function moves an object across the map
+  
+  First, it removes the object from its previous position. (If there is one.)
+  Then, it adds the object into the new tile
+
+  @parameter obj => the object
+  @parameter x, y => the new (desired) map location
+  @parameter uType => the type of unit (which determines where/how it's saved)
+
+*/
+function placeUnit(obj, x, y, uType) {
+  // if this object has a position ...
+  if(obj.x >= 0 && obj.y >= 0) {
+    // ... remove it from that position
+    let unitsList = map[obj.y][obj.x][uType];
+
+    // search the units list, 
+    // find one with the same INDEX (must be the same object; units of same type are stored in indexed array), 
+    // splice it from the array
+    for(let i = 0; i < unitsList.length; i++) {
+      if(unitsList[i].index == obj.index) {
+        unitsList.splice(i,1);
+        break;
+      }
+    }
+  }
+
+  // now place it into its desired position
+  map[y][x][uType].push(obj.index);
+}
+
+/*
+
+  This function creates the base map from 4D Perlin noise
+  This just creates sea/islands (including deep sea and shores) and saves them in the map variable.
+
+  These values will be added as objects, because each tile (during the game) also saves who/what is on it
+
+*/
+function createBaseMap(room) {
+  // seed the noise object (with the mapSeed)
+  noise.seed(room.mapSeed);
+
+  // initialize some variables determining map size (and zoom level)
+  let x1 = 0, y1 = 0, x2 = 10, y2 = 10
+  let mapWidth = 60, mapHeight = 30;
+
+  room.mapWidth = mapWidth;
+  room.mapHeight = mapHeight;
+
+  // loop through all tiles, determine noise level, and save it
+  for (let y = 0; y < mapHeight; y++) {
+    room.map[y] = [];
+    for (let x = 0; x < mapWidth; x++) { 
+      // 4D noise => wraps back to 2D map with seamless edges
+      let s = x / mapWidth
+      let t = y / mapHeight
+      let dx = (x2 - x1)
+      let dy = (y2 - y1)
+      let pi = Math.PI
+
+      // Walk over two independent circles (perpendicular to each other)
+      let nx = x1 + Math.cos(s*2*pi) * dx / (2*pi)
+      let nz = y1 + Math.sin(s*2*pi) * dy / (2*pi)
+
+      let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
+      let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
+
+      room.map[y][x] = { val: noise.perlin4(nx, ny, nz, nw), monsters: [], ships: [], aiShips: [] };
+    }
+  }
+}
+
+/*** == Begin of DISCOVERING and SAVING islands + docks == ***/
+
+function discoverIslands(room) {
+  for (let y = 0; y < room.mapWidth; y++) {
+    for (let x = 0; x < room.mapHeight; x++) { 
+      let curTile = room.map[y][x];
+
+      // if this tile is an island, but hasn't been checked yet, let's start a new island!
+      if(isIsland(curTile) && !isChecked(curTile)) {
+
+        // create new island (with unknown name, and no free spots/dock known)
+        let islandIndex = room.islands.length;
+        room.islands.push( { name: 'Undiscovered Island', freeSpots: [] } );
+
+        // explore this tile (which automatically leads to the whole island)
+        exploreTile(curTile, islandIndex)
+
+        // pick random spot for a dock
+        // get the amount of free spots => indicator of island size => determines dock size
+        let islandSize = room.islands[islandIndex].freeSpots.length;
+        let randDock = room.islands[islandIndex].freeSpots[ Math.floor(Math.random() * islandSize)]
+
+        // create new DOCK OBJECT
+        room.docks.push( { x: randDock.x, y: randDock.y, size: islandSize, deal: [[0, 4], [2, 6]] } );
+
+        // add this object into the map (only by index)
+        room.map[y][x].dock = room.docks.length - 1;
+      }
+    }
+  }
+}
+
+function isIsland(obj) {
+  return obj.val >= 0.2;
+}
+
+function isChecked(obj) {
+  return (obj.checked == true);
+}
+
+function exploreTile(tile, islandIndex) {
+  // add this tile to the island
+  tile.island = islandIndex;
+
+  // mark this tile as checked
+  tile.checked = true;
+
+  // check tiles left/right/top/bottom
+  // TO DO: We don't check diagonally now. Should we?
+  const positions = [[-1,0],[1,0],[0,1],[0,-1]]
+  let freeTiles = []
+
+  for(let a = 0; a < 4; a++) {
+    let tempX = x + positions[a][0];
+    let tempY = y + positions[a][1];
+
+    // the map is seemless => top stitches to the bottom, left stitches to the right
+    if(tempX < 0) { tempX += room.mapWidth; } else if(tempX >= room.mapWidth) { tempX -= room.mapWidth;}
+    if(tempY < 0) { tempY += room.mapHeight; } else if(tempY >= room.mapHeight) { tempY -= room.mapHeight;}
+
+    const newTile = room.map[tempY][tempX];
+    // if tile is an island, and hasn't been checked, explore it!
+    if(isIsland(newTile))
+      if(!isChecked(newTile)) {
+        exploreTile(newTile, islandIndex)
+      }
+    } else {
+      // if this tile is not an island (a free tile, water), save it
+      freeTiles.push({ x: tempX, y: tempY });
+    }
+  }
+
+  // If there's at least one non-land tile, this tile should be on the edge of the island
+  if(freeTiles.length > 0) {
+    // Pick one of the free spots, add it to the possible docks
+    let randFreeSpot = freeTiles[ Math.floor(Math.random() * freeTiles.length) ];
+
+    room.islands[islandIndex].push( randFreeSpot )
+  }
+}
+
+/*** == END of island code == ***/
+
+
+/*** == BEGIN of creating the ROUTES between docks on the map + placing an AI ship next to them == ***/
+function createDockRoutes(room) {
+  let numDocks = room.docks.length;
+  let connectionArray = [];
+
+  // the "connection array" contains whether two docks are connected or not
+  // this way, we don't need to search through all the docks all the time, we just check this array to see if there's a connection
+  for(let i = 0; i < numDocks; i++) {
+    // create an array filled with "false" values
+    connectionArray[i] = Array(numDocks).fill(false);
+
+    // we DO have a connection to ourselves
+    connectionArray[i][i] = true; 
+
+    // initialize routes property for this dock (used in the next loop)
+    room.docks[i].routes = [];
+  }
+
+  for(let i = 0; i < numDocks; i++) {
+    let curNumRoutes = room.docks[i].routes.length; // routes we already received from other docks
+    let maxRoutesHarbor = Math.round( Math.sqrt(room.docks[i].size)*0.25 )// max routes our harbor can/should handle
+
+    let maxRoutes = Math.min(room.docks.length - 1, maxRoutesHarbor); // max routes we would be able to find, in TOTAL, across the whole map
+    let routesToDo = 0;
+
+    if(curNumRoutes < maxRoutes) {
+      routesToDo = maxRoutes - curNumRoutes;
+    }
+
+    while(routesToDo > 0) {
+      // pick a random dock
+      let j = Math.floor( Math.random() * room.docks.length) ;
+
+      // if there's already a connection, continue immediately
+      if(connectionArray[i][j]) {
+        continue;
+      } else {
+        // otherwise, make the connection!
+        let startPos = room.docks[i].pos;
+        let endPos = room.docks[j].pos;
+
+        let route = calculateRoute(startPos, endPos)
+
+        // shave first and last bit from the route
+        route.splice(0, 1);
+        route.splice( (route.length-1) , 1);
+
+        // save it on both docks (but in REVERSE on the second)
+        room.docks[i].routes.push( { route: route, target: j } );
+        room.docks[j].routes.push( { route: route.slice().reverse(), target: i } );
+
+        // save both connections in the connection Array
+        connectionArray[i][j] = true;
+        connectionArray[j][i] = true;
+
+        // we've finished one route!
+        routesToDo--;
+      }
+    }
+
+    // if this dock has routes, place an AI ship on each of them
+    let numRoutes = room.docks[i].routes.length;
+    if(numRoutes > 0) {
+      for(let r = 0; r < numRoutes; r++) {
+        let randRoute = room.docks[i].routes[r].route[0]; // immediately fetch the first (0 index) step of the route
+
+        // save the dock and route index where you started
+        // this is used to follow the route
+
+        // TO DO: Give the ship some more properties (outside of its position and route)
+        // This creates a new AI SHIP OBJECT (create function for this?)
+        room.aiShips.push( { x: randRoute[0], y: randRoute[1], routeIndex: [i, r], routePointer: 0 } );
+
+        // also place the AI ship on the map
+        placeUnit( { x: -1, y: -1, index: (room.aiShips.length-1) }, randRoute[0], randRoute[1], 'aiShips');
+      }
+
+    }
+    
+  }
+}
+
+function calculateRoute(start, end) {
+  let Q = new PriorityQueue();
+
+  Q.put(start, 0);
+
+  // Maps are fast for searching, need unique values, AND can use an object as the key
+  let came_from = new Map();
+  let cost_so_far = new Map();
+  let tiles_checked = new Map();
+
+  let startLabel = start[0] + "-" + start[1];
+
+  came_from.set(startLabel, null);
+  cost_so_far.set(startLabel, 0);
+
+  let reachable = false;
+
+  while( !Q.isEmpty() ) {
+    let current = Q.get();
+
+    let currentLabel = current[0] + "-" + current[1]
+    tiles_checked.set(currentLabel, true);
+      
+    // stop when we've found the first "shortest route" to our destination
+    if(current[0] == end[0] && current[1] == end[1]) { reachable = true; break; }
+
+    // update all neighbours (to new distance, if run through the current tile)
+    const positions = [[-1,0],[1,0],[0,1],[0,-1]];
+    for(let a = 0; a < 4; a++) {
+      let tempX = current[0] + positions[a][0];
+      let tempY = current[1] + positions[a][1];
+
+      if(tempX < 0) { tempX += room.mapWidth; } else if(tempX >= room.mapWidth) { tempX -= room.mapWidth; }
+      if(tempY < 0) { tempY += room.mapHeight; } else if(tempY >= room.mapHeight) { tempY -= room.mapHeight;}
+
+      // don't consider tiles that aren't sea
+      if(isIsland(room.map[tempY][tempX].val >= 0.2)) {
+        continue;
+      }
+
+      // calculate the new cost
+      // movement is always 1, in our world 
+      let new_cost = cost_so_far.get(currentLabel) + 1;
+
+      // get the tile
+      let next = [tempX, tempY];
+      let nextLabel = tempX + "-" + tempY;
+
+      // if the tile hasn't been visited yet, OR the new cost is lower than the current one, revisit it and save the update!
+      if(!cost_so_far.has(nextLabel) || new_cost < cost_so_far.get(nextLabel) ) {
+        if(tiles_checked.has(nextLabel)) {
+          continue;
+        }
+
+        // save the lower cost
+        cost_so_far.set(nextLabel, new_cost)
+
+        // calculate heuristic
+        // 1) Calculate Manhattan distance to target tile
+        let dX = Math.abs(tempX - end[0]);
+        if(dX > 0.5*room.mapWidth) { dX = (room.mapWidth - dX) }
+
+        let dY = Math.abs(tempY - end[1]);
+        if(dY > 0.5*room.mapHeight) { dY = (room.mapHeight - dY) }
+
+        // 2) Shallow water has a higher cost than deep water
+        
+        let heuristic = (dX + dY) + room.map[tempY][tempX].val*20;
+
+        // add this tile to the priority queue
+        // 3) Tie-breaker: Add a small number (1.01) to incentivice the algorithm to explore tiles more near the target, instead of at the start
+        let priority = new_cost + heuristic * (1.0 + 0.01);
+        Q.put(next, priority);
+
+        // save where we came from
+        came_from.set(nextLabel, current)
+      }
+    }
+  }
+
+  // if it was unreachable, tell that
+  // TO DO: It doesn't throw the route away or anything, might be dangerous. Write exception for this?
+  if(!reachable) {
+    console.log("This target was not reachable");
+    return [];
+  }
+
+  // reconstruct the path
+  let path = []
+  let current = end
+
+  while((current[0] != start[0] || current[1] != start[1])) {
+      path.push(current)
+      current = came_from.get(current[0] + "-" + current[1])
+  }
+
+  path.push(start); // add the start position to the path
+  path.reverse(); // reverse the array (default goes backwards; the reverse should go forward)
+
+  return path
+}
+
+class PriorityQueue {
+
+  constructor() {
+    this.elements = [];
+  }
+
+  isEmpty() {
+    return (this.elements.length == 0);
+  }
+
+  put(item, priority) {
+    // check if it already exists
+    // THAT SHOULDN'T MATTER
+
+    // loop through current list
+    let insertIndex = 0;
+    while(insertIndex < this.elements.length) {
+      if(this.elements[insertIndex][0] >= priority) {
+        break;
+      }
+      insertIndex++;
+    }
+
+    // add this element!
+    this.elements.splice(insertIndex, 0, [priority, item]);
+  }
+
+  get() {
+    // remove first element from elements, return it
+    return this.elements.shift()[1];
+  }
+}
+
+/*** == END of trading routes (and AI ship placement) code == ***/

@@ -25,9 +25,7 @@ var gameScene = new Phaser.Class({
     	this.docks = [];
     },
 
-    calculateRouteAlternative: function(start, end) {
-    	console.log("Trying to get from " + start + " to " + end);
-
+    calculateRoute: function(start, end) {
     	let Q = new PriorityQueue();
 
     	Q.put(start, 0);
@@ -42,7 +40,7 @@ var gameScene = new Phaser.Class({
     	came_from.set(startLabel, null);
 		cost_so_far.set(startLabel, 0);
 
-		let cc = 0;
+		let reachable = false;
 
 		while( !Q.isEmpty() ) {
 			let current = Q.get();
@@ -51,7 +49,7 @@ var gameScene = new Phaser.Class({
 			tiles_checked.set(currentLabel, true);
         
         	// stop when we've found the first "shortest route" to our destination
-	        if(current[0] == end[0] && current[1] == end[1]) { break; }
+	        if(current[0] == end[0] && current[1] == end[1]) { reachable = true; break; }
 
 	        // update all neighbours (to new distance, if run through the current tile)
 			let positions = [[-1,0],[1,0],[0,1],[0,-1]];
@@ -107,6 +105,12 @@ var gameScene = new Phaser.Class({
 			}
 		}
 
+		// if it was unreachable, tell that
+		if(!reachable) {
+			console.log("This target was not reachable");
+			return [];
+		}
+
 		// reconstruct the path
 		let path = []
 		let current = end
@@ -120,137 +124,6 @@ var gameScene = new Phaser.Class({
 	    path.reverse(); // reverse the array (default goes backwards; the reverse should go forward)
 
 		return path
-    },
-
-    calculateRoute: function(start, end) {
-		let Q = { }
-		let prev = { }
-
-		// PROFILER: This part takes about 1-2 ms
-		// turn the 2D grid into nodes
-		for(let y = 0; y < this.map.length; y++) {
-    		for(let x = 0; x < this.map[y].length; x++) {
-    			// only save the tile if it's actually sea (and not land)
-    			// remember that the j and i are switched; j = x, i = y
-    			if(this.map[y][x] < 0.2) {
-    				let label = x + "," + y;
-
-    				Q[label] = Infinity; // Q functions as the "dist" variable, the x and y can be gathered from the KEY
-    			}
-    		}
-    	}
-
-    	// PROFILER: This part takes about 50-200 ms
-    	// distance from start to start is, obviously, 0
-    	let startLabel = start[0] + "," + start[1]
-    	Q[ startLabel ] = 0;
-		
-		// normally, you'd go through the vertex set, until it is empty
-		// because we have a 2D grid, we can do it differently:
-		// check every tile left/right/top/bottom that hasn't been checked yet
-		let verticesLeft = Object.keys(Q).length;
-		while(verticesLeft > 0) {
-			// find the tile with closest distance to start tile
-			// start on a random tile, otherwise we might not find anything
-			let startKeys = Object.keys(Q);
-			let shortestKey = startKeys[ startKeys.length * Math.random() << 0]
-    		let shortestDist = Q[shortestKey]
-
-			for(let key in Q) {
-				if(Q[key] < shortestDist) {
-					shortestDist = Q[key];
-					shortestKey = key;		
-				}
-			}
-
-			// derive position + distance (as object) from shortestKey
-			let getPos = shortestKey.split(",");
-			let u = { x: parseInt(getPos[0]), y: parseInt(getPos[1]), dist: shortestDist}
-
-			// remove this tile from the Queue
-			delete Q[shortestKey];
-			verticesLeft--;
-
-			// terminate if we've found the target
-			if(u.x == end[0] && u.y == end[1]) {
-				break;
-			}
-
-			// update all neighbours (to new distance, if run through u)
-			let positions = [[-1,0],[1,0],[0,1],[0,-1]]
-			for(let a = 0; a < 4; a++) {
-				let tempX = u.x + positions[a][0];
-	    		let tempY = u.y + positions[a][1];
-
-	    		// the map is seemless => top stitches to the bottom, left stitches to the right
-	    		if(tempX < 0) { 
-	    			tempX += this.mapWidth; 
-	    		} else if(tempX >= this.mapWidth) {
-	    			tempX -= this.mapWidth;
-	    		}
-
-	    		if(tempY < 0) {
-	    			tempY += this.mapHeight;
-	    		} else if(tempY >= this.mapHeight) {
-	    			tempY -= this.mapHeight;
-	    		}
-
-	    		let newLabel = tempX + "," + tempY
-
-	    		// if the vertex isn't in our "queue to check", we don't need to update it
-	    		// 
-	    		if(!(newLabel in Q)) {
-	    			continue;
-	    		} else {
-	    			// This heuristic helps speed up the search 
-
-	    			// Nodes that are further from our destination node are less likely to be the right ones
-	    			// TO DO: Additionally, ties are broken 
-
-	    			// map is seamless, so distance depends based on the side you're on
-	    			let dX = Math.abs(tempX - end[0]);
-	    			if(dX > 0.5*this.mapWidth) {
-	    				dX = (this.mapWidth - dX)
-	    			}
-
-	    			let dY = Math.abs(tempY - end[1]);
-	    			if(dY > 0.5*this.mapHeight) {
-	    				dY = (this.mapHeight - dY)
-	    			}
-
-	    			let heuristicFunc = (dX + dY); 
-
-	    			// base costs + shallow waters move slower
-	    			// (we want to sail through deep sea (not near the shores))
-	    			let costFunc = 1 + (2 + this.map[tempY][tempX]*2); 
-
-	    			let alt = u.dist + 1;
-				
-					if(alt < Q[newLabel]) {
-						Q[newLabel] = alt;
-						prev[newLabel] = u;
-					}
-	    		}
-			}
-
-		}
-
-		// PROFILER: This part takes 0 ms
-		// Reverse the found path, so we can read it properly
-		let S = [];
-		let tempTile = { x: end[0], y: end[1] };
-		let tempLabel = tempTile.x + "," + tempTile.y;
-
-		if( (tempLabel in prev) || (tempTile.x == start[0] && tempTile.y == start[1])) {
-			while( tempLabel in prev) {
-				S.unshift( tempTile );
-
-				tempTile = prev[tempLabel];
-				tempLabel = tempTile.x + "," + tempTile.y;
-			}
-		}
-
-		return S;
     },
 
     exploreIsland: function(x, y, island) {
@@ -319,7 +192,7 @@ var gameScene = new Phaser.Class({
 		let halfPxHeight = 0.5*pixelHeight;
 
 		// generate map (according to noise object)
-		let x1=0, y1=0, x2=150, y2=150
+		let x1=0, y1=0, x2=10, y2=10
 		for (let y = 0; y < this.mapHeight; y++) {
 			this.map[y] = [];
 			for (let x = 0; x < this.mapWidth; x++) { 
@@ -344,8 +217,6 @@ var gameScene = new Phaser.Class({
 
 		        let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
 		        let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
-
-		        console.log(nx, ny, nz, nw)
 
 				this.map[y][x] = noise.perlin4(nx, ny, nz, nw);
 				//this.map[y][x] = NOISE.Simplex.prototype.noise(nx, ny, nz, nw);
@@ -383,40 +254,18 @@ var gameScene = new Phaser.Class({
 						this.islands.push( this.exploreIsland(x, y, []) );
 
 						// pick a random dock for this island
-						// get island size => determines dock size
-						let islandSize = this.islands[this.islands.length - 1].length;
+						// get island size => get amount of free dock locations => determines dock size
+						let islandSize = this.possibleDocks.length;
 						let randDock = this.possibleDocks[ Math.floor(Math.random() * this.possibleDocks.length)]
 
 						this.docks.push( { pos: randDock, size: islandSize, deal: [[0, 4], [2, 6]] } );
-
-						// place an AI ship next to this harbor => get a free spot next to this port
-			    		// this "harborSpot" is used by the AI ships: they start on such a spot.
-			    		// I DON'T need to use these in routes: I can just chop off the final movement of the route, to ensure AI ships stop _before_ a dock (instead of _on_ it)
-			    		let harborSpot = [];
-			    		let positions = [[-1,0],[1,0],[0,1],[0,-1]]
-			    		for(let a = 0; a < 4; a++) {
-				    		let tempX = randDock[0] + positions[a][0];
-				    		let tempY = randDock[1] + positions[a][1];
-
-				    		// the map is seemless => top stitches to the bottom, left stitches to the right
-				    		if(tempX < 0) { tempX += this.mapWidth; } else if(tempX >= this.mapWidth) { tempX -= this.mapWidth;}
-				    		if(tempY < 0) { tempY += this.mapHeight; } else if(tempY >= this.mapHeight) {tempY -= this.mapHeight;}
-
-				    		if(this.map[tempY][tempX] < 0.2) {
-				    			harborSpot = [tempX, tempY]
-				    			break;
-				    		}
-				    	}
-
-				    	// ai starts next to the dock, saves the index of the dock it started (to get route), 
-				    	// TO DO: Save resources, attack/defense value, movement speed.
-				    	this.aiShips.push( { x: harborSpot[0], y: harborSpot[1], startDock: (this.docks.length - 1) });
 					}
 				}
 			}
 		}
 
 		/*** Place MONSTERS and PLAYER SHIPS ***/
+		/*
 		// determine amount of blocks needed
 		let numMonsters = 0;
 		let numPlayers = 0;
@@ -488,39 +337,88 @@ var gameScene = new Phaser.Class({
 		}
 
 		console.timeEnd("Placing monsters and ships");
-
-		console.log(this.islands);
-		console.log(this.docks);
+		*/
 
 		/*** CALCULATE ROUTES BETWEEN HARBORS ****/
-		/*
+		console.time("Route calculations");
+
 		let numDocks = this.docks.length;
+		let connectionArray = [];
+
+		// the "connection array" contains whether two docks are connected or not
+		// this way, we don't need to search through all the docks all the time, we just check this array to see if there's a connection
 		for(let i = 0; i < numDocks; i++) {
-			// pick a few other routes, based on SQUARE ROOT of ISLAND SIZE
-			// TO DO: For now, keep routes small
-			let numRoutes = Math.max( Math.ceil( Math.sqrt(this.docks[i].size)) - 2, 0);
+			// create an array filled with "false" values
+			connectionArray[i] = Array(numDocks).fill(false);
 
-			// initialize routes property
+			// we DO have a connection to ourselves
+			connectionArray[i][i] = true; 
+
+			// initialize routes property for this dock (used in the next loop)
 			this.docks[i].routes = [];
-
-			// find routes with other docks 
-			// you can't find more routes than there are docks :p
-			let maxRoutes = Math.min(numRoutes, this.docks.length - 1);
-			for(let j = 0; j < maxRoutes; j++) {
-				if(j == i) { continue; } // don't make a route towards ourselves
-
-				console.time('Calculating route ' + j + ' on dock ' + i + '!');
-
-				this.docks[i].routes.push( this.calculateRouteAlternative(this.docks[i].pos, this.docks[j].pos) );
-
-				console.timeEnd('Calculating route ' + j + ' on dock ' + i + '!');
-			}
 		}
-		*/
+
+		for(let i = 0; i < numDocks; i++) {
+			let curNumRoutes = this.docks[i].routes.length; // routes we already received from other docks
+			let maxRoutesHarbor = Math.round( Math.sqrt(this.docks[i].size)*0.25 )// max routes our harbor can/should handle
+
+			let maxRoutes = Math.min(this.docks.length - 1, maxRoutesHarbor); // max routes we would be able to find, in TOTAL, across the whole map
+			let routesToDo = 0;
+
+			if(curNumRoutes < maxRoutes) {
+				routesToDo = maxRoutes - curNumRoutes;
+			}
+
+			while(routesToDo > 0) {
+				// pick a random dock
+				let j = Math.floor( Math.random() * this.docks.length) ;
+
+				// if there's already a connection, continue immediately
+				if(connectionArray[i][j]) {
+					continue;
+				} else {
+					// otherwise, make the connection!
+					let startPos = this.docks[i].pos;
+					let endPos = this.docks[j].pos;
+
+					let route = this.calculateRoute(startPos, endPos)
+
+					// shave first and last bit from the route
+					route.splice(0, 1);
+					route.splice( (route.length-1) , 1);
+
+					// save it on both docks (but in REVERSE on the second)
+					this.docks[i].routes.push( { route: route, target: j } );
+					this.docks[j].routes.push( { route: route.slice().reverse(), target: i } );
+
+					// save both connections in the connection Array
+					connectionArray[i][j] = true;
+					connectionArray[j][i] = true;
+
+					// we've finished one route!
+					routesToDo--;
+				}
+			}
+
+			// if this dock has routes, place an AI ship on each of them
+			if(this.docks[i].routes.length > 0) {
+				for(let r = 0; r < this.docks[i].routes.length; r++) {
+					let randRoute = this.docks[i].routes[r].route[0]; // immediately fetch the first (0 index) step of the route
+
+					// save the dock and route index where you started
+					// this is used to follow the route
+			    	// TO DO: Save resources, attack/defense value, movement speed.
+			    	this.aiShips.push( { x: randRoute[0], y: randRoute[1], routeIndex: [i, r], routePointer: 0 } );
+				}
+
+			}
+			
+		}
+		console.timeEnd("Route calculations");
 
 		/*** CREATE MAP VISUALS ***/
 
-		// Graphics docs: https://photonstorm.github.io/phaser3-docs/Phaser.GameObjects.Graphics.html
+		// Graphics docs (Phaser v3): https://photonstorm.github.io/phaser3-docs/Phaser.GameObjects.Graphics.html
 		// display map
 		var graphics = this.add.graphics(0, 0);
 
@@ -567,10 +465,9 @@ var gameScene = new Phaser.Class({
 			let dockSize = this.docks[i].size;
 			this.add.text(x*this.tileSize, y*this.tileSize, dockSize, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
 
-			/*
 			// display its routes
 			for(let a = 0; a < this.docks[i].routes.length; a++) {
-				let r = this.docks[i].routes[a];
+				let r = this.docks[i].routes[a].route;
 
 				// loop through the route
 				for(let rr = 0; rr < r.length; rr++) {
@@ -578,10 +475,9 @@ var gameScene = new Phaser.Class({
 					let routeY = r[rr][1];
 
 					// draw a small square (half size) for each route point
-					graphics.fillRect((routeX + 0.25)*this.tileSize, (routeY + 0.25)*this.tileSize, 0.5*this.tileSize, 0.5*this.tileSize);
+					graphics.fillRect((routeX + 0.375)*this.tileSize, (routeY + 0.375)*this.tileSize, 0.25*this.tileSize, 0.25*this.tileSize);
 				}
 			}
-			*/
 		}
 		
 		// set stroke style (beige, slightly transparent, not too thick)
@@ -616,6 +512,7 @@ var gameScene = new Phaser.Class({
 			this.add.text(this.tileSize*0.5, (y+0.5)*this.tileSize, y, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
 		}
 
+		/*
 		// display the monsters
 		for(let i = 0; i < numMonsters; i++) {
 			let curMon = this.monsters[i];
@@ -637,24 +534,67 @@ var gameScene = new Phaser.Class({
 			graphics.fillRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
 			graphics.strokeRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
 		}
+		*/
 
 		// display the AI ships
+		this.aiShipSprites = [];
 		for(let i = 0; i < this.aiShips.length; i++) {
 			let curShip = this.aiShips[i];
 
-			graphics.lineStyle(2, 0x00FF00, 1.0);
-			graphics.fillStyle(0x000000, 1.0);
+			let newSprite = this.add.sprite(curShip.x*this.tileSize, curShip.y*this.tileSize, 'keythatdoesntexist');
+			this.aiShipSprites.push(newSprite);
 
-			graphics.fillRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
-			graphics.strokeRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
+			newSprite.opacity = 0.5;
+			newSprite.displayWidth = this.tileSize*0.7;
+			newSprite.displayHeight = this.tileSize*0.7;
 		}
 
-		window.graphics = graphics;
+		var timer = this.time.addEvent({
+		    delay: 250,                // ms
+		    callback: this.moveShips,
+		    //args: [],
+		    callbackScope: this,
+		    loop: true
+		});
+
+		//window.graphics = graphics;
+	},
+
+	moveShips: function() {
+		for(let i = 0; i < this.aiShipSprites.length; i++) {
+			// get the SHIP
+			let s = this.aiShips[i];
+
+			// get the route object (contains the actual route ("route") and the dock where the route ends ("target"))
+			let routeObject = this.docks[ s.routeIndex[0] ].routes[ s.routeIndex[1] ];
+
+			//increase pointer
+			s.routePointer++;
+
+			// move SPRITE to next spot
+			let nextSpot = routeObject.route[s.routePointer]
+
+			let s1 = this.aiShipSprites[i];
+
+			// NOTE: the "+ 0.5" is only for displaying, must be removed on the server
+			s1.x = (nextSpot[0] + 0.5)*this.tileSize;
+			s1.y = (nextSpot[1] + 0.5)*this.tileSize;
+
+			// if we're at the end, pick a new route
+			if(s.routePointer == (routeObject.route.length - 1)) {
+				let newDock = this.docks[ routeObject.target ];
+				let routeIndex = Math.floor( Math.random() * newDock.routes.length );
+
+				// Save the dock we're coming form (which was previously our target) and which of its routes we're taking
+				s.routeIndex = [routeObject.target, routeIndex]
+				s.routePointer = -1;
+			}
+		}
 	},
 
 	// core game loop
 	update: function() {
-		
+
 	},
 
 	/** 

@@ -94,9 +94,7 @@ var serverInfo = {
   errorMessages: [],
 
   // Backup ship drawing, in case preparation is skipped
-  unitImages: {
-    'myShip': "data:image/png;base64,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"
-  }
+  shipDrawings: ["data:image/png;base64,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"]
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -336,6 +334,7 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
   // the server gives us (within data) the name of this next state
   socket.on('next-state', function (data) {
     // set the timer
+    serverInfo.backupTimer = data.timer;
     serverInfo.timer = data.timer;
 
     // start the next state
@@ -490,7 +489,13 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
   // (this always happens before a state change, thus the name presignal)
   socket.on('pre-signal', function (data) {
     for (var key in data) {
-      serverInfo[key] = data[key];
+      // if it's a roleUpdate => permanently update our level!
+      if (key == 'roleUpdate') {
+        serverInfo.roleStats[serverInfo.myRole].lvl++;
+      } else {
+        // otherwise, just blindly set the key to this value
+        serverInfo[key] = data[key];
+      }
     }
   });
 
@@ -818,7 +823,11 @@ function loadErrorMessage(msg, i) {
             break;
 
         case 2:
-            finalMsg = 'Buying a cannon failed!';
+            finalMsg = 'Purchase by <em>' + msgRole + '</em> failed!';
+            break;
+
+        case 3:
+            finalMsg = "You don't have enough crew to fire the cannons!";
             break;
     }
 
@@ -1504,6 +1513,16 @@ var GamePlay = function (_Phaser$State) {
             (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
 
             (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
+
+            // Function that is called whenever a new turn starts
+            // Resets timer, resets other stuff, displays new situation, etc.
+            socket.on('new-turn', function (data) {
+                // reset the timer 
+                _serverInfo.serverInfo.timer = _serverInfo.serverInfo.timerBackup;
+
+                // TO DO
+                // Reset stuffiebuffie
+            });
 
             console.log("Game Play state");
         }
@@ -2277,6 +2296,8 @@ var _shipColors = __webpack_require__(13);
 
 var _upgradeDictionary = __webpack_require__(26);
 
+var _upgradeDictionary2 = _interopRequireDefault(_upgradeDictionary);
+
 var _roleDictionary = __webpack_require__(7);
 
 var _loadErrorMessage = __webpack_require__(14);
@@ -2404,7 +2425,7 @@ function mapMove(ev) {
 function loadUpgradeButton(role, level) {
     var targetLevel = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
 
-    var costs = _upgradeDictionary.UPGRADE_DICT[role][level];
+    var costs = _upgradeDictionary2.default[role][level];
     var curString = '';
 
     // an upgrade to level 0 is the same as buying ...
@@ -2421,7 +2442,7 @@ function loadUpgradeButton(role, level) {
 
         // For each level ...
         for (var i = 0; i <= targetLevel; i++) {
-            var c = _upgradeDictionary.UPGRADE_DICT[role][i];
+            var c = _upgradeDictionary2.default[role][i];
 
             // Go through the different resource costs at this level ...
             for (var key in c) {
@@ -2439,6 +2460,31 @@ function loadUpgradeButton(role, level) {
     // display costs inside upgrade button
     for (var _key in costs) {
         curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + _key + '.png" /><span>x' + costs[_key] + '</span></span>';
+    }
+
+    return curString;
+}
+
+function loadFireButton() {
+    var cannonLevel = _serverInfo.serverInfo.roleStats[4].lvl;
+    var numberOfCannons = 0;
+    for (var i = 0; i < 4; i++) {
+        if (_serverInfo.serverInfo.shipCannons[i] >= 0) {
+            numberOfCannons++;
+        }
+    }
+
+    // display the word 'FIRE!' (so the user knows what this button is doing)
+    var curString = '<span class="upgradeButtonLabel">FIRE!</span>';
+
+    // calculate the crew costs for firing the weapons
+    // formula is this: for each added level, we need 1/2 crew member more PER CANNON
+    // as a result, by rounding, the required crew per cannon ranges from 1 to 4.
+    var costs = { 1: Math.round((cannonLevel + 1) / 2) * numberOfCannons
+
+        // display costs inside upgrade button
+    };for (var key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
     }
 
     return curString;
@@ -2494,7 +2540,8 @@ function loadPlayInterface(num, cont) {
 
                         var btn0 = document.createElement("button");
                         btn0.setAttribute('data-taskid', _i);
-                        btn0.innerHTML = 'FIRE!';
+                        btn0.classList.add('upgradeButton');
+                        btn0.innerHTML = loadFireButton();
                         span0.appendChild(btn0);
 
                         btn0.addEventListener('click', function () {
@@ -2522,6 +2569,7 @@ function loadPlayInterface(num, cont) {
 
                         var inp1 = document.createElement("input");
                         inp1.type = "text";
+                        inp1.placeholder = "Tortuga";
                         span1.appendChild(inp1);
 
                         var btn1 = document.createElement("button");
@@ -2530,6 +2578,11 @@ function loadPlayInterface(num, cont) {
                         span1.appendChild(btn1);
 
                         btn1.addEventListener('click', function () {
+                            // prevent submitting an empty name
+                            if (inp1.value.length < 1) {
+                                return;
+                            }
+
                             // send signal to server
                             socket.emit('name-island', { name: inp1.value, island: param });
 
@@ -2683,8 +2736,6 @@ function loadPlayInterface(num, cont) {
         //  => arrows to move around
         //  => current map level + upgrade button
         case 2:
-            // TO DO
-
             // Get the canvas back
             var canvas = document.getElementById("canvas-container");
             canvas.style.display = 'block';
@@ -2748,16 +2799,14 @@ function loadPlayInterface(num, cont) {
                     var xTile = _serverInfo.serverInfo.x - Math.floor(0.5 * mapSize) + x;
                     if (xTile < 0) {
                         xTile += globalMapWidth;
-                    }
-                    if (xTile >= globalMapWidth) {
+                    } else if (xTile >= globalMapWidth) {
                         xTile -= globalMapWidth;
                     }
 
                     var yTile = _serverInfo.serverInfo.y - Math.floor(0.5 * mapSize) + y;
                     if (yTile < 0) {
                         yTile += globalMapHeight;
-                    }
-                    if (yTile >= globalMapHeight) {
+                    } else if (yTile >= globalMapHeight) {
                         yTile -= globalMapHeight;
                     }
 
@@ -2788,10 +2837,12 @@ function loadPlayInterface(num, cont) {
             canvas.myGame.world.setBounds(0, 0, mapSize * localTileSize, mapSize * localTileSize);
 
             // Display units (the server determines which ones you can see, based on range and instrument level)
+
             // TO DO
-            // As of right now, I just display our own ship.
+            // As of right now, I just displays our own ship.
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
-            _serverInfo.serverInfo.mapUnits = [{ x: _serverInfo.serverInfo.x, y: _serverInfo.serverInfo.y, name: 'myShip' }];
+            // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
+            _serverInfo.serverInfo.mapUnits = [{ x: _serverInfo.serverInfo.x, y: _serverInfo.serverInfo.y, index: _serverInfo.serverInfo.myShip }];
 
             var u = _serverInfo.serverInfo.mapUnits;
             for (var _i3 = 0; _i3 < u.length; _i3++) {
@@ -2801,15 +2852,21 @@ function loadPlayInterface(num, cont) {
                 var _x2 = unit.x - _serverInfo.serverInfo.x + Math.floor(0.5 * mapSize);
                 var _y = unit.y - _serverInfo.serverInfo.y + Math.floor(0.5 * mapSize);
 
-                // determine label for this sprite (needs to be unique for unique stuff like sea monsters, but consistent)
-                var label = unit.name;
-
-                // this label also functions as the key, used to get the correct image out of the serverInfo information
-                // this is always a dataURI, even for stuff that isn't drawn by players. (I do this to keep the code clean and consistent.)
-                var cacheKey = _serverInfo.serverInfo.unitImages[label];
+                // Fetch image from a different list, based on unit type (this is always a dataURI, even for stuff that isn't drawn by the players)
+                // ALso determine the UNIQUE label for this unit type
+                // 0 = ship, 1 = monster, 2 = ai ship, 3 = dock
+                var dataURI = void 0;
+                var label = void 0;
+                if (unit.myType == 0) {
+                    dataURI = _serverInfo.serverInfo.shipDrawings[unit.index];
+                    label = 'shipNum' + unit.index;
+                } else if (unit.myType == 1) {
+                    dataURI = _serverInfo.serverInfo.monsterDrawings[unit.index];
+                    label = 'monsterNum' + unit.index;
+                }
 
                 // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)
-                (0, _dynamicLoadImage2.default)(canvas.myGame, { x: (_x2 + 0.5) * localTileSize, y: (_y + 0.5) * localTileSize }, { width: localTileSize, height: localTileSize }, label, cacheKey);
+                (0, _dynamicLoadImage2.default)(canvas.myGame, { x: (_x2 + 0.5) * localTileSize, y: (_y + 0.5) * localTileSize }, { width: localTileSize, height: localTileSize }, label, dataURI);
             }
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
@@ -2835,12 +2892,6 @@ function loadPlayInterface(num, cont) {
         //  => horizontal slider for choosing paddle strength
         //  => current sail level + upgrade button
         case 3:
-            // TO DO
-            // When server receives the signal, check if there's enough CREW for this operation
-            // (Release crew from the previous setting, then subtract for the new one.)
-            // If there is, the setting is applied, and the updated crew information is sent to the captain
-            // If there isn't ... error message?
-
             // Display ship bg (side-view, sails alongside slider)
             var bgShipSide = document.createElement("img");
             bgShipSide.src = "assets/shipGhostSide.png";
@@ -2981,8 +3032,6 @@ function loadPlayInterface(num, cont) {
         //  => display ship (top-view; shows where each cannon is)
         //  => display all cannons (bought or not, current load, loading button)
         case 4:
-            // TO DO
-
             // Display ship (top-view, cannons numbered)
             var shipImg = document.createElement("img");
             shipImg.src = "assets/shipGhostTopCannons.png";
@@ -3024,6 +3073,11 @@ function loadPlayInterface(num, cont) {
 
                         // set load to 0 (if its positive, the cannon has been bought)
                         _serverInfo.serverInfo.shipCannons[_i6] = 0;
+
+                        // display a message (to fill space AND to notify the user that he/she did something)
+                        var tempParagraph = document.createElement('p');
+                        tempParagraph.innerHTML = 'A purchase request has been sent.';
+                        cannonDiv.appendChild(tempParagraph);
 
                         // remove this button
                         this.remove();
@@ -3107,21 +3161,20 @@ function loadPlayInterface(num, cont) {
 "use strict";
 
 
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
 // The upgrade dictionary contains the cost for each upgrade
 // The structure is as follows:
 //  - Top level = array, index represents role
 //     - 2nd level = array, index represents level (you're upgrading TO)
 //        - 3rd level = object, key is the resource, value is how many of them are needed
 
-var UPGRADE_DICT = exports.UPGRADE_DICT = [[], // captain (has no upgrades)
+var UPGRADE_DICT = [[], // captain (has no upgrades)
 [{}, { 2: 4 }, { 2: 6 }, { 0: 2, 2: 8 }, { 0: 5, 2: 10 }, { 0: 10, 2: 10 }], // first mate
 [{}, { 2: 2 }, { 0: 2, 2: 5 }, { 0: 4, 2: 8 }, { 0: 6, 1: 1, 2: 10 }, { 0: 10, 1: 2, 2: 10 }], // cartographer
 [{}, { 2: 4 }, { 1: 1, 2: 6 }, { 1: 2, 2: 8 }, { 0: 2, 1: 2, 2: 10 }, { 0: 5, 1: 3, 2: 10 }], // sailor
 [{ 0: 5, 1: 1, 2: 10 }, { 2: 4 }, { 1: 1, 2: 7 }, { 0: 5, 2: 10 }, { 0: 5, 1: 1, 2: 10 }, { 0: 10, 1: 2, 2: 10 }] // weapon specialist
 ];
+
+module.exports = UPGRADE_DICT;
 
 /***/ }),
 /* 27 */
@@ -3333,7 +3386,7 @@ var ControllerWaiting = function (_Phaser$State) {
 
         // clean interface variables
         _serverInfo.serverInfo.submittedUpgrade = {};
-        _serverInfo.serverInfo.errorMessages = {};
+        _serverInfo.serverInfo.errorMessages = [];
 
         // reload first tab
         (0, _loadTab2.default)("label0", curTab, 1);
