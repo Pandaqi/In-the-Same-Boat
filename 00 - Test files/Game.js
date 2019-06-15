@@ -23,6 +23,8 @@ var gameScene = new Phaser.Class({
     	this.checkedTiles = {};
     	this.islands = [];
     	this.docks = [];
+
+    	this.load.image('aishipskey', 'resIconGold.png');
     },
 
     calculateRoute: function(start, end) {
@@ -265,10 +267,9 @@ var gameScene = new Phaser.Class({
 		}
 
 		/*** Place MONSTERS and PLAYER SHIPS ***/
-		/*
 		// determine amount of blocks needed
-		let numMonsters = 0;
-		let numPlayers = 0;
+		let numMonsters = 10;
+		let numPlayers = 3;
 		let totalBlocks = numMonsters + numPlayers;
 
 		// the ratio must be 3:1 (x to y), so, after solving the equality, this formula follows
@@ -318,7 +319,6 @@ var gameScene = new Phaser.Class({
 
 				numTries++;
 			} while (this.map[rY][rX] >= -0.2 && numTries <= maxTries);
-
 			// If we've exceeded our tries, just pick a random spot on the MAP, not within our own sector
 			// This should always succeed, even if it takes 50 or 100 tries, and is reasonably fast
 			if(numTries > maxTries) {
@@ -329,7 +329,7 @@ var gameScene = new Phaser.Class({
 			}
 
 			if(i < numMonsters) {
-				this.monsters.push( { x: rX, y: rY, id: 'mon'+i, class: 0, hp: 3, atk: 5 } );
+				this.monsters.push( { x: rX, y: rY, chasing: false, target: null, prevTarget: null, chasingCounter: 0, reputation: 0 } );
 			} else {
 				this.playerShips.push( { x: rX, y: rY });
 			}
@@ -337,7 +337,6 @@ var gameScene = new Phaser.Class({
 		}
 
 		console.timeEnd("Placing monsters and ships");
-		*/
 
 		/*** CALCULATE ROUTES BETWEEN HARBORS ****/
 		console.time("Route calculations");
@@ -403,6 +402,13 @@ var gameScene = new Phaser.Class({
 			// if this dock has routes, place an AI ship on each of them
 			if(this.docks[i].routes.length > 0) {
 				for(let r = 0; r < this.docks[i].routes.length; r++) {
+					// TO DO: COPY THIS TO THE ACTUAL GAME
+					// It happens more frequently than I thought
+					if(this.docks[i].routes[r].route.length < 1) {
+						// this route was unreachable
+						continue;
+					}
+
 					let randRoute = this.docks[i].routes[r].route[0]; // immediately fetch the first (0 index) step of the route
 
 					// save the dock and route index where you started
@@ -512,18 +518,6 @@ var gameScene = new Phaser.Class({
 			this.add.text(this.tileSize*0.5, (y+0.5)*this.tileSize, y, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
 		}
 
-		/*
-		// display the monsters
-		for(let i = 0; i < numMonsters; i++) {
-			let curMon = this.monsters[i];
-
-			graphics.lineStyle(2, 0x000000, 1.0);
-			graphics.fillStyle(0xFF0000, 1.0);
-
-			graphics.fillRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
-			graphics.strokeRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
-		}
-
 		// display the ships
 		for(let i = 0; i < numPlayers; i++) {
 			let curShip = this.playerShips[i];
@@ -534,23 +528,41 @@ var gameScene = new Phaser.Class({
 			graphics.fillRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
 			graphics.strokeRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
 		}
-		*/
 
 		// display the AI ships
 		this.aiShipSprites = [];
 		for(let i = 0; i < this.aiShips.length; i++) {
 			let curShip = this.aiShips[i];
 
-			let newSprite = this.add.sprite(curShip.x*this.tileSize, curShip.y*this.tileSize, 'keythatdoesntexist');
+			let newSprite = this.add.sprite(curShip.x*this.tileSize, curShip.y*this.tileSize, 'aishipskey');
 			this.aiShipSprites.push(newSprite);
 
-			newSprite.opacity = 0.5;
 			newSprite.displayWidth = this.tileSize*0.7;
 			newSprite.displayHeight = this.tileSize*0.7;
 		}
 
+		// display the monsters
+		this.monsterSprites = [];
+		for(let i = 0; i < numMonsters; i++) {
+			let curMon = this.monsters[i];
+
+			/*graphics.lineStyle(2, 0x000000, 1.0);
+			graphics.fillStyle(0xFF0000, 1.0);
+
+			graphics.fillRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
+			graphics.strokeRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);*/
+
+			let newSprite = this.add.sprite(curMon.x*this.tileSize, curMon.y*this.tileSize, 'keythatdoesntexist');
+			this.monsterSprites.push(newSprite);
+
+			newSprite.displayWidth = this.tileSize*0.5;
+			newSprite.displayHeight = this.tileSize*0.5;
+		}
+
+		
+
 		var timer = this.time.addEvent({
-		    delay: 250,                // ms
+		    delay: 500,                // ms
 		    callback: this.moveShips,
 		    //args: [],
 		    callbackScope: this,
@@ -560,16 +572,29 @@ var gameScene = new Phaser.Class({
 		//window.graphics = graphics;
 	},
 
+	wrapCoords: function(c, bound) {
+		if(c < 0) { 
+    		c += bound; 
+    	} else if(c >= bound) {
+			c -= bound;
+		}
+		return c;
+	},
+
 	moveShips: function() {
+
+		// moving AI ships
 		for(let i = 0; i < this.aiShipSprites.length; i++) {
 			// get the SHIP
 			let s = this.aiShips[i];
 
+			let shipSpeed = 3;
+
 			// get the route object (contains the actual route ("route") and the dock where the route ends ("target"))
 			let routeObject = this.docks[ s.routeIndex[0] ].routes[ s.routeIndex[1] ];
 
-			//increase pointer
-			s.routePointer++;
+			//increase pointer by ship speed
+			s.routePointer = Math.min(routeObject.route.length - 1, s.routePointer + 3);
 
 			// move SPRITE to next spot
 			let nextSpot = routeObject.route[s.routePointer]
@@ -579,6 +604,10 @@ var gameScene = new Phaser.Class({
 			// NOTE: the "+ 0.5" is only for displaying, must be removed on the server
 			s1.x = (nextSpot[0] + 0.5)*this.tileSize;
 			s1.y = (nextSpot[1] + 0.5)*this.tileSize;
+
+			// also update the object itself (instead of only the sprite)
+			s.x = nextSpot[0];
+			s.y = nextSpot[1];
 
 			// if we're at the end, pick a new route
 			if(s.routePointer == (routeObject.route.length - 1)) {
@@ -590,6 +619,130 @@ var gameScene = new Phaser.Class({
 				s.routePointer = -1;
 			}
 		}
+
+		// moving monsters ALTERNATIVE
+		for(let i = 0; i < this.monsterSprites.length; i++) {
+			let curSprite = this.monsterSprites[i];
+			let curMon = this.monsters[i];
+
+			let moveSpeed = 2;
+			let chaseSpeed = 4;
+			let sightRadius = 6;
+
+			let targetPos;
+
+			if(curMon.chasingCounter >= 4) {
+				curMon.chasingCounter = 0;
+				curMon.chasing = false;
+				curMon.prevTarget = curMon.target;
+				curMon.target = null;
+			}
+
+			if(curMon.target == null) {
+				// check if a dock is near us
+				for(let a = 0; a < this.docks.length; a++) {
+					let dist = Math.abs(this.docks[a].x - curMon.x) + Math.abs(this.docks[a].y - curMon.y);
+
+					if(dist < sightRadius && this.docks[a] != curMon.prevTarget) {
+						curMon.target = this.docks[a];
+						curMon.chasing = true;
+						break;
+					}
+				}
+
+				// check if a ship is near us
+				for(let a = 0; a < this.playerShips.length; a++) {
+					let dist = Math.abs(this.playerShips[a].x - curMon.x) + Math.abs(this.playerShips[a].y - curMon.y);
+
+					if(dist < sightRadius && this.playerShips[a] != curMon.prevTarget) {
+						curMon.target = this.playerShips[a];
+						curMon.chasing = true;
+						break;
+					}
+				}
+
+				// check if an ai ship is near us
+				for(let a = 0; a < this.aiShips.length; a++) {
+					let dist = Math.abs(this.aiShips[a].x - curMon.x) + Math.abs(this.aiShips[a].y - curMon.y);
+
+					if(dist < sightRadius && this.aiShips[a] != curMon.prevTarget) {
+						curMon.target = this.aiShips[a];
+						curMon.chasing = true;
+						break;
+					}
+				}
+
+				// if there's nothing, just pick a random tile
+
+				// if it's still null
+				if(curMon.target == null) {
+					// pick a random position around us that is reachable (NOT island)
+					let rX, rY;
+					const maxTries = 20;
+					let numTries = 0;
+					do {
+						let angle = Math.random() * 2 * Math.PI;
+						rX = Math.floor(this.wrapCoords( curMon.x + Math.cos(angle)*moveSpeed, this.mapWidth));
+						rY = Math.floor(this.wrapCoords( curMon.y + Math.sin(angle)*moveSpeed, this.mapHeight));
+
+						numTries++;
+					} while((this.map[rY][rX] >= 0.2 || (this.map[rY][rX] >= -0.3 && Math.random() >= 0.2)) && numTries <= maxTries);
+
+					if(numTries > maxTries) {
+						targetPos = [];
+					} else {
+						targetPos = [rX, rY];
+					}
+
+					curMon.reputation += numTries;
+				}
+			}
+
+			// if we have a target, move to that position
+			// (otherwise, it defaults to targetPos => a random location near us)
+			if(curMon.target != null) {
+				curMon.chasingCounter++;
+				targetPos = [curMon.target.x, curMon.target.y];
+
+				// if there is no target ... 
+				// or we're already at the target ...
+				// don't do anything
+				if(targetPos.length < 1) { 
+					continue
+				}
+
+				if((targetPos[0] == curMon.x && targetPos[1] == curMon.y)) {
+					continue;
+				}
+			}
+
+
+			// calculate a route to this position
+			let tempRoute = this.calculateRoute([curMon.x, curMon.y], targetPos)
+
+			// if destination was unreachable, too bad, try again next turn
+			if(tempRoute.length < 1) {
+				continue;
+			}
+
+			// shave first bit from the route (that's the monster's current position)
+			// it's possible that the route is just the starting tile, nothing else, that's why the IF statement is
+			tempRoute.splice(0, 1);				
+
+			// follow the route for as long as our moveSpeed allows
+			let routeIndex = Math.min(tempRoute.length - 1, moveSpeed)
+			if(curMon.chasing) {
+				routeIndex = Math.min(tempRoute.length - 1, chaseSpeed);
+			}
+			let tempDestination = tempRoute[routeIndex]
+
+			curMon.x = tempDestination[0];
+			curMon.y = tempDestination[1];
+
+			curSprite.x = (tempDestination[0] + 0.5)*this.tileSize;
+			curSprite.y = (tempDestination[1] + 0.5)*this.tileSize;
+		}
+
 	},
 
 	// core game loop
