@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 15);
+/******/ 	return __webpack_require__(__webpack_require__.s = 16);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -94,7 +94,7 @@ var serverInfo = {
   errorMessages: [],
 
   // Backup ship drawing, in case preparation is skipped
-  shipDrawings: ["data:image/png;base64,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"]
+  backupShipDrawing: "data:image/png;base64,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"
 
   // language/translator object
   // serverInfo gets the language used in-game from the server, and also provides the translate function
@@ -268,7 +268,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _loadImageComplete = __webpack_require__(17);
+var _loadImageComplete = __webpack_require__(18);
 
 var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
 
@@ -334,7 +334,6 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
   // the server gives us (within data) the name of this next state
   socket.on('next-state', function (data) {
     // set the timer
-    serverInfo.backupTimer = data.timer;
     serverInfo.timer = data.timer;
 
     // start the next state
@@ -468,7 +467,6 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
   socket.on('next-state', function (data) {
     // set the timer
     if (serverInfo.vip) {
-      serverInfo.timerBackup = data.timer;
       serverInfo.timer = data.timer;
     }
 
@@ -710,6 +708,192 @@ var controllerTimer = exports.controllerTimer = function controllerTimer(ths, se
 "use strict";
 
 
+/*
+ * A speed-improved perlin and simplex noise algorithms for 2D.
+ *
+ * Based on example code by Stefan Gustavson (stegu@itn.liu.se).
+ * Optimisations by Peter Eastman (peastman@drizzle.stanford.edu).
+ * Better rank ordering method by Stefan Gustavson in 2012.
+ * Converted to Javascript by Joseph Gentle.
+ *
+ * Version 2012-03-09
+ *
+ * This code was placed in the public domain by its original author,
+ * Stefan Gustavson. You may use it as you see fit, but
+ * attribution is appreciated.
+ *
+ */
+
+function Grad(x, y, z) {
+  var w = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
+
+  this.x = x;this.y = y;this.z = z;this.w = w;
+}
+
+Grad.prototype.dot2 = function (x, y) {
+  return this.x * x + this.y * y;
+};
+
+Grad.prototype.dot3 = function (x, y, z) {
+  return this.x * x + this.y * y + this.z * z;
+};
+
+Grad.prototype.dot4 = function (x, y, z, w) {
+  return this.x * x + this.y * y + this.z * z + this.w * w;
+};
+
+var grad3 = [new Grad(1, 1, 0), new Grad(-1, 1, 0), new Grad(1, -1, 0), new Grad(-1, -1, 0), new Grad(1, 0, 1), new Grad(-1, 0, 1), new Grad(1, 0, -1), new Grad(-1, 0, -1), new Grad(0, 1, 1), new Grad(0, -1, 1), new Grad(0, 1, -1), new Grad(0, -1, -1)];
+
+var grad4 = [new Grad(1, 1, 1, 0), new Grad(-1, 1, 1, 0), new Grad(1, -1, 1, 0), new Grad(1, 1, -1, 0), new Grad(-1, -1, 1, 0), new Grad(1, -1, -1, 0), new Grad(-1, 1, -1, 0), new Grad(-1, -1, -1, 0), new Grad(1, 1, 0, 1), new Grad(-1, 1, 0, 1), new Grad(1, -1, 0, 1), new Grad(1, 1, 0, -1), new Grad(-1, -1, 0, 1), new Grad(1, -1, 0, -1), new Grad(-1, 1, 0, -1), new Grad(-1, -1, 0, -1), new Grad(1, 0, 1, 1), new Grad(-1, 0, 1, 1), new Grad(1, 0, -1, 1), new Grad(1, 0, 1, -1), new Grad(-1, 0, -1, 1), new Grad(1, 0, -1, -1), new Grad(-1, 0, 1, -1), new Grad(-1, 0, -1, -1), new Grad(0, 1, 1, 1), new Grad(0, -1, 1, 1), new Grad(0, 1, -1, 1), new Grad(0, 1, 1, -1), new Grad(0, -1, -1, 1), new Grad(0, 1, -1, -1), new Grad(0, -1, 1, -1), new Grad(0, -1, -1, -1)];
+
+var p = [151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33, 88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166, 77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196, 135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228, 251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254, 138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180];
+// To remove the need for index wrapping, double the permutation table length
+var perm = new Array(512);
+var gradP = new Array(512);
+
+//noise.seed(0);
+
+// ##### Perlin noise stuff
+
+function fade(t) {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+function lerp(a, b, t) {
+  return (1 - t) * a + t * b;
+}
+
+module.exports = {
+  // This isn't a very good seeding function, but it works ok. It supports 2^16
+  // different seed values. Write something better if you need more seeds.
+  seed: function seed(_seed) {
+    if (_seed > 0 && _seed < 1) {
+      // Scale the seed out
+      _seed *= 65536;
+    }
+
+    _seed = Math.floor(_seed);
+    if (_seed < 256) {
+      _seed |= _seed << 8;
+    }
+
+    for (var i = 0; i < 256; i++) {
+      var v;
+      if (i & 1) {
+        v = p[i] ^ _seed & 255;
+      } else {
+        v = p[i] ^ _seed >> 8 & 255;
+      }
+
+      perm[i] = perm[i + 256] = v;
+      gradP[i] = gradP[i + 256] = grad4[v % 32]; //= grad3[v % 12];
+    }
+  },
+
+  // 2D Perlin Noise
+  perlin2: function perlin2(x, y) {
+    // Find unit grid cell containing point
+    var X = Math.floor(x),
+        Y = Math.floor(y);
+    // Get relative xy coordinates of point within that cell
+    x = x - X;y = y - Y;
+    // Wrap the integer cells at 255 (smaller integer period can be introduced here)
+    X = X & 255;Y = Y & 255;
+
+    // Calculate noise contributions from each of the four corners
+    var n00 = gradP[X + perm[Y]].dot2(x, y);
+    var n01 = gradP[X + perm[Y + 1]].dot2(x, y - 1);
+    var n10 = gradP[X + 1 + perm[Y]].dot2(x - 1, y);
+    var n11 = gradP[X + 1 + perm[Y + 1]].dot2(x - 1, y - 1);
+
+    // Compute the fade curve value for x
+    var u = fade(x);
+
+    // Interpolate the four results
+    return lerp(lerp(n00, n10, u), lerp(n01, n11, u), fade(y));
+  },
+
+  // 3D Perlin Noise
+  perlin3: function perlin3(x, y, z) {
+    // Find unit grid cell containing point
+    var X = Math.floor(x),
+        Y = Math.floor(y),
+        Z = Math.floor(z);
+    // Get relative xyz coordinates of point within that cell
+    x = x - X;y = y - Y;z = z - Z;
+    // Wrap the integer cells at 255 (smaller integer period can be introduced here)
+    X = X & 255;Y = Y & 255;Z = Z & 255;
+
+    // Calculate noise contributions from each of the eight corners
+    var n000 = gradP[X + perm[Y + perm[Z]]].dot3(x, y, z);
+    var n001 = gradP[X + perm[Y + perm[Z + 1]]].dot3(x, y, z - 1);
+    var n010 = gradP[X + perm[Y + 1 + perm[Z]]].dot3(x, y - 1, z);
+    var n011 = gradP[X + perm[Y + 1 + perm[Z + 1]]].dot3(x, y - 1, z - 1);
+    var n100 = gradP[X + 1 + perm[Y + perm[Z]]].dot3(x - 1, y, z);
+    var n101 = gradP[X + 1 + perm[Y + perm[Z + 1]]].dot3(x - 1, y, z - 1);
+    var n110 = gradP[X + 1 + perm[Y + 1 + perm[Z]]].dot3(x - 1, y - 1, z);
+    var n111 = gradP[X + 1 + perm[Y + 1 + perm[Z + 1]]].dot3(x - 1, y - 1, z - 1);
+
+    // Compute the fade curve value for x, y, z
+    var u = fade(x);
+    var v = fade(y);
+    var w = fade(z);
+
+    // Interpolate
+    return lerp(lerp(lerp(n000, n100, u), lerp(n001, n101, u), w), lerp(lerp(n010, n110, u), lerp(n011, n111, u), w), v);
+  },
+
+  // 4d perlin noise
+  perlin4: function perlin4(x, y, z, w) {
+    // Find unit grid cell containing point
+    var X = Math.floor(x),
+        Y = Math.floor(y),
+        Z = Math.floor(z),
+        W = Math.floor(w);
+    // Get relative xyzw coordinates of point within that cell
+    x = x - X;y = y - Y;z = z - Z;w = w - W;
+    // Wrap the integer cells at 255 (smaller integer period can be introduced here)
+    X = X & 255;Y = Y & 255;Z = Z & 255;W = W & 255;
+
+    // Calculate noise contributions from each of the SIXTEEN corners
+    // (Just follow the patterns; every unique combination must appear exactly once)
+    var n0000 = gradP[X + perm[Y + perm[Z + perm[W]]]].dot4(x, y, z, w);
+    var n0001 = gradP[X + perm[Y + perm[Z + perm[W + 1]]]].dot4(x, y, z, w - 1);
+    var n0010 = gradP[X + perm[Y + perm[Z + 1 + perm[W]]]].dot4(x, y, z - 1, w);
+    var n0011 = gradP[X + perm[Y + perm[Z + 1 + perm[W + 1]]]].dot4(x, y, z - 1, w - 1);
+    var n0100 = gradP[X + perm[Y + 1 + perm[Z + perm[W]]]].dot4(x, y - 1, z, w);
+    var n0101 = gradP[X + perm[Y + 1 + perm[Z + perm[W + 1]]]].dot4(x, y - 1, z, w - 1);
+    var n0110 = gradP[X + perm[Y + 1 + perm[Z + 1 + perm[W]]]].dot4(x, y - 1, z - 1, w);
+    var n0111 = gradP[X + perm[Y + 1 + perm[Z + 1 + perm[W + 1]]]].dot4(x, y - 1, z - 1, w - 1);
+    var n1000 = gradP[X + 1 + perm[Y + perm[Z + perm[W]]]].dot4(x - 1, y, z, w);
+    var n1001 = gradP[X + 1 + perm[Y + perm[Z + perm[W + 1]]]].dot4(x - 1, y, z, w - 1);
+    var n1010 = gradP[X + 1 + perm[Y + perm[Z + 1 + perm[W]]]].dot4(x - 1, y, z - 1, w);
+    var n1011 = gradP[X + 1 + perm[Y + perm[Z + 1 + perm[W + 1]]]].dot4(x - 1, y, z - 1, w - 1);
+    var n1100 = gradP[X + 1 + perm[Y + 1 + perm[Z + perm[W]]]].dot4(x - 1, y - 1, z, w);
+    var n1101 = gradP[X + 1 + perm[Y + 1 + perm[Z + perm[W + 1]]]].dot4(x - 1, y - 1, z, w - 1);
+    var n1110 = gradP[X + 1 + perm[Y + 1 + perm[Z + 1 + perm[W]]]].dot4(x - 1, y - 1, z - 1, w);
+    var n1111 = gradP[X + 1 + perm[Y + 1 + perm[Z + 1 + perm[W + 1]]]].dot4(x - 1, y - 1, z - 1, w - 1);
+
+    // Compute the fade curve value for x, y, z, w
+    var a = fade(x);
+    var b = fade(y);
+    var c = fade(z);
+    var d = fade(w);
+
+    // Interpolate between all these points
+    // Essentially, we interpolate one axis at a time: 
+    // first the d axis, the result of that interpolated against c, the result of THAT interpolated against b, and finally those results interpolated against a
+    return lerp(lerp(lerp(lerp(n0000, n0001, d), lerp(n0010, n0011, d), c), lerp(lerp(n0100, n0101, d), lerp(n0110, n0111, d), c), b), lerp(lerp(lerp(n1000, n1001, d), lerp(n1010, n1011, d), c), lerp(lerp(n1100, n1101, d), lerp(n1110, n1111, d), c), b), a);
+  }
+};
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
@@ -763,11 +947,11 @@ var _roleDictionary = __webpack_require__(7);
 
 var _serverInfo = __webpack_require__(0);
 
-var _loadPrepInterface = __webpack_require__(24);
+var _loadPrepInterface = __webpack_require__(25);
 
 var _loadPrepInterface2 = _interopRequireDefault(_loadPrepInterface);
 
-var _loadPlayInterface = __webpack_require__(25);
+var _loadPlayInterface = __webpack_require__(26);
 
 var _loadPlayInterface2 = _interopRequireDefault(_loadPlayInterface);
 
@@ -781,7 +965,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // Bad practice, works well though :p
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -793,7 +977,7 @@ Object.defineProperty(exports, "__esModule", {
 var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -846,7 +1030,7 @@ function loadErrorMessage(msg, i) {
 };
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -856,39 +1040,39 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _Menu = __webpack_require__(16);
+var _Menu = __webpack_require__(17);
 
 var _Menu2 = _interopRequireDefault(_Menu);
 
-var _GameLobby = __webpack_require__(18);
+var _GameLobby = __webpack_require__(19);
 
 var _GameLobby2 = _interopRequireDefault(_GameLobby);
 
-var _GamePrep = __webpack_require__(19);
+var _GamePrep = __webpack_require__(20);
 
 var _GamePrep2 = _interopRequireDefault(_GamePrep);
 
-var _GamePlay = __webpack_require__(20);
+var _GamePlay = __webpack_require__(21);
 
 var _GamePlay2 = _interopRequireDefault(_GamePlay);
 
-var _GameOver = __webpack_require__(21);
+var _GameOver = __webpack_require__(22);
 
 var _GameOver2 = _interopRequireDefault(_GameOver);
 
-var _ControllerLobby = __webpack_require__(22);
+var _ControllerLobby = __webpack_require__(23);
 
 var _ControllerLobby2 = _interopRequireDefault(_ControllerLobby);
 
-var _ControllerPrep = __webpack_require__(23);
+var _ControllerPrep = __webpack_require__(24);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(27);
+var _ControllerPlay = __webpack_require__(28);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(28);
+var _ControllerOver = __webpack_require__(29);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -955,7 +1139,7 @@ NodeList.prototype.remove = HTMLCollection.prototype.remove = function () {
 exports.default = SimpleGame;
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1166,7 +1350,7 @@ var Menu = function (_Phaser$State) {
 exports.default = Menu;
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1185,7 +1369,7 @@ var loadImageComplete = function loadImageComplete(gm, pos, dims, name) {
 exports.default = loadImageComplete;
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1319,7 +1503,7 @@ var GameLobby = function (_Phaser$State) {
 exports.default = GameLobby;
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1428,7 +1612,7 @@ var GamePrep = function (_Phaser$State) {
 exports.default = GamePrep;
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1468,6 +1652,10 @@ var _loadGUIOverlay = __webpack_require__(10);
 
 var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
 
+var _perlinImproved = __webpack_require__(12);
+
+var _perlinImproved2 = _interopRequireDefault(_perlinImproved);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -1487,19 +1675,179 @@ var GamePlay = function (_Phaser$State) {
 
     _createClass(GamePlay, [{
         key: 'preload',
-        value: function preload() {}
+        value: function preload() {
+
+            /*
+                Load all images into the cache
+                The "preload" function waits until everything is loaded, before calling the create function
+              Which should give us time to load all images
+              */
+
+            // monsters
+            var mDrawings = _serverInfo.serverInfo.monsterDrawings;
+            for (var i = 0; i < mDrawings.length; i++) {
+                this.game.load.image('monsterNum' + i, mDrawings[i]);
+            }
+
+            // player ships
+            var sDrawings = _serverInfo.serverInfo.shipDrawings;
+            for (var _i = 0; _i < sDrawings.length; _i++) {
+                this.game.load.image('shipNum' + _i, sDrawings[_i]);
+            }
+
+            if (sDrawings.length < 1) {
+                this.game.load.image('shipNum0', _serverInfo.serverInfo.backupShipDrawing);
+                this.game.load.image('shipNum1', _serverInfo.serverInfo.backupShipDrawing);
+                this.game.load.image('shipNum2', _serverInfo.serverInfo.backupShipDrawing);
+            }
+
+            // ai ships
+            var aiDrawings = _serverInfo.serverInfo.aiShipDrawings;
+            for (var _i2 = 0; _i2 < aiDrawings.length; _i2++) {
+                this.game.load.image('aiShipNum' + _i2, aiDrawings[_i2]);
+            }
+
+            if (aiDrawings.length < 1) {
+                this.game.load.image('aiShipNum0', _serverInfo.serverInfo.backupShipDrawing);
+                this.game.load.image('aiShipNum1', _serverInfo.serverInfo.backupShipDrawing);
+                this.game.load.image('aiShipNum2', _serverInfo.serverInfo.backupShipDrawing);
+            }
+
+            // docks
+            this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
+        }
     }, {
         key: 'create',
         value: function create() {
             var gm = this.game;
             var socket = _serverInfo.serverInfo.socket;
 
-            // THIS IS WHERE ALL THE MAGIC HAPPENS
+            /***
+                Recreate the map (based on the seed)
+              This creates the 4D noise value on each location, and immediately displays the correct (colored) square
+                TO DO: Determine islands by myself? Or receive them from the server? (Might just as well send them, if we're sending this much information)
+              TO DO: Create/place units (docks, aiShips, monsters, playerShips)
+              TO DO: Update these units when receiving a server signal (at start of new turn)
+              ***/
 
-            // Display the game map (hidden or not)
-            // TO DO
-            // We're just showing the seed, at the moment
-            gm.add.text(gm.width * 0.5, 400, 'Game seed:' + _serverInfo.serverInfo.mapSeed, _styles.mainStyle.subText());
+            // seed the noise object (with the mapSeed)
+            _perlinImproved2.default.seed(_serverInfo.serverInfo.mapSeed);
+
+            // initialize some variables determining map size (and zoom level)
+            var x1 = 0,
+                y1 = 0,
+                x2 = 10,
+                y2 = 10;
+            var mapWidth = 60,
+                mapHeight = 30;
+
+            this.map = []; //initialize map variable
+
+            var graphics = this.add.graphics(0, 0);
+            var tileSize = Math.min(window.innerWidth / mapWidth, window.innerHeight / mapHeight);
+
+            // loop through all tiles, determine noise level, and save it
+            for (var y = 0; y < mapHeight; y++) {
+                this.map[y] = [];
+                for (var x = 0; x < mapWidth; x++) {
+                    // 4D noise => wraps back to 2D map with seamless edges
+                    var s = x / mapWidth;
+                    var t = y / mapHeight;
+                    var dx = x2 - x1;
+                    var dy = y2 - y1;
+                    var pi = Math.PI;
+
+                    // Walk over two independent circles (perpendicular to each other)
+                    var nx = x1 + Math.cos(s * 2 * pi) * dx / (2 * pi);
+                    var nz = y1 + Math.sin(s * 2 * pi) * dy / (2 * pi);
+
+                    var ny = x1 + Math.cos(t * 2 * pi) * dx / (2 * pi);
+                    var nw = y1 + Math.sin(t * 2 * pi) * dy / (2 * pi);
+
+                    // save the noise value
+                    var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
+                    this.map[y][x] = curVal;
+
+                    // display the map
+                    // DEEP OCEAN
+                    if (curVal < -0.3) {
+                        graphics.beginFill(0x1036CC);
+                        // SHALLOW OCEAN
+                    } else if (curVal < 0.2) {
+                        graphics.beginFill(0x4169FF);
+                        // BEACH
+                    } else if (curVal < 0.25) {
+                        graphics.beginFill(0xEED6AF);
+                        // ISLAND
+                    } else {
+                        graphics.beginFill(0x228B22);
+                    }
+
+                    graphics.drawRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                }
+            }
+
+            /*
+                Display all units
+                Some of the units need to be saved as SPRITES, so they can be moved around later.
+              (These are the same units that need to load an image from a baseURI)
+              This means that dynamicLoadImage doesn't work. 
+                Instead, load all baseURIs into cache at the start, then just create sprites from them.
+              */
+            // Display docks
+            var docks = _serverInfo.serverInfo.docks;
+            for (var i = 0; i < docks.length; i++) {
+                var _x = docks[i].x,
+                    _y = docks[i].y;
+
+                graphics.beginFill(0xFF0000);
+
+                graphics.drawRect(_x * tileSize, _y * tileSize, tileSize, tileSize);
+            }
+
+            // Display monsters
+            console.log(_serverInfo.serverInfo.monsters);
+            var monsters = _serverInfo.serverInfo.monsters;
+            for (var _i3 = 0; _i3 < monsters.length; _i3++) {
+                var _x2 = monsters[_i3].x,
+                    _y2 = monsters[_i3].y;
+
+                graphics.beginFill(0x00FFFF);
+
+                graphics.drawRect(_x2 * tileSize, _y2 * tileSize, tileSize, tileSize);
+            }
+
+            // Display AI Ships
+            console.log(_serverInfo.serverInfo.aiShips);
+
+            var aiShips = _serverInfo.serverInfo.aiShips;
+            for (var _i4 = 0; _i4 < aiShips.length; _i4++) {
+                var _x3 = aiShips[_i4].x,
+                    _y3 = aiShips[_i4].y;
+
+                var cacheLabel = 'aiShipNum' + aiShips[_i4].myShipType;
+
+                var newSprite = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, cacheLabel);
+                newSprite.width = newSprite.height = tileSize;
+            }
+
+            // Display player Ships
+            console.log(_serverInfo.serverInfo.playerShips);
+
+            var playerShips = _serverInfo.serverInfo.playerShips;
+            for (var _i5 = 0; _i5 < playerShips.length; _i5++) {
+                var _x4 = playerShips[_i5].x,
+                    _y4 = playerShips[_i5].y;
+                var _cacheLabel = 'shipNum' + playerShips[_i5].num;
+
+                var _newSprite = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, _cacheLabel);
+                _newSprite.width = _newSprite.height = tileSize;
+
+                /*
+                graphics.beginFill(0xFFFFFF);
+                graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+                */
+            }
 
             // Display the messages from the radio
 
@@ -1512,13 +1860,17 @@ var GamePlay = function (_Phaser$State) {
             // load GUI overlay (displays room code and such)
             (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
 
+            (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
             (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
 
             // Function that is called whenever a new turn starts
             // Resets timer, resets other stuff, displays new situation, etc.
+            var ths = this;
             socket.on('new-turn', function (data) {
+                console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
+
                 // reset the timer 
-                _serverInfo.serverInfo.timer = _serverInfo.serverInfo.timerBackup;
+                ths.timer = _serverInfo.serverInfo.timer;
 
                 // TO DO
                 // Reset stuffiebuffie
@@ -1540,7 +1892,7 @@ var GamePlay = function (_Phaser$State) {
 exports.default = GamePlay;
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1674,7 +2026,7 @@ var GameWaiting = function (_Phaser$State) {
 exports.default = GameWaiting;
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1851,7 +2203,7 @@ var ControllerLobby = function (_Phaser$State) {
 exports.default = ControllerLobby;
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1877,7 +2229,7 @@ var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
 var _roleDictionary = __webpack_require__(7);
 
-var _loadTab = __webpack_require__(12);
+var _loadTab = __webpack_require__(13);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
@@ -2011,7 +2363,7 @@ var ControllerPrep = function (_Phaser$State) {
 exports.default = ControllerPrep;
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2024,7 +2376,7 @@ exports.default = loadPrepInterface;
 
 var _serverInfo = __webpack_require__(0);
 
-var _shipColors = __webpack_require__(13);
+var _shipColors = __webpack_require__(14);
 
 /*
     This function loads the preparation interface for each role
@@ -2279,7 +2631,7 @@ function loadPrepInterface(num, cont) {
 };
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2292,21 +2644,25 @@ exports.default = loadPlayInterface;
 
 var _serverInfo = __webpack_require__(0);
 
-var _shipColors = __webpack_require__(13);
+var _shipColors = __webpack_require__(14);
 
-var _upgradeDictionary = __webpack_require__(26);
+var _upgradeDictionary = __webpack_require__(27);
 
 var _upgradeDictionary2 = _interopRequireDefault(_upgradeDictionary);
 
 var _roleDictionary = __webpack_require__(7);
 
-var _loadErrorMessage = __webpack_require__(14);
+var _loadErrorMessage = __webpack_require__(15);
 
 var _loadErrorMessage2 = _interopRequireDefault(_loadErrorMessage);
 
 var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
+
+var _perlinImproved = __webpack_require__(12);
+
+var _perlinImproved2 = _interopRequireDefault(_perlinImproved);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2524,7 +2880,7 @@ function loadPlayInterface(num, cont) {
 
                 switch (taskType) {
                     // Battle => enemies are nearby
-                    // No parameter necessary
+                    // No parameter.
                     case 0:
                         var span0 = document.createElement("span");
                         span0.classList.add("captain-task");
@@ -2597,8 +2953,9 @@ function loadPlayInterface(num, cont) {
                         span2.classList.add("captain-task");
                         span2.innerHTML = "<p>You are docked at a harbor. Want to trade?</p>";
 
-                        // TO DO: Actually display the proposed trade
-                        span2.innerHTML += '<p><em>This feature doesn\'t work at the moment. BE PATIENT.</em></p>';
+                        // Display the proposed trade, saved in serverInfo.dockTrade
+                        // TO DO: Make the trade look nice (with icons and all)
+                        span2.innerHTML = '<p>Current deal is: ' + _serverInfo.serverInfo.dockTrade[0] + ' for ' + _serverInfo.serverInfo.dockTrade[1] + '</p>';
 
                         var btn2 = document.createElement("button");
                         btn2.setAttribute('data-taskid', _i);
@@ -2608,9 +2965,6 @@ function loadPlayInterface(num, cont) {
                         btn2.addEventListener('click', function () {
                             // send signal to server
                             socket.emit('dock-trade');
-
-                            // TO DO 
-                            // just update the resources immediately here, then we don't need to send/receive another signal
 
                             // pop this task off the list
                             // set it to null; it will just be ignored from now on
@@ -2741,7 +3095,7 @@ function loadPlayInterface(num, cont) {
 
             // LOAD THE MAP (or at least, the part that we can see)
             // Seed the noise generator
-            noise.seed(_serverInfo.serverInfo.mapSeed);
+            _perlinImproved2.default.seed(_serverInfo.serverInfo.mapSeed);
 
             // Create graphics object
             var graphics = canvas.myGame.add.graphics(0, 0);
@@ -2774,18 +3128,26 @@ function loadPlayInterface(num, cont) {
                     break;
             }
 
+            // TO DO: Override for testing. Remove this in deployment
+            mapSize = 20;
+
             // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
             var globalMapWidth = 60;
             var globalMapHeight = 30;
 
-            var globalTileSize = 24.17; // TO DO this is the tile size used for the map on all devices, to keep it consistent
-            var localTileSize = 120; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
+            // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
+            // the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
+            var localTileSize = 120 - mapSize * 5;
 
             // Loop through our visible tiles
             // Make sure we center this around our ship!
             // Get the right noise value, color it correctly, display square of that color
+            var x1 = 0,
+                y1 = 0,
+                x2 = 10,
+                y2 = 10;
             for (var y = 0; y < mapSize; y++) {
                 for (var x = 0; x < mapSize; x++) {
                     var xTile = _serverInfo.serverInfo.x - Math.floor(0.5 * mapSize) + x;
@@ -2802,10 +3164,22 @@ function loadPlayInterface(num, cont) {
                         yTile -= globalMapHeight;
                     }
 
-                    var nx = xTile * globalTileSize;
-                    var ny = yTile * globalTileSize;
+                    // 4D noise => wraps back to 2D map with seamless edges
+                    var s = xTile / globalMapWidth;
+                    var t = yTile / globalMapHeight;
+                    var dx = x2 - x1;
+                    var dy = y2 - y1;
+                    var pi = Math.PI;
 
-                    var curVal = noise.perlin2(nx / 150, ny / 150);
+                    // Walk over two independent circles (perpendicular to each other)
+                    var nx = x1 + Math.cos(s * 2 * pi) * dx / (2 * pi);
+                    var nz = y1 + Math.sin(s * 2 * pi) * dy / (2 * pi);
+
+                    var ny = x1 + Math.cos(t * 2 * pi) * dx / (2 * pi);
+                    var nw = y1 + Math.sin(t * 2 * pi) * dy / (2 * pi);
+
+                    // save the noise value
+                    var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
 
                     // DEEP OCEAN
                     if (curVal < -0.3) {
@@ -2834,32 +3208,34 @@ function loadPlayInterface(num, cont) {
             // As of right now, I just displays our own ship.
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
             // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
-            _serverInfo.serverInfo.mapUnits = [{ x: _serverInfo.serverInfo.x, y: _serverInfo.serverInfo.y, index: _serverInfo.serverInfo.myShip }];
+            // serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
 
             var u = _serverInfo.serverInfo.mapUnits;
             for (var _i3 = 0; _i3 < u.length; _i3++) {
                 var unit = u[_i3];
 
-                // coordinates need to be recalculated, using our own ship as the center
-                var _x2 = unit.x - _serverInfo.serverInfo.x + Math.floor(0.5 * mapSize);
-                var _y = unit.y - _serverInfo.serverInfo.y + Math.floor(0.5 * mapSize);
+                // coordinates do NOT need to be recalculated, as the server already did that for us
 
-                // Fetch image from a different list, based on unit type (this is always a dataURI, even for stuff that isn't drawn by the players)
-                // ALso determine the UNIQUE label for this unit type
+                // Determine the UNIQUE label for this unit type => the corresponding drawing should have been preloaded
                 // 0 = ship, 1 = monster, 2 = ai ship, 3 = dock
-                var dataURI = void 0;
                 var label = void 0;
                 if (unit.myType == 0) {
-                    dataURI = _serverInfo.serverInfo.shipDrawings[unit.index];
                     label = 'shipNum' + unit.index;
                 } else if (unit.myType == 1) {
-                    dataURI = _serverInfo.serverInfo.monsterDrawings[unit.index];
                     label = 'monsterNum' + unit.index;
+                } else if (unit.myType == 2) {
+                    label = 'aiShipNum' + unit.index;
+                } else if (unit.myType == 3) {
+                    label = 'dock';
                 }
 
-                // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)
-                (0, _dynamicLoadImage2.default)(canvas.myGame, { x: (_x2 + 0.5) * localTileSize, y: (_y + 0.5) * localTileSize }, { width: localTileSize, height: localTileSize }, label, dataURI);
+                var newSprite = canvas.myGame.add.sprite(unit.x * localTileSize, unit.y * localTileSize, label);
+                newSprite.width = newSprite.height = localTileSize;
             }
+
+            // move camera to center on our player's ship (by default)
+            canvas.myGame.camera.x = Math.floor(0.5 * mapSize) * localTileSize - canvas.myGame.width * 0.5;
+            canvas.myGame.camera.y = Math.floor(0.5 * mapSize) * localTileSize - canvas.myGame.height * 0.5;
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false);
@@ -3147,7 +3523,7 @@ function loadPlayInterface(num, cont) {
 };
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3169,7 +3545,7 @@ var UPGRADE_DICT = [[], // captain (has no upgrades)
 module.exports = UPGRADE_DICT;
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3195,13 +3571,13 @@ var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
 var _roleDictionary = __webpack_require__(7);
 
-var _loadTab = __webpack_require__(12);
+var _loadTab = __webpack_require__(13);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
 var _timers = __webpack_require__(11);
 
-var _loadErrorMessage = __webpack_require__(14);
+var _loadErrorMessage = __webpack_require__(15);
 
 var _loadErrorMessage2 = _interopRequireDefault(_loadErrorMessage);
 
@@ -3227,6 +3603,50 @@ var ControllerWaiting = function (_Phaser$State) {
     key: 'preload',
     value: function preload() {
       // load stuff here, if needed
+
+      // if this player has the cartographer role, preload drawings
+      // includes backups for when preparation is skipped
+      if (_serverInfo.serverInfo.myRoles.includes(2)) {
+        // monsters
+        var mDrawings = _serverInfo.serverInfo.monsterDrawings;
+        for (var i = 0; i < mDrawings.length; i++) {
+          this.game.load.image('monsterNum' + i, mDrawings[i]);
+        }
+
+        if (mDrawings.length < 1) {
+          this.game.load.image('monsterNum0', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('monsterNum1', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('monsterNum2', _serverInfo.serverInfo.backupShipDrawing);
+        }
+
+        // player ships
+        var sDrawings = _serverInfo.serverInfo.shipDrawings;
+        for (var _i = 0; _i < sDrawings.length; _i++) {
+          this.game.load.image('shipNum' + _i, sDrawings[_i]);
+        }
+
+        if (sDrawings.length < 1) {
+          this.game.load.image('shipNum0', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('shipNum1', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('shipNum2', _serverInfo.serverInfo.backupShipDrawing);
+        }
+
+        // ai ships
+        var aiDrawings = _serverInfo.serverInfo.aiShipDrawings;
+        for (var _i2 = 0; _i2 < aiDrawings.length; _i2++) {
+          this.game.load.image('aiShipNum' + _i2, aiDrawings[_i2]);
+        }
+
+        if (aiDrawings.length < 1) {
+          this.game.load.image('aiShipNum0', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('aiShipNum1', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('aiShipNum2', _serverInfo.serverInfo.backupShipDrawing);
+        }
+
+        // docks
+        _serverInfo.serverInfo.dockDrawing = _serverInfo.serverInfo.backupShipDrawing;
+        this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
+      }
     }
   }, {
     key: 'create',
@@ -3239,6 +3659,7 @@ var ControllerWaiting = function (_Phaser$State) {
       var div = document.getElementById("main-controller");
 
       /**** DO SOME EXTRA INITIALIZATION *****/
+      // TO DO: This could be much simpler. No need to go through all the roles; just initialize everything to zero.
       // loop through all the roles
       var roles = _serverInfo.serverInfo.myRoles;
       _serverInfo.serverInfo.roleStats = [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }];
@@ -3254,8 +3675,8 @@ var ControllerWaiting = function (_Phaser$State) {
 
               // if the captain tab is currently displaying, update it
               if (curTab.num == 0) {
-                for (var _i = 0; _i < data.length; _i++) {
-                  document.getElementById('shipResource' + _i).innerHTML = data[_i];
+                for (var _i3 = 0; _i3 < data.length; _i3++) {
+                  document.getElementById('shipResource' + _i3).innerHTML = data[_i3];
                 }
               }
             });
@@ -3329,14 +3750,14 @@ var ControllerWaiting = function (_Phaser$State) {
 
       // then add the roles
       //let roles = serverInfo.myRoles;
-      for (var _i2 = 0; _i2 < roles.length; _i2++) {
-        var _roleNum = roles[_i2];
+      for (var _i4 = 0; _i4 < roles.length; _i4++) {
+        var _roleNum = roles[_i4];
 
         // create a new tab object (with correct/unique label and z-index)
         var newTab = document.createElement("span");
         newTab.classList.add("shipRoleGroup");
-        newTab.id = 'label' + _i2;
-        newTab.style.zIndex = 5 - _i2;
+        newTab.id = 'label' + _i4;
+        newTab.style.zIndex = 5 - _i4;
 
         // add the ICON and the ROLE NAME within the tab
         newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[_roleNum] + '</span>';
@@ -3360,7 +3781,7 @@ var ControllerWaiting = function (_Phaser$State) {
       div.appendChild(shipInterface);
 
       // automatically load the first role 
-      // (by calling LOAD_TAB with value 0; third paramter loads play interface instead of prep interface)
+      // (by calling LOAD_TAB with value 0; third parameter loads play interface instead of prep interface)
       (0, _loadTab2.default)("label0", curTab, 1);
 
       this.timer = _serverInfo.serverInfo.timer;
@@ -3370,10 +3791,13 @@ var ControllerWaiting = function (_Phaser$State) {
 
       // Function that is called whenever a new turn starts
       // Resets timer, cleans interface variables, reloads first tab
+      var ths = this;
       socket.on('new-turn', function (data) {
+        console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
+
         // reset the timer (if you're the VIP)
         if (_serverInfo.serverInfo.vip) {
-          _serverInfo.serverInfo.timer = _serverInfo.serverInfo.timerBackup;
+          ths.timer = _serverInfo.serverInfo.timer;
         }
 
         // clean interface variables
@@ -3398,7 +3822,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 28 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

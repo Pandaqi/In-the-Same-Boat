@@ -534,9 +534,12 @@ io.on('connection', socket => {
   });
 
   socket.on('name-island', data => {
-    // TO DO
     // data.name holds the desired name (a string)
     // data.island holds the index of the island to be named (an integer)
+    rooms[socket.mainRoom].islands[data.island].name = data.name;
+    rooms[socket.mainRoom].islands[data.island].discovered = true;
+
+    // TO DO: If island is discovered, inform everyone and display/reveal it on the monitor
   });
 
   socket.on('dock-trade', function() {
@@ -590,7 +593,6 @@ io.on('connection', socket => {
       // NOTE: Because title + drawing are sent at the same time, they will automatically receive the same index
       } else if(key == 'shipMonster') {
         curRoom.monsterTypes.push( state[key] );
-        //curRoom.monsters.push( createMonster( state[key], curRoom.monsters.length ) );
 
       } else if(key == 'shipDrawing') {
         // save the ship's drawing, at the correct index
@@ -979,11 +981,25 @@ function startTurn(room, gameStart = false) {
     createDockRoutes(curRoom);
 
     // create all monsters (individual array)
+    createSeaMonsters(curRoom);
 
     // distribute MONSTERS and PLAYERS (both already have their individual array; update that and now place them inside the map)
+    distributeStartingUnits(curRoom);
 
     // add ALL this information to the "mPackage": the seed, the drawings of creatures/ships, dock position, etc.
 
+    // send the drawings (include FLAG and PLAYER DRAWINGS ??)
+    mPack["monsterDrawings"] = curRoom.monsterDrawings;
+    mPack["shipDrawings"] = curRoom.shipDrawings;
+    mPack["aiShipDrawings"] = [];
+
+    // send the units
+    // TO DO: Only send the information we need: the type (for displaying the drawing) and their location (perhaps orientation)
+    // TO DO: Later on, we need to send the dock deals, and which islands have been discovered
+    mPack["docks"] = curRoom.docks;
+    mPack["monsters"] = curRoom.monsters;
+    mPack["aiShips"] = curRoom.aiShips;
+    mPack["playerShips"] = curRoom.playerShips;
   }
 
   // send UPDATED information about all units
@@ -992,6 +1008,9 @@ function startTurn(room, gameStart = false) {
 
   // send the mPack to all monitors
   sendSignal(room, true, 'pre-signal', mPack, true)
+
+
+
 
   /* 
 
@@ -1006,6 +1025,165 @@ function startTurn(room, gameStart = false) {
   (didn't want to do this, but had some trouble with reserved words and all)
 
   */
+
+  // loop through all ships
+  // some information only needs to be determined ONCE per ship
+  //  => adjacency checks (next to a dock? next to an undiscovered island?)
+  //  => cartographer checks (enemies within range?)
+  for(let i = 0; i < curRoom.playerShips.length; i++) {
+    let curShip = curRoom.playerShips[i];
+    curShip.captainCanTrade = -1;
+
+    // == ADJACENCY (CAPTAIN) STUFF ==
+    // check the tiles left/right/top/bottom
+    const positions = [[-1,0],[1,0],[0,1],[0,-1]];
+    let islandsWeAlreadyChecked = {};
+    let captainTasks = [];
+    for(let j = 0; j < 4; j++) {
+      // get tile
+      // TO DO: I REALLY need to make a function for these "wrap around the map" calculations
+      let xTile = curShip.x + positions[j][0];
+      let yTile = curShip.y + positions[j][1];
+      if(xTile < 0) { xTile += curRoom.mapWidth } else if(xTile >= curRoom.mapWidth) { xTile -= curRoom.mapWidth }
+      if(yTile < 0) { yTile += curRoom.mapHeight } else if(yTile >= curRoom.mapHeight) { yTile -= curRoom.mapHeight }
+
+      let curTile = curRoom.map[yTile][xTile]
+
+      // check against TASK CONDITIONS
+
+      // island discovery; if it's an island, get its index, check if it's already been discovered
+      if(isIsland(curTile)) {
+        const ind = curTile.island;
+        // if it hasn't been discovered, AND it's not an island we're currently discovering (the ship can touch multiple tiles of the same island at once)
+        // send a task to discover an island ("1"), and send WHICH island we're discovering
+        if(!curRoom.islands[ind].discovered && !(ind in islandsWeAlreadyChecked) ) {
+          captainTasks.push([1,ind]);
+          islandsWeAlreadyChecked[ind] = true;
+        }
+      }
+
+      // dock trade
+      if(hasDock(curTile)) {
+        // send the deal to the captain
+        const ind = curTile.dock;
+        captainTasks.push([2,ind]);
+
+        curShip.captainCanTrade = ind;
+      }
+    }
+
+    // == CARTOGRAPHER STUFF ==
+    // Get the map range AND what units are visible
+    let mapSize = 3, sightLvl = 0;
+
+    // Determine map size and visible units based on instrument level
+    switch(curShip.roleStats[2].lvl) {
+        case 0:
+            mapSize = 3;
+            sightLvl = 0;
+            break;
+
+        case 1:
+            mapSize = 5
+            sightLvl = 0
+            break;
+
+        case 2:
+            mapSize = 5
+            sightLvl = 1
+            break;
+
+        case 3:
+            mapSize = 7
+            sightLvl = 1
+            break;
+
+        case 4:
+            mapSize = 7
+            sightLvl = 2
+            break;
+
+        case 5:
+            mapSize = 9
+            sightLvl = 2
+            break;
+    }
+
+    // TO DO: Override for testing. Remove this in deployment
+    mapSize = 20;
+    sightLvl = 2;
+
+    // Loop through these tiles to find all units within them
+    // Generate a 2D array with a "personalized" view of all the units
+    curShip.personalUnits = [];
+    let transX = curShip.x - Math.floor(0.5*mapSize), transY = curShip.y - Math.floor(0.5*mapSize);
+    
+    // The client only needs to know what image to display and where to display it. (Cartographer doesn't even need dock deals, for example.)
+    //       => The "where" is in the "x" and "y" values
+    //       => The "which drawing is it" is in the index
+    // It's created as a flat 1D array, because that is probably more efficient. (There'll probably only be a few units around you, so no need for a large 2D array.)
+
+    for(let y = 0; y < mapSize; y++) {
+      for(let x = 0; x < mapSize; x++) {
+        // transform coordinates so that our ship is centered
+        let xTile = x + transX;
+        if(xTile < 0) { xTile += curRoom.mapWidth } else if(xTile >= curRoom.mapWidth) { xTile -= curRoom.mapWidth }
+
+        let yTile = y + transY;
+        if(yTile < 0) { yTile += curRoom.mapHeight } else if(yTile >= curRoom.mapHeight) { yTile -= curRoom.mapHeight }
+
+        let mapTile = curRoom.map[yTile][xTile];
+
+        // if our sight is at least level 1, we can see docks and AI ships
+        if(sightLvl >= 1) {
+          // if this tile has a dock, add it
+          if(mapTile.dock != null) {
+            curShip.personalUnits.push({ myType: 3, index: 0, x: x, y: y });
+          }
+
+          // if this tile has ai ships, add them
+          if(mapTile.aiShips.length > 0) {
+            // send the type of this object AND the drawing index (or "AI type")
+            for(let aa = 0; aa < mapTile.aiShips.length; aa++) {
+              const myIndex = mapTile.aiShips[aa];
+              curShip.personalUnits.push({ myType: 2, index: curRoom.aiShips[myIndex].myShipType, x: x, y: y });
+            }
+          }
+        }
+
+        // if our sight is at least level 2, we can see monsters and player ships as well!
+        if(sightLvl >= 2) {
+          // if this tile has monsters, add them
+          if(mapTile.monsters.length > 0) {
+            for(let aa = 0; aa < mapTile.monsters.length; aa++) {
+              const myIndex = mapTile.monsters[aa];
+              curShip.personalUnits.push({ myType: 1, index: curRoom.monsters[myIndex].myMonsterType, x: x, y: y });
+            }
+          }
+
+          // if this tile has player ships, add them
+          if(mapTile.playerShips.length > 0) {
+            for(let aa = 0; aa < mapTile.playerShips.length; aa++) {
+              const myIndex = mapTile.playerShips[aa];
+              curShip.personalUnits.push({ myType: 0, index: curRoom.playerShips[myIndex].num, x: x, y: y });
+            }
+          }
+        }
+      }
+    }
+
+    // TO DO: I think we need to subtract our own ship :p
+    // Or, we could accept we'll always find ourselves, and just say "units found > 1"
+    // This checks if we can fire or not (and sends the captain that task, if so)
+    if(curShip.personalUnits.length > 0) {
+      captainTasks.push([0,0])
+      curShip.captainCanFire = true;
+    } else {
+      curShip.captainCanFire = false;
+    }
+
+    curShip.captainTasks = captainTasks;
+  }
 
   // loop through all players
   for(let playerID in curRoom.players) {
@@ -1043,13 +1221,20 @@ function startTurn(room, gameStart = false) {
           pPack["resources"] = curShip.resources;
 
           // List of current tasks
-          // TO DO: Determine the current tasks
-          // TO DO: If one of the tasks is FIRING, we also need to send cannon info (weaponeer level AND cannon loads)
-          pPack["taskList"] = [[0, 0], [1, 5], [2, 7]];
+          pPack["taskList"] = curShip.captainTasks;
 
-          // reduce function calculates the number of cannons (positive loads), multiplies by (half) the current weaponeer value
-          let numCannons = curShip.cannons.reduce(function(tot, cur) { if(cur >= 0) { return tot + 1; } else { return tot; } }, 0)
-          pPack["firingCosts"] = Math.round((curShip.roleStats[4].lvl + 1) / 2) * numCannons;
+          // if we can fire, calculate the cost of firing
+          if(curShip.captainCanFire) {
+            // reduce function calculates the number of cannons (positive loads), multiplies by (half) the current weaponeer value
+            let numCannons = curShip.cannons.reduce(function(tot, cur) { if(cur >= 0) { return tot + 1; } else { return tot; } }, 0)
+            pPack["firingCosts"] = Math.round((curShip.roleStats[4].lvl + 1) / 2) * numCannons;
+          }
+
+          // if we can trade, send the dock deal
+          if(curShip.captainCanTrade > -1) {
+            pPack["dockDeal"] = room.docks[curShip.captainCanTrade].deal;
+          }
+          
           break;
 
         // First Mate
@@ -1065,111 +1250,18 @@ function startTurn(room, gameStart = false) {
             pPack["mapSeed"] = curRoom.mapSeed;
 
             // send all drawings in advance (this includes our own ship's drawing)
+            // TO DO: AI Ships drawings. (Right now, you can't draw your own AI ship, but that might change)
             pPack['monsterDrawings'] = curRoom.monsterDrawings;
             pPack['shipDrawings'] = curRoom.shipDrawings;
+            pPack['aiShipDrawings'] = [];
           }
 
-          // Get the map range AND what units are visible
-          let mapSize = 3;
-          let sightLvl = 0;
-
-          // Determine map size and visible units based on instrument level
-          switch(serverInfo.roleStats[2].lvl) {
-              case 0:
-                  mapSize = 3;
-                  sightLvl = 0;
-                  break;
-
-              case 1:
-                  mapSize = 5
-                  sightLvl = 0
-                  break;
-
-              case 2:
-                  mapSize = 5
-                  sightLvl = 1
-                  break;
-
-              case 3:
-                  mapSize = 7
-                  sightLvl = 1
-                  break;
-
-              case 4:
-                  mapSize = 7
-                  sightLvl = 2
-                  break;
-
-              case 5:
-                  mapSize = 9
-                  sightLvl = 2
-                  break;
-          }
-
-          // Loop through these tiles to find all units within them
-          // Generate a 2D array with a "personalized" view of all the units
-          let personalUnits = [];
-          let transX = curShip.x - Math.floor(0.5*mapSize), transY = curShip.y - Math.floor(0.5*mapSize);
-          
-          // The client only needs to know what image to display and where to display it. (Cartographer doesn't even need dock deals, for example.)
-          //       => The "where" is in the "x" and "y" values
-          //       => The "which drawing is it" is in the index
-          // It's created as a flat 1D array, because that is probably more efficient. (There'll probably only be a few units around you, so no need for a large 2D array.)
-
-          for(let y = 0; y < mapSize; y++) {
-            for(let x = 0; x < mapSize; x++) {
-              // transform coordinates so that our ship is centered
-              let xTile = x + transX;
-              if(xTile < 0) { xTile += room.mapWidth } else if(xTile >= room.mapWidth) { xTile -= room.mapWidth }
-
-              let yTile = y + transY;
-              if(yTile < 0) { yTile += room.mapHeight } else if(yTile >= room.mapHeight) { yTile -= room.mapHeight }
-
-              let mapTile = room.map[yTile][xTile];
-
-              // if our sight is at least level 1, we can see docks and AI ships
-              if(sightLvl >= 1) {
-                // if this tile has a dock, add it
-                if(mapTile.dock != null) {
-                  personalUnits.push({ myType: 3, index: 0, x: x, y: y });
-                }
-
-                // if this tile has ai ships, add them
-                if(mapTile.aiShips.length > 0) {
-                  // send the type of this object AND the drawing index (or "AI type")
-                  for(let aa = 0; aa < mapTile.aiShips.length; aa++) {
-                    const myIndex = mapTile.aiShips[aa];
-                    personalUnits.push({ myType: 2, index: room.aiShips[myIndex].myShipType, x: x, y: y });
-                  }
-                }
-              }
-
-              // if our sight is at least level 2, we can see monsters and player ships as well!
-              if(sightLvl >= 2) {
-                // if this tile has monsters, add them
-                if(mapTile.monsters.length > 0) {
-                  for(let aa = 0; aa < mapTile.monsters.length; aa++) {
-                    const myIndex = mapTile.monsters[aa];
-                    personalUnits.push({ myType: 1, index: room.monsters[myIndex].myMonsterType, x: x, y: y });
-                  }
-                }
-
-                // if this tile has player ships, add them
-                if(mapTile.playerShips.length > 0) {
-                  for(let aa = 0; aa < mapTile.playerShips.length; aa++) {
-                    const myIndex = mapTile.playerShips[aa];
-                    personalUnits.push({ myType: 0, index: room.playerShips[myIndex].num, x: x, y: y });
-                  }
-                }
-              }
-            }
-          }
-
-          // send the whole unit thing to the client
+          // send the whole unit thing to the client (determined beforehand in the SHIP LOOP)
           // he saves it in mapUnits, should display it properly on his map
-          pPack["mapUnits"] = personalUnits;
+          pPack["mapUnits"] = curShip.personalUnits;
 
-          // Send our own location (?? or is this sent along with the other units?)
+          // Send our own location
+          // ?? This is also send along with the other units, BUT if we send it ourselves, we don't have to search for it!
           pPack["x"] = curShip.x;
           pPack["y"] = curShip.y;
           break;
@@ -1231,59 +1323,6 @@ function finishTurn(room) {
 
   // Start next turn
   startTurn(room)
-}
-
-/*
-
-  This function creates a new MONSTER (object)
-
-  Each monster has the following properties:
-    => INDEX (within the monster array)
-    => NAME
-    => COORDINATES (x and y)
-    => LEVEL
-    => DNA
-
-  The level ranges from 0 up to (and including) 4. With each level, all stats of the monster increase.
-
-  The dna determines the "specialization" (or "type") of the monster. It controls these statistics:
-    => Attack
-    => Attack range
-    => Health
-    => Speed (movement)
-    => Loot (size)
-
-  If the dna has a 0 for a certain value, it gets the minimum value (for the level).
-  If it has a 1, it has talent for this, and gets a buff for this property.
-
-*/
-function createMonster(name, index) {
-  // TO DO: Stats are differentiated, once in combat, based on the monster LEVEL and DNA (or "fingerprint")
-
-  // create dna
-  // NOTE: Right now, points are distributed equally. No property has more than 1, or less than 0.
-  // In the future, I might allow more extreme distributions like [3,0,0,0,0]
-  let pointsLeft = 3;
-  let dna = [0,0,0,0,0];
-  while(pointsLeft > 0) {
-    // pick random part of the dna
-    let rDna = Math.floor(Math.random() * dna.length);
-
-    // if that part hasn't been improved yet, improve it
-    if(dna[rDna] == 0) {
-      dna[rDna]++;
-      pointsLeft--;
-    }
-  }
-
-  return {
-    index: index,
-    title: name,
-    x: 0,
-    y: 0,
-    level: Math.round(Math.random() * 4), // generates a random level for this monster
-    dna: dna
-  }
 }
 
 /* 
@@ -1354,6 +1393,11 @@ function placeUnit(room, obj, x, y, uType) {
 
   // now place it into its desired position
   map[y][x][uType].push(obj.index);
+
+  // get the ACTUAL object, update its position as well
+  let fullObj = room[uType][obj.index];
+  fullObj.x = x;
+  fullObj.y = y;
 }
 
 /*
@@ -1395,7 +1439,7 @@ function createBaseMap(room) {
       let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
       let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
 
-      room.map[y][x] = { val: noise.perlin4(nx, ny, nz, nw), monsters: [], ships: [], aiShips: [] };
+      room.map[y][x] = { val: noise.perlin4(nx, ny, nz, nw), monsters: [], playerShips: [], aiShips: [] };
     }
   }
 }
@@ -1415,7 +1459,7 @@ function discoverIslands(room) {
 
         // create new island (with unknown name, and no free spots/dock known)
         let islandIndex = room.islands.length;
-        room.islands.push( { name: 'Undiscovered Island', freeSpots: [] } );
+        room.islands.push( { name: 'Undiscovered Island', freeSpots: [], discovered: false } );
 
         // explore this tile (which automatically leads to the whole island)
         exploreTile(room, curTile, x, y, islandIndex)
@@ -1437,6 +1481,10 @@ function discoverIslands(room) {
 
 function isIsland(obj) {
   return obj.val >= 0.2;
+}
+
+function hasDock(obj) {
+  return (obj.dock != undefined && obj.dock != null);
 }
 
 function isChecked(obj) {
@@ -1491,6 +1539,8 @@ function exploreTile(room, tile, x, y, islandIndex) {
 function createDockRoutes(room) {
   let numDocks = room.docks.length;
   let connectionArray = [];
+
+  room.aiShips = [];
 
   // the "connection array" contains whether two docks are connected or not
   // this way, we don't need to search through all the docks all the time, we just check this array to see if there's a connection
@@ -1548,8 +1598,6 @@ function createDockRoutes(room) {
     }
 
     // if this dock has routes, place an AI ship on each of them
-    room.aiShips = [];
-
     let numRoutes = room.docks[i].routes.length;
     if(numRoutes > 0) {
       for(let r = 0; r < numRoutes; r++) {
@@ -1560,7 +1608,7 @@ function createDockRoutes(room) {
 
         // TO DO: Give the ship some more properties (outside of its position and route)
         // This creates a new AI SHIP OBJECT (create function for this?)
-        room.aiShips.push( { x: randRoute[0], y: randRoute[1], routeIndex: [i, r], routePointer: 0 } );
+        room.aiShips.push( createAIShip(randRoute, [i,r])  );
 
         // also place the AI ship on the map
         placeUnit(room, { x: -1, y: -1, index: (room.aiShips.length-1) }, randRoute[0], randRoute[1], 'aiShips');
@@ -1569,6 +1617,15 @@ function createDockRoutes(room) {
     }
     
   }
+}
+
+function createAIShip(route, routeIndex) {
+  return { 
+    x: route[0], 
+    y: route[1], 
+    routeIndex: routeIndex, 
+    routePointer: 0,
+    myShipType:0 }
 }
 
 function calculateRoute(room, start, end) {
@@ -1707,3 +1764,143 @@ class PriorityQueue {
 }
 
 /*** == END of trading routes (and AI ship placement) code == ***/
+
+/*** == BEGIN of monster creation code == ***/
+function createSeaMonsters(room) {
+  const numMonsters = 10;
+  room.monsters = [];
+
+  for(let i = 0; i < numMonsters; i++) {
+    let randomMonsterType = Math.floor( Math.random() * room.monsterTypes.length );
+    let newMon = createMonster(randomMonsterType, i);
+
+    room.monsters.push( newMon );
+  }
+}
+
+/*
+
+  This function creates a new MONSTER (object)
+
+  Each monster has the following properties:
+    => INDEX (within the monster array)
+    => NAME
+    => COORDINATES (x and y)
+    => LEVEL
+    => DNA
+
+  The level ranges from 0 up to (and including) 4. With each level, all stats of the monster increase.
+
+  The dna determines the "specialization" (or "type") of the monster. It controls these statistics:
+    => Attack
+    => Attack range
+    => Health
+    => Speed (movement)
+    => Loot (size)
+
+  If the dna has a 0 for a certain value, it gets the minimum value (for the level).
+  If it has a 1, it has talent for this, and gets a buff for this property.
+
+*/
+function createMonster(myType, index) {
+  // TO DO: Stats are differentiated, once in combat, based on the monster LEVEL and DNA (or "fingerprint")
+
+  // create dna
+  // NOTE: Right now, points are distributed equally. No property has more than 1, or less than 0.
+  // In the future, I might allow more extreme distributions like [3,0,0,0,0]
+  let pointsLeft = 3;
+  let dna = [0,0,0,0,0];
+  while(pointsLeft > 0) {
+    // pick random part of the dna
+    let rDna = Math.floor(Math.random() * dna.length);
+
+    // if that part hasn't been improved yet, improve it
+    if(dna[rDna] == 0) {
+      dna[rDna]++;
+      pointsLeft--;
+    }
+  }
+
+  return {
+    myMonsterType: myType,
+    index: index,
+    x: 0,
+    y: 0,
+    level: Math.round(Math.random() * 4), // generates a random level for this monster
+    dna: dna
+  }
+}
+
+/*** == END of monster creation code == ***/
+
+/*** == BEGIN of distribution code == ***/
+function distributeStartingUnits(room) {
+  // determine amount of blocks needed
+  const numMonsters = room.monsters.length;
+  const numPlayers = room.playerShips.length;
+  const totalBlocks = numMonsters + numPlayers;
+
+  // the ratio must be 3:1 (x to y), so, after solving the equality, this formula follows
+  let blocksX = Math.sqrt(3 * totalBlocks);
+  let blocksY = 1/3 * blocksX;
+
+  // when rounding, we might get a number too far below or above the right one
+  // that's why we need to check how low we can go
+  blocksX = Math.ceil(blocksX);
+  blocksY = Math.ceil(blocksY);
+
+  if(blocksX*(blocksY-1) >= totalBlocks) {
+    blocksY--;
+  } else if((blocksX-1)*blocksY >= totalBlocks) {
+    blocksX--;
+  }
+
+  // populate block array
+  let blockArr = [];
+  for(let i = 0; i < blocksX; i++) {
+    for(let j = 0; j < blocksY; j++) {
+      blockArr.push({ x: i, y: j });
+    }
+  }
+
+  // place monsters AND ships
+  for(let i = 0; i < totalBlocks; i++) {
+    // monsters only spawn in sea that is deep enough
+    // so keep trying, until we found a position
+    const randIndex = Math.floor(Math.random() * blockArr.length);
+    const randomBlock = blockArr.splice(randIndex, 1)[0];
+    const maxTries = 10;
+    let numTries = 0;
+
+    // we have a maximum of 10 tries. 
+    // If we haven't found a spot then, there's probably (almost) no correct spot within this sector
+    let rX, rY;
+    do {
+      rX = Math.floor( (randomBlock.x + Math.random()) * (room.mapWidth / blocksX) );
+      rY = Math.floor( (randomBlock.y + Math.random()) * (room.mapHeight / blocksY) );
+
+      numTries++;
+    } while (room.map[rY][rX].val >= -0.2 && numTries <= maxTries);
+
+    // If we've exceeded our tries, just pick a random spot on the MAP, not within our own sector
+    // This should always succeed, even if it takes 50 or 100 tries, and is reasonably fast
+    if(numTries > maxTries) {
+      do {
+        rX = Math.floor( Math.random() * room.mapWidth );
+        rY = Math.floor( Math.random() * room.mapHeight );
+      } while (room.map[rY][rX].val >= -0.2);
+    }
+
+    // if it's a monster, place the unit in the monsters array of a tile (and get the right index)
+    if(i < numMonsters) {
+      const index = i;
+      placeUnit(room, { x: -1, y: -1, index: index }, rX, rY, 'monsters');
+
+    // if it's a playership, place it into the ships array of a tile (and get the right index)
+    } else {
+      const index = i - numMonsters;
+      placeUnit(room, { x: -1, y: -1, index: index }, rX, rY, 'playerShips');
+    }
+
+  }
+}

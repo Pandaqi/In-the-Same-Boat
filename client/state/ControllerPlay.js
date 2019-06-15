@@ -18,6 +18,50 @@ class ControllerWaiting extends Phaser.State {
 
   preload () {
     // load stuff here, if needed
+
+    // if this player has the cartographer role, preload drawings
+    // includes backups for when preparation is skipped
+    if(serverInfo.myRoles.includes(2)) {
+       // monsters
+      let mDrawings = serverInfo.monsterDrawings;
+      for(let i = 0; i < mDrawings.length; i++) {
+        this.game.load.image('monsterNum'+i, mDrawings[i])
+      }
+
+      if(mDrawings.length < 1) {
+        this.game.load.image('monsterNum0', serverInfo.backupShipDrawing);
+        this.game.load.image('monsterNum1', serverInfo.backupShipDrawing);
+        this.game.load.image('monsterNum2', serverInfo.backupShipDrawing);
+      }
+
+      // player ships
+      let sDrawings = serverInfo.shipDrawings;
+      for(let i = 0; i < sDrawings.length; i++) {
+        this.game.load.image('shipNum'+i, sDrawings[i])
+      }
+
+      if(sDrawings.length < 1) {
+        this.game.load.image('shipNum0', serverInfo.backupShipDrawing);
+        this.game.load.image('shipNum1', serverInfo.backupShipDrawing);
+        this.game.load.image('shipNum2', serverInfo.backupShipDrawing);
+      }
+
+      // ai ships
+      let aiDrawings = serverInfo.aiShipDrawings;
+      for(let i = 0; i < aiDrawings.length; i++) {
+        this.game.load.image('aiShipNum'+i, aiDrawings[i])
+      }
+
+      if(aiDrawings.length < 1) {
+        this.game.load.image('aiShipNum0', serverInfo.backupShipDrawing);
+        this.game.load.image('aiShipNum1', serverInfo.backupShipDrawing);
+        this.game.load.image('aiShipNum2', serverInfo.backupShipDrawing);
+      }
+
+      // docks
+      serverInfo.dockDrawing = serverInfo.backupShipDrawing;
+      this.game.load.image('dock', serverInfo.dockDrawing);
+    }
   }
 
   create () {    
@@ -29,6 +73,7 @@ class ControllerWaiting extends Phaser.State {
     let div = document.getElementById("main-controller")
 
     /**** DO SOME EXTRA INITIALIZATION *****/
+    // TO DO: This could be much simpler. No need to go through all the roles; just initialize everything to zero.
     // loop through all the roles
     let roles = serverInfo.myRoles;
     serverInfo.roleStats = [ { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0}, { lvl: 0} ];
@@ -150,7 +195,7 @@ class ControllerWaiting extends Phaser.State {
     div.appendChild(shipInterface);
 
     // automatically load the first role 
-    // (by calling LOAD_TAB with value 0; third paramter loads play interface instead of prep interface)
+    // (by calling LOAD_TAB with value 0; third parameter loads play interface instead of prep interface)
     LOAD_TAB("label0", curTab, 1)
 
     this.timer = serverInfo.timer
@@ -160,10 +205,13 @@ class ControllerWaiting extends Phaser.State {
 
     // Function that is called whenever a new turn starts
     // Resets timer, cleans interface variables, reloads first tab
+    let ths = this;
     socket.on('new-turn', data => {
+      console.log("New turn => resetting timer to " + serverInfo.timer);
+
       // reset the timer (if you're the VIP)
       if(serverInfo.vip) {
-        serverInfo.timer = serverInfo.timerBackup;
+        ths.timer = serverInfo.timer
       }
 
       // clean interface variables

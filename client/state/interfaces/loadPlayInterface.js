@@ -6,6 +6,8 @@ import LOAD_ERROR_MESSAGE from './loadErrorMessage'
 
 import dynamicLoadImage from '../drawing/dynamicLoadImage'
 
+import noise from '../../../vendor/perlinImproved'
+
 /*
     The functions below are HELPER FUNCTIONS for specific roles (that require interactivity beyond basic DOM stuff)
     (At the bottom of this file, the main "loadPlayInterface" function can be found)
@@ -220,7 +222,7 @@ export default function loadPlayInterface(num, cont) {
                 
                 switch(taskType) {
                     // Battle => enemies are nearby
-                    // No parameter necessary
+                    // No parameter.
                     case 0:
                         let span0 = document.createElement("span")
                         span0.classList.add("captain-task")
@@ -293,8 +295,9 @@ export default function loadPlayInterface(num, cont) {
                         span2.classList.add("captain-task")
                         span2.innerHTML = "<p>You are docked at a harbor. Want to trade?</p>"
 
-                        // TO DO: Actually display the proposed trade
-                        span2.innerHTML += '<p><em>This feature doesn\'t work at the moment. BE PATIENT.</em></p>'
+                        // Display the proposed trade, saved in serverInfo.dockTrade
+                        // TO DO: Make the trade look nice (with icons and all)
+                        span2.innerHTML = '<p>Current deal is: ' + serverInfo.dockTrade[0] + ' for ' + serverInfo.dockTrade[1] + '</p>';
 
                         let btn2 = document.createElement("button")
                         btn2.setAttribute('data-taskid', i);
@@ -304,9 +307,6 @@ export default function loadPlayInterface(num, cont) {
                         btn2.addEventListener('click', function() {
                             // send signal to server
                             socket.emit('dock-trade');
-
-                            // TO DO 
-                            // just update the resources immediately here, then we don't need to send/receive another signal
 
                             // pop this task off the list
                             // set it to null; it will just be ignored from now on
@@ -464,18 +464,23 @@ export default function loadPlayInterface(num, cont) {
                     break;
             }
 
+            // TO DO: Override for testing. Remove this in deployment
+            mapSize = 20;
+
             // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
             let globalMapWidth = 60;
             let globalMapHeight = 30;
 
-            let globalTileSize = 24.17; // TO DO this is the tile size used for the map on all devices, to keep it consistent
-            let localTileSize = 120; // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
+            // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
+            // the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
+            let localTileSize = 120 - mapSize*5; 
 
             // Loop through our visible tiles
             // Make sure we center this around our ship!
             // Get the right noise value, color it correctly, display square of that color
+            let x1 = 0, y1 = 0, x2 = 10, y2 = 10
             for (let y = 0; y < mapSize; y++) {
                 for (let x = 0; x < mapSize; x++) {
                     let xTile = serverInfo.x - Math.floor(0.5*mapSize) + x
@@ -484,10 +489,22 @@ export default function loadPlayInterface(num, cont) {
                     let yTile = serverInfo.y - Math.floor(0.5*mapSize) + y
                     if(yTile < 0) { yTile += globalMapHeight } else if(yTile >= globalMapHeight) { yTile -= globalMapHeight }
 
-                    let nx = xTile*globalTileSize;
-                    let ny = yTile*globalTileSize;
+                    // 4D noise => wraps back to 2D map with seamless edges
+                    let s = xTile / globalMapWidth
+                    let t = yTile / globalMapHeight
+                    let dx = (x2 - x1)
+                    let dy = (y2 - y1)
+                    let pi = Math.PI
 
-                    let curVal = noise.perlin2(nx / 150, ny / 150);
+                    // Walk over two independent circles (perpendicular to each other)
+                    let nx = x1 + Math.cos(s*2*pi) * dx / (2*pi)
+                    let nz = y1 + Math.sin(s*2*pi) * dy / (2*pi)
+
+                    let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
+                    let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
+
+                    // save the noise value
+                    let curVal = noise.perlin4(nx, ny, nz, nw);
 
                     // DEEP OCEAN
                     if(curVal < -0.3) {
@@ -516,41 +533,34 @@ export default function loadPlayInterface(num, cont) {
             // As of right now, I just displays our own ship.
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
             // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
-            serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
+            // serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
 
             let u = serverInfo.mapUnits;
             for(let i = 0; i < u.length; i++) {
                 let unit = u[i];
 
-                // coordinates need to be recalculated, using our own ship as the center
-                let x = unit.x - serverInfo.x + Math.floor(0.5*mapSize);
-                let y = unit.y - serverInfo.y + Math.floor(0.5*mapSize);
+                // coordinates do NOT need to be recalculated, as the server already did that for us
 
-                // Fetch image from a different list, based on unit type (this is always a dataURI, even for stuff that isn't drawn by the players)
-                // ALso determine the UNIQUE label for this unit type
+                // Determine the UNIQUE label for this unit type => the corresponding drawing should have been preloaded
                 // 0 = ship, 1 = monster, 2 = ai ship, 3 = dock
-                let dataURI;
                 let label;
                 if(unit.myType == 0) {
-                    dataURI = serverInfo.shipDrawings[unit.index];
                     label = 'shipNum' + unit.index; 
                 } else if(unit.myType == 1) {
-                    dataURI = serverInfo.monsterDrawings[unit.index];
                     label = 'monsterNum' + unit.index;
                 } else if(unit.myType == 2) {
-                    dataURI = serverInfo.aiShipDrawings[unit.index];
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
-                    dataURI = serverInfo.dockDrawing;
                     label = 'dock';
-
-                    //dataURI = serverInfo.dockDrawings[unit.index];
-                    //label = 'aiShipNum' + unit.index;
                 }
 
-                // the (x + 0.5) is needed, becase the image is centered (anchor is set to 0.5, 0.5)
-                dynamicLoadImage(canvas.myGame, { x: (x + 0.5)*localTileSize, y: (y + 0.5)*localTileSize }, { width: localTileSize, height: localTileSize }, label, dataURI)
+                let newSprite = canvas.myGame.add.sprite(unit.x*localTileSize, unit.y*localTileSize, label);
+                newSprite.width = newSprite.height = localTileSize;
             }
+
+            // move camera to center on our player's ship (by default)
+            canvas.myGame.camera.x = Math.floor(0.5*mapSize)*localTileSize - canvas.myGame.width*0.5
+            canvas.myGame.camera.y = Math.floor(0.5*mapSize)*localTileSize - canvas.myGame.height*0.5
 
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false)
