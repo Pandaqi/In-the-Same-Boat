@@ -34,6 +34,12 @@ class GamePlay extends Phaser.State {
       this.game.load.image('monsterNum'+i, mDrawings[i])
     }
 
+    if(mDrawings.length < 1) {
+      this.game.load.image('monsterNum0', serverInfo.backupMonsterDrawing);
+      this.game.load.image('monsterNum1', serverInfo.backupMonsterDrawing);
+      this.game.load.image('monsterNum2', serverInfo.backupMonsterDrawing);
+    }
+
     // player ships
     let sDrawings = serverInfo.shipDrawings;
     for(let i = 0; i < sDrawings.length; i++) {
@@ -145,29 +151,36 @@ class GamePlay extends Phaser.State {
     */
     // Display docks
     let docks = serverInfo.docks;
+    this.dockSprites = [];
     for(let i = 0; i < docks.length; i++) {
       let x = docks[i].x, y = docks[i].y;
 
-      graphics.beginFill(0xFF0000);
+      let cacheLabel = 'dock';
 
-      graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+      let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
+      newSprite.width = newSprite.height = tileSize;
+      this.dockSprites.push(newSprite);
     }
 
     // Display monsters
     console.log(serverInfo.monsters);
     let monsters = serverInfo.monsters;
+    this.monsterSprites = [];
     for(let i = 0; i < monsters.length; i++) {
       let x = monsters[i].x, y = monsters[i].y;
 
-      graphics.beginFill(0x00FFFF);
+      let cacheLabel = 'monsterNum' + monsters[i].myMonsterType;
 
-      graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+      let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
+      newSprite.width = newSprite.height = tileSize;
+      this.monsterSprites.push(newSprite);
     }
 
     // Display AI Ships
     console.log(serverInfo.aiShips);
 
     let aiShips = serverInfo.aiShips;
+    this.aiShipSprites = [];
     for(let i = 0; i < aiShips.length; i++) {
       let x = aiShips[i].x, y = aiShips[i].y;
 
@@ -175,23 +188,21 @@ class GamePlay extends Phaser.State {
 
       let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
+      this.aiShipSprites.push(newSprite);
     }
 
     // Display player Ships
     console.log(serverInfo.playerShips);
 
     let playerShips = serverInfo.playerShips;
+    this.playerShipSprites = [];
     for(let i = 0; i < playerShips.length; i++) {
       let x = playerShips[i].x, y = playerShips[i].y;
       let cacheLabel = 'shipNum' + playerShips[i].num;
 
       let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
-
-      /*
-      graphics.beginFill(0xFFFFFF);
-      graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
-      */
+      this.playerShipSprites.push(newSprite);
     }
 
     // Display the messages from the radio
@@ -216,6 +227,22 @@ class GamePlay extends Phaser.State {
 
       // reset the timer 
       ths.timer = serverInfo.timer;
+
+      // move the units around
+      for(let i = 0; i < this.monsterSprites.length; i++) {
+        this.monsterSprites[i].x = serverInfo.monsters[i].x * tileSize;
+        this.monsterSprites[i].y = serverInfo.monsters[i].y * tileSize;
+      }
+
+      for(let i = 0; i < this.aiShipSprites.length; i++) {
+        this.aiShipSprites[i].x = serverInfo.aiShips[i].x * tileSize;
+        this.aiShipSprites[i].y = serverInfo.aiShips[i].y * tileSize;
+      }
+
+      for(let i = 0; i < this.playerShipSprites.length; i++) {
+        this.playerShipSprites[i].x = serverInfo.playerShips[i].x * tileSize;
+        this.playerShipSprites[i].y = serverInfo.playerShips[i].y * tileSize;
+      }
 
       // TO DO
       // Reset stuffiebuffie

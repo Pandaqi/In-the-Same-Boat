@@ -529,8 +529,6 @@ export default function loadPlayInterface(num, cont) {
 
             // Display units (the server determines which ones you can see, based on range and instrument level)
             
-            // TO DO
-            // As of right now, I just displays our own ship.
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
             // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
             // serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
@@ -552,6 +550,8 @@ export default function loadPlayInterface(num, cont) {
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
                     label = 'dock';
+
+                    console.log(serverInfo.x + unit.x, serverInfo.y + unit.y);
                 }
 
                 let newSprite = canvas.myGame.add.sprite(unit.x*localTileSize, unit.y*localTileSize, label);

@@ -29,9 +29,9 @@ class ControllerWaiting extends Phaser.State {
       }
 
       if(mDrawings.length < 1) {
-        this.game.load.image('monsterNum0', serverInfo.backupShipDrawing);
-        this.game.load.image('monsterNum1', serverInfo.backupShipDrawing);
-        this.game.load.image('monsterNum2', serverInfo.backupShipDrawing);
+        this.game.load.image('monsterNum0', serverInfo.backupMonsterDrawing);
+        this.game.load.image('monsterNum1', serverInfo.backupMonsterDrawing);
+        this.game.load.image('monsterNum2', serverInfo.backupMonsterDrawing);
       }
 
       // player ships
@@ -59,7 +59,6 @@ class ControllerWaiting extends Phaser.State {
       }
 
       // docks
-      serverInfo.dockDrawing = serverInfo.backupShipDrawing;
       this.game.load.image('dock', serverInfo.dockDrawing);
     }
   }
@@ -217,6 +216,9 @@ class ControllerWaiting extends Phaser.State {
       // clean interface variables
       serverInfo.submittedUpgrade = {}
       serverInfo.errorMessages = []
+
+      // update ship health
+      document.getElementById('healthBar').style.width = serverInfo.health + '%';
 
       // reload first tab
       LOAD_TAB("label0", curTab, 1)

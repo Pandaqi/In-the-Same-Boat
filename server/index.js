@@ -683,7 +683,7 @@ io.on('connection', socket => {
         startTurn(room, true);
         
         // set turn timer
-        timer = 30;
+        timer = 20;
         break;
 
       // If the next state is the game over state ...
@@ -1000,11 +1000,14 @@ function startTurn(room, gameStart = false) {
     mPack["monsters"] = curRoom.monsters;
     mPack["aiShips"] = curRoom.aiShips;
     mPack["playerShips"] = curRoom.playerShips;
+  } else {
+     // send UPDATED information about all units
+    //  => their new position
+    //  => ?? anything else ??
+    mPack["monsters"] = curRoom.monsters;
+    mPack["aiShips"] = curRoom.aiShips;
+    mPack["playerShips"] = curRoom.playerShips;
   }
-
-  // send UPDATED information about all units
-  //  => their new position
-  //  => ?? anything else ??
 
   // send the mPack to all monitors
   sendSignal(room, true, 'pre-signal', mPack, true)
@@ -1232,7 +1235,7 @@ function startTurn(room, gameStart = false) {
 
           // if we can trade, send the dock deal
           if(curShip.captainCanTrade > -1) {
-            pPack["dockDeal"] = room.docks[curShip.captainCanTrade].deal;
+            pPack["dockDeal"] = curRoom.docks[curShip.captainCanTrade].deal;
           }
           
           break;
@@ -1310,16 +1313,214 @@ function startTurn(room, gameStart = false) {
 */
 function finishTurn(room) {
   console.log("Finishing turn in room " + room)
+  let curRoom = rooms[room];
 
   // Fight battles
+  // Ships shoot cannonballs. They always fire everything at once.
+  // We follow the cannonball along its path. 
+  //  => If it hits something, it damages that thing, and then disappears. (If that is an AI ship, it might just fight back)
+  //  => Otherwise, if it hits the end of its range, it just disappears
+  //
+  // NOTE: Islands do not count. Docks do count.
+  // NOTE: Yes, this is a separate loop from the next one. All units battle FIRST, then MOVE.
+  for(let i = 0; i < curRoom.playerShips.length; i++) {
+    let curShip = curRoom.playerShips[i];
+
+    // if this ship doesn't fire, well, there's no battle here
+    if(!curShip.willFire) {
+      continue;
+    }
+
+    let ammo = curShip.cannons;
+
+    // Set range based on level
+    let weaponLvl = curShip.roleStats[4].lvl;
+    let range = 4, spread = 3;
+    switch(weaponLvl) {
+      case 0:
+        range = 1;
+        spread = 0;
+        break
+
+      case 1:
+        range = 2
+        spread = 0
+        break
+
+      case 2:
+        range = 2
+        spread = 1
+        break
+
+      case 3:
+        range = 3
+        spread = 1
+        break
+
+      case 4:
+        range = 3
+        spread = 2
+        break
+
+    }
+
+    // establish the ship angle
+    // shooting directions are based on that
+    let baseAngle = curShip.orientation * 45;
+
+    // go through all the cannons
+    for(let c = 0; c < 4; c++) {
+      // if no load, or cannon isn't even purchased, continue immediately
+      const curAmmo = ammo[c];
+      if(curAmmo <= 0) {
+        continue;
+      }
+
+      // increase angle (each cannon represents a different side, 90 degrees rotated towards the previous)
+      const angle = (baseAngle + c*90) * Math.PI / 180;
+      let directionVector = [Math.round( Math.cos(angle) ), Math.round( Math.sin(angle) )];
+      let perpendicularVector = [directionVector[1], -directionVector[0]]
+
+      // otherwise, go through all the bullets
+      // QUESTION: Does a bullet hit EVERYTHING on a certain tile? Or just one random unit (if there are multiple)?
+      for(let b = 0; b < curAmmo; b++) {
+        // determine starting position: a cannon with spread has multiple possibilites
+        let tempSpread = Math.round( Math.random()*spread*2 - spread);
+        let tempX = curShip.x + tempSpread * perpendicularVector[0];
+        let tempY = curShip.y + tempSpread * perpendicularVector[1];
+        
+        // bS stands for "bullet steps", not what you think it might mean
+        for(let bS = 0; bS < range; bS++) {
+          tempX += movementVector[0];
+          tempY += movementVector[1];
+
+          let tile = curRoom.map[tempY][tempX];
+
+          // if this tile has no units, nothing to do!
+          if(!tile.hasUnits) {
+            continue;
+
+          // if it's a dock, stop the bullet immediately
+          } else if(hasDock(tile)) {
+            break;
+
+          // if we're still here, this means there is something to hit
+          // hit it, then break out of the loop (the bullet is finished)
+          } else {
+            // TO DO: loop through all units, apply damage
+            // Send message (succesful attack, killed blabla)
+            // If monster or ai ship killed, receive reward 
+          } 
+        }
+      }
+
+      // set ammo to zero
+      curShip.cannons[c] = 0;
+    }
+
+  }
+
+  // Let monsters fight as well!
+  // TO DO
+  // IDEA: Monsters already have a target set. I don't need to check everything in their vicinity, I think?
+
 
   // Move player ships
+  // Also:
+  //  => Replenish crew
+  //  => Check if the ship is dead
+  for(let i = 0; i < curRoom.playerShips.length; i++) {
+    /*** 
 
-  // Move monsters + AI ships
+      MOVE PLAYER SHIP
 
-  // Replenish crew
+
+    ***/
+    // get ship
+    let curShip = curRoom.playerShips[i];
+
+    // get vector from orientation
+    let angle = curShip.orientation * 45 * Math.PI / 180;
+
+    // round everything non-zero upwards to a 1 
+    // this ONLY works because we're working with 8 angles; diagonal angles still get rounded (to 1 or -1, depending on the angle)
+    let movementVector = [Math.round( Math.cos(angle) ), Math.round( Math.sin(angle) )];
+
+    let speed = curShip.roleStats[3].sailLvl + curShip.roleStats[3].peddleLvl*2;
+    let oldObj = { x: curShip.x, y: curShip.y, index: i }
+    let x = curShip.x, y = curShip.y;
+
+    // move through it stepwise
+    for(let a = 0; a < speed; a++) {
+      let tempX = x + movementVector[0];
+      let tempY = y + movementVector[1];
+
+      let tile = curRoom.map[tempY][tempX];
+
+      // check if the next tile (we want to go to) is reachable
+      // NOT REACHABLE if: an island or a dock
+      if(isIsland(tile) || hasDock(tile)) {
+        // TO DO: DAMAGE THE SHIP (and inform captain of damage)
+
+        break;
+
+      // if it's reachable, then we just update the position and move to the next step
+      } else {
+        x = tempX;
+        y = tempY;
+      }
+
+
+      /*** 
+
+      REPLENISH CREW
+
+      ***/
+    }
+
+    // move the unit to the final location
+    placeUnit(curRoom, oldObj, x, y, 'playerShips');
+  }
+
+  // Move AI ships
+  // Just follow their predetermined route
+  for(let i = 0; i < curRoom.aiShips.length; i++) {
+    // get the SHIP
+    let s = curRoom.aiShips[i];
+
+    // TO DO
+    // Get ship properties (like speed) from the ai ship object
+    let shipSpeed = 3;
+
+    // get the route object (contains the actual route ("route") and the dock where the route ends ("target"))
+    let routeObject = curRoom.docks[ s.routeIndex[0] ].routes[ s.routeIndex[1] ];
+
+    //increase pointer by ship speed
+    s.routePointer = Math.min(routeObject.route.length - 1, s.routePointer + 3);
+
+    // move to next spot
+    let nextSpot = routeObject.route[s.routePointer]
+    s.x = nextSpot[0];
+    s.y = nextSpot[1];
+
+    // if we're at the end, pick a new route
+    if(s.routePointer == (routeObject.route.length - 1)) {
+      let newDock = this.docks[ routeObject.target ];
+      let routeIndex = Math.floor( Math.random() * newDock.routes.length );
+
+      // Save the dock we're coming form (which was previously our target) and which of its routes we're taking
+      s.routeIndex = [routeObject.target, routeIndex]
+      s.routePointer = -1;
+    }
+  }
+
+  // Move monsters
+  // TO DO
+  // NOTE: They move AFTER the player ships, as monsters can then succesfully CHASE them.
 
   // With X% probability, change the deals on the docks
+  // TO DO: When looping through the ships, save each ship's resources
+  //   => Use the average for creating deals
 
   // Start next turn
   startTurn(room)
@@ -1343,7 +1544,7 @@ function createShip(index) {
   return {
     num: index, 
     players: [], 
-    resources: [5,1,1,0], 
+    resources: [10, 10, 10, 10], // [5,1,1,0], 
     x: 0, 
     y: 0, 
     orientation: 0, 
@@ -1389,10 +1590,18 @@ function placeUnit(room, obj, x, y, uType) {
         break;
       }
     }
+
+    // check if this tile has any units left
+    let curTile = map[obj.y][obj.x];
+    if(curTile.monsters.length < 1 && curTile.playerShips.length < 1 && curTile.aiShips.length < 1 && curTile.dock == null) {
+      map[y][x].hasUnits = false;
+    }
   }
 
   // now place it into its desired position
+  // and remember this has at least one unit
   map[y][x][uType].push(obj.index);
+  map[y][x].hasUnits = true;
 
   // get the ACTUAL object, update its position as well
   let fullObj = room[uType][obj.index];
@@ -1473,7 +1682,7 @@ function discoverIslands(room) {
         room.docks.push( { x: randDock.x, y: randDock.y, size: islandSize, deal: [[0, 4], [2, 6]] } );
 
         // add this object into the map (only by index)
-        room.map[y][x].dock = room.docks.length - 1;
+        room.map[randDock.y][randDock.x].dock = (room.docks.length - 1);
       }
     }
   }
