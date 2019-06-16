@@ -1,5 +1,5 @@
 {
-  "name": "in the same boat",
+  "name": "in-the-same-boat",
   "version": "0.7.0",
   "description": "Be a pirate, together.",
   "main": "index.js",
@@ -11,6 +11,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Pandaqi/In-The-Same-Boat.git"
+  },
+  "engines": {
+    "node": "6.11.0"
   },
   "keywords": [
     "Node.js",
