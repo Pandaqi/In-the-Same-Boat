@@ -9,4 +9,6 @@ When deploying the game, these need to be changed back.
 
 3) Set "prepSkip" variable (on new rooms) to FALSE 						(it skips the preparation, which is useful in debugging, but not allowed in the real game)
 
-4) Uglify/minify JS again 												(by enabling the WebPack plugin in webpack.config)
+4) Remove the "build" script from the WebPack							(it never ends, because nodemon watches the files)
+
+5) Uglify/minify JS again 												(by enabling the WebPack plugin in webpack.config)
