@@ -56,7 +56,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: false,
+      prepSkip: true,
 
       monsterDrawings: [],
       monsterTypes: [],
@@ -930,10 +930,31 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
   return upgradePossible;
 }
 
-function dealDamage(obj, dmg) {
+/*
+
+  This function deals damage from ATTACKER to OBJ
+
+  NOTE: "obj" is the actual object, passed by reference. (It's not a copy or skeleton of the real object.)
+
+  @parameter room => the room in which this event takes place
+  @parameter obj => the victim of the attack
+  @parameter attacker => the ... attacker
+  @parameter dmg => the amount of damage done by this attack
+*/
+function dealDamage(room, obj, attacker, dmg) {
   obj.health -= dmg;
 
   // TO DO: Inform player of damage ??
+  // Tell attacker it was succesful, and obj that he/she was attacked
+
+  // THIS IS THE PLAN
+  // => Clear out the old errorMessages _before_ any dealDamage happens (in this turn)
+  // => Then, each dealDamage is added to this list. 
+  // => HOWEVER, if a similar message already exists, nothing new is added. 
+  //    (If you have three cannonballs hitting the same ship, you don't want three messages saying "Succesful attack! You hit ship X!")
+
+  // TO DO: This could be more efficient. We're repeating the code used when first CREATING monsters/aiShips/etc. 
+  //        => On the other hand, it's not so bad as it's slightly different and short code :p
 
   // if we're dead ...
   if(obj.health <= 0) {
@@ -943,17 +964,42 @@ function dealDamage(obj, dmg) {
     switch(uType) {
       // Player ship: no respawning, inform of game over
       case 0:
+        // TO DO ... what do we do?
+
         break;
 
       // Monster: respawn to respawn location for this type
+      // placeUnit() on the new location, change the monster's attributes
       case 1:
-        // TO DO
+        let spawnPoint = room.spawnPoints[ Math.floor(Math.random() * room.spawnPoints.length) ];
+
+        // move monster to new location
+        placeUnit(room, {x: obj.x, y: obj.y, index: obj.index}, spawnPoint.x, spawnPoint.y, 'monsters');
+
+        // give it new attributes (just replace the old object with a new one)
+        let randomMonsterType = Math.floor( Math.random() * room.monsterTypes.length );
+        room.monsters[obj.index] = createMonster(randomMonsterType, obj.index);
 
         break;
 
       // AI ship: respawn to random dock (with a route, which you pick immediately)
       case 2:
-        // TO DO
+        // Find a dock (WITH routes)
+        let dockIndex, dockRoutes;
+        do {
+          dockIndex = Math.floor(Math.random() * room.docks.length);
+          dockRoutes = room.docks[dockIndex].routes.length;
+        } while(dockRoutes < 1);
+
+        // Pick a random route => get first position
+        let routeIndex = Math.floor(Math.random() * room.docks[dockIndex].routes.length);
+        let randRoute = room.docks[dockIndex].routes[routeIndex][0];
+
+        // Change to a new ship
+        room.aiShips[obj.index] = createAIShip([randRoute[0], randRoute[1]], routeIndex);
+
+        // Start at one of the routes (placeUnit)
+        placeUnit(room, {x: obj.x, y: obj.y, index: obj.index}, randRoute[0], randRoute[1], 'aiShips');
 
         break;
 
@@ -1080,11 +1126,8 @@ function startTurn(room, gameStart = false) {
     let captainTasks = [];
     for(let j = 0; j < 4; j++) {
       // get tile
-      // TO DO: I REALLY need to make a function for these "wrap around the map" calculations
-      let xTile = curShip.x + positions[j][0];
-      let yTile = curShip.y + positions[j][1];
-      if(xTile < 0) { xTile += curRoom.mapWidth } else if(xTile >= curRoom.mapWidth) { xTile -= curRoom.mapWidth }
-      if(yTile < 0) { yTile += curRoom.mapHeight } else if(yTile >= curRoom.mapHeight) { yTile -= curRoom.mapHeight }
+      let xTile = wrapCoords(curShip.x + positions[j][0], curRoom.mapWidth);
+      let yTile = wrapCoords(curShip.y + positions[j][1], curRoom.mapHeight);
 
       let curTile = curRoom.map[yTile][xTile]
 
@@ -1165,11 +1208,8 @@ function startTurn(room, gameStart = false) {
     for(let y = 0; y < mapSize; y++) {
       for(let x = 0; x < mapSize; x++) {
         // transform coordinates so that our ship is centered
-        let xTile = x + transX;
-        if(xTile < 0) { xTile += curRoom.mapWidth } else if(xTile >= curRoom.mapWidth) { xTile -= curRoom.mapWidth }
-
-        let yTile = y + transY;
-        if(yTile < 0) { yTile += curRoom.mapHeight } else if(yTile >= curRoom.mapHeight) { yTile -= curRoom.mapHeight }
+        let xTile = wrapCoords(x + transX, curRoom.mapWidth);
+        let yTile = wrapCoords(y + transY, curRoom.mapHeight);
 
         let mapTile = curRoom.map[yTile][xTile];
 
@@ -1436,11 +1476,8 @@ function finishTurn(room) {
         
         // bS stands for "bullet steps", not what you think it might mean
         for(let bS = 0; bS < range; bS++) {
-          tempX += directionVector[0];
-          tempY += directionVector[1];
-
-          if(tempX < 0) { tempX += curRoom.mapWidth } else if(tempX >= curRoom.mapWidth) { tempX -= curRoom.mapWidth }
-          if(tempY < 0) { tempY += curRoom.mapHeight } else if(tempY >= curRoom.mapHeight) { tempY -= curRoom.mapHeight }
+          tempX = wrapCoords(tempX + directionVector[0], curRoom.mapWidth);
+          tempY = wrapCoords(tempY + directionVector[1], curRoom.mapHeight);
 
           let tile = curRoom.map[tempY][tempX];
 
@@ -1456,14 +1493,14 @@ function finishTurn(room) {
           // hit it, then break out of the loop (the bullet is finished)
           } else {
             for(let i = 0; i < tile.monsters.length; i++) {
-              dealDamage(tile.monsters[i], 10);
+              dealDamage(curRoom, curRoom.monsters[ tile.monsters[i] ], curShip, 10);
 
               // TO DO: Receive reward
               // TO DO: Send message with succesful attack??
             }
 
             for(let i = 0; i < tile.aiShips.length; i++) {
-              dealDamage(tile.aiShips[i], 10);
+              dealDamage(curRoom, curRoom.aiShips[ tile.aiShips[i] ], curShip, 10);
 
               // TO DO: Receive reward
               // TO DO: Send message with succesful attack??
@@ -1472,7 +1509,7 @@ function finishTurn(room) {
             }
 
             for(let i = 0; i < tile.playerShips.length; i++) {
-              dealDamage(tile.playerShips[i], 10);
+              dealDamage(curRoom, curRoom.playerShips[ tile.playerShips[i] ], curShip, 10);
 
               // TO DO: Receive reward
               // TO DO: Send message with succesful attack??
@@ -1497,12 +1534,11 @@ function finishTurn(room) {
   for(let i = 0; i < curRoom.monsters.length; i++) {
     const target = curRoom.monsters[i].target;
     if(target != null) {
-      const dist = Math.abs(target.x - curRoom.monsters[i].x) + Math.abs(target.y - curRoom.monsters[i].y);
-
       // TO DO: Get attack range from monster object
-      let attackRange = 6;
-      if(dist <= attackRange) {
-        dealDamage(target);
+      // Check if the distance is within our attacking range
+      let attackRange = 2;
+      if(wrapDistance(target, curRoom.monsters[i], curRoom.mapWidth, curRoom.mapHeight) <= attackRange) {
+        dealDamage(curRoom, target, curRoom.monsters[i], 10);
       }
     }
   }
@@ -1543,7 +1579,7 @@ function finishTurn(room) {
       // check if the next tile (we want to go to) is reachable
       // NOT REACHABLE if: an island or a dock
       if(isIsland(tile) || hasDock(tile)) {
-        dealDamage(curShip, 10)
+        dealDamage(curRoom, curShip, curShip, 10)
 
         // TO DO: Inform captain of damage
 
@@ -1649,12 +1685,9 @@ function finishTurn(room) {
       let segPassed = 0;
       for (let n = 0; n < numberOfSightPoints; n++) {
           // make a step, add 'direction' vector to current position
-          tempX += curDir[0];
-          tempY += curDir[1];
+          tempX = wrapCoords(tempX + curDir[0], curRoom.mapWidth);
+          tempY = wrapCoords(tempY + curDir[1], curRoom.mapHeight);
 
-          if(tempX < 0) { tempX += curRoom.mapWidth } else if(tempX >= curRoom.mapWidth) { tempX -= curRoom.mapWidth }
-          if(tempY < 0) { tempY += curRoom.mapHeight } else if(tempY >= curRoom.mapHeight) { tempY -= curRoom.mapHeight }
-          
           // here we actually check if there's something of value
           let curTile = curRoom.map[tempY][tempX];
 
@@ -1829,6 +1862,42 @@ function createShip(index) {
 
 /*
 
+  This function calculates coordinates on a seamless map
+
+  It wraps coordinates that are too high back to the other side, and those that are too low back to to the OTHER side
+  @parameter c => the coordinate to be wrapped to the seamless map
+  @parameter bound => the bounds of the map
+
+*/
+function wrapCoords(c, bound) {
+  if(c < 0) { 
+      c += bound; 
+  } else if(c >= bound) {
+    c -= bound;
+  }
+  return c;
+}
+
+/*
+
+  This function calculates the distance between two objects on a seamless map.
+  (The distance can never be greater than 0.5*width (or height). So, if that's the case, inverse the distance to get the shorter variant.)
+
+  @parameter a => the object (its current position)
+  @parameter b => the position the object wants to know the distnace to
+  @parameter bounds (Array; (x,y)) => map bounds
+
+*/
+function wrapDistance(a, b, boundX, boundY) {
+  let dX = Math.abs(a.x - b.x), dY = Math.abs(a.y - b.y);
+  if(dX > 0.5*boundX) { dX = (boundX - dX) }
+  if(dY > 0.5*boundY) { dY = (boundY - dY) }
+
+  return (dX + dY);
+}
+
+/*
+
   This function moves an object across the map
   
   First, it removes the object from its previous position. (If there is one.)
@@ -1984,12 +2053,8 @@ function exploreTile(room, tile, x, y, islandIndex) {
   let freeTiles = []
 
   for(let a = 0; a < 4; a++) {
-    let tempX = x + positions[a][0];
-    let tempY = y + positions[a][1];
-
-    // the map is seemless => top stitches to the bottom, left stitches to the right
-    if(tempX < 0) { tempX += room.mapWidth; } else if(tempX >= room.mapWidth) { tempX -= room.mapWidth;}
-    if(tempY < 0) { tempY += room.mapHeight; } else if(tempY >= room.mapHeight) { tempY -= room.mapHeight;}
+    let tempX = wrapCoords(x + positions[a][0], room.mapWidth);
+    let tempY = wrapCoords(y + positions[a][1], room.mapHeight);
 
     const newTile = room.map[tempY][tempX];
     // if tile is an island, and hasn't been checked, explore it!
@@ -2099,13 +2164,14 @@ function createDockRoutes(room) {
   }
 }
 
-function createAIShip(route, routeIndex) {
+function createAIShip(pos, routeIndex) {
   return { 
     myUnitType: 2,
-    x: route[0], 
-    y: route[1], 
+    x: pos[0], 
+    y: pos[1], 
     routeIndex: routeIndex, 
     routePointer: 0,
+    health:20,
     myShipType:0 }
 }
 
@@ -2138,11 +2204,8 @@ function calculateRoute(room, start, end) {
     // update all neighbours (to new distance, if run through the current tile)
     const positions = [[-1,0],[1,0],[0,1],[0,-1]];
     for(let a = 0; a < 4; a++) {
-      let tempX = current[0] + positions[a][0];
-      let tempY = current[1] + positions[a][1];
-
-      if(tempX < 0) { tempX += room.mapWidth; } else if(tempX >= room.mapWidth) { tempX -= room.mapWidth; }
-      if(tempY < 0) { tempY += room.mapHeight; } else if(tempY >= room.mapHeight) { tempY -= room.mapHeight;}
+      let tempX = wrapCoords(current[0] + positions[a][0], room.mapWidth);
+      let tempY = wrapCoords(current[1] + positions[a][1], room.mapHeight);
 
       // don't consider tiles that aren't sea
       if(isIsland(room.map[tempY][tempX].val >= 0.2)) {
@@ -2309,6 +2372,7 @@ function createMonster(myType, index) {
     x: 0,
     y: 0,
     level: Math.round(Math.random() * 4), // generates a random level for this monster
+    health: 20,
     dna: dna,
     chasing: false,
     target: null,

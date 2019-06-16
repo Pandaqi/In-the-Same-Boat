@@ -67,7 +67,29 @@ class GamePlay extends Phaser.State {
     // docks
     this.game.load.image('dock', serverInfo.dockDrawing);
     
+  }
 
+  moveUnits() {
+    // TO DO: units are placed just above their tile, so that it looks like they "stick out" of the map
+    // TO DO: Check if multiple units are on the same tile, and if so, scale them down and position them out of each other's way
+    //        => Use the old "circle" method. Place them in a circle with equal distance between them.
+    //        => But before we can do that, save the units in each tile SOMEWHERE, and use that
+    this.unitsOnMap = [];
+
+    for(let i = 0; i < this.monsterSprites.length; i++) {
+      this.monsterSprites[i].x = serverInfo.monsters[i].x * tileSize;
+      this.monsterSprites[i].y = (serverInfo.monsters[i].y - 0.5) * tileSize;
+    }
+
+    for(let i = 0; i < this.aiShipSprites.length; i++) {
+      this.aiShipSprites[i].x = serverInfo.aiShips[i].x * tileSize;
+      this.aiShipSprites[i].y = (serverInfo.aiShips[i].y - 0.5) * tileSize;
+    }
+
+    for(let i = 0; i < this.playerShipSprites.length; i++) {
+      this.playerShipSprites[i].x = serverInfo.playerShips[i].x * tileSize;
+      this.playerShipSprites[i].y = (serverInfo.playerShips[i].y - 0.5) * tileSize;
+    }
   }
 
   create () {
@@ -80,8 +102,7 @@ class GamePlay extends Phaser.State {
       This creates the 4D noise value on each location, and immediately displays the correct (colored) square
 
       TO DO: Determine islands by myself? Or receive them from the server? (Might just as well send them, if we're sending this much information)
-      TO DO: Create/place units (docks, aiShips, monsters, playerShips)
-      TO DO: Update these units when receiving a server signal (at start of new turn)
+             => Because, I need to know which tiles to "reveal" on the map, and where to put the text with the ISLAND NAME
 
     ***/
 
@@ -157,7 +178,7 @@ class GamePlay extends Phaser.State {
 
       let cacheLabel = 'dock';
 
-      let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
+      let newSprite = gm.add.sprite(x*tileSize,(x-0.5)*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       this.dockSprites.push(newSprite);
     }
@@ -171,7 +192,7 @@ class GamePlay extends Phaser.State {
 
       let cacheLabel = 'monsterNum' + monsters[i].myMonsterType;
 
-      let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
+      let newSprite = gm.add.sprite(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       this.monsterSprites.push(newSprite);
     }
@@ -186,7 +207,7 @@ class GamePlay extends Phaser.State {
 
       let cacheLabel = 'aiShipNum' + aiShips[i].myShipType;
 
-      let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
+      let newSprite = gm.add.sprite(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       this.aiShipSprites.push(newSprite);
     }
@@ -200,7 +221,7 @@ class GamePlay extends Phaser.State {
       let x = playerShips[i].x, y = playerShips[i].y;
       let cacheLabel = 'shipNum' + playerShips[i].num;
 
-      let newSprite = gm.add.sprite(x*tileSize, y*tileSize, cacheLabel);
+      let newSprite = gm.add.sprite(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       this.playerShipSprites.push(newSprite);
     }
@@ -228,21 +249,8 @@ class GamePlay extends Phaser.State {
       // reset the timer 
       ths.timer = serverInfo.timer;
 
-      // move the units around
-      for(let i = 0; i < this.monsterSprites.length; i++) {
-        this.monsterSprites[i].x = serverInfo.monsters[i].x * tileSize;
-        this.monsterSprites[i].y = serverInfo.monsters[i].y * tileSize;
-      }
-
-      for(let i = 0; i < this.aiShipSprites.length; i++) {
-        this.aiShipSprites[i].x = serverInfo.aiShips[i].x * tileSize;
-        this.aiShipSprites[i].y = serverInfo.aiShips[i].y * tileSize;
-      }
-
-      for(let i = 0; i < this.playerShipSprites.length; i++) {
-        this.playerShipSprites[i].x = serverInfo.playerShips[i].x * tileSize;
-        this.playerShipSprites[i].y = serverInfo.playerShips[i].y * tileSize;
-      }
+      // move all units to their new positions
+      ths.moveUnits();
 
       // TO DO
       // Reset stuffiebuffie

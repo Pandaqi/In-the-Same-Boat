@@ -10,8 +10,6 @@ When deploying the game, these need to be changed back.
 
 3) Build the app ourselves!
 
-4) Remove the "build" script from the WebPack							(it never ends, because nodemon watches the files)
-
 
 For FINAL deployment:
 
