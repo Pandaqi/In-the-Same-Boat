@@ -5,7 +5,7 @@ const path = require('path')
 const config = {
   target: 'web',
   entry: './client/index.js',
-  watch: true,
+  watch: false,
   output: {
     path: path.resolve(__dirname, 'dist/client'),
     filename: 'index.js'
