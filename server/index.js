@@ -56,7 +56,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: true,
+      prepSkip: false,
 
       monsterDrawings: [],
       monsterTypes: [],
@@ -908,6 +908,11 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
     for(let key in costs) {
       let convKey = parseInt(key);
       curShip.resources[convKey] -= costs[key];
+
+      // if it's crew, but we're not ALLOCATING crew (but spending it) actually spend it
+      if(convKey == 1 && actionType != 1) {
+        curShip.workingCrew -= costs[key];
+      }
     }
 
     // inform captain
@@ -923,6 +928,38 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
   }
 
   return upgradePossible;
+}
+
+function dealDamage(obj, dmg) {
+  obj.health -= dmg;
+
+  // TO DO: Inform player of damage ??
+
+  // if we're dead ...
+  if(obj.health <= 0) {
+    // respawn (based on unit type)
+    let uType = obj.myUnitType;
+
+    switch(uType) {
+      // Player ship: no respawning, inform of game over
+      case 0:
+        break;
+
+      // Monster: respawn to respawn location for this type
+      case 1:
+        // TO DO
+
+        break;
+
+      // AI ship: respawn to random dock (with a route, which you pick immediately)
+      case 2:
+        // TO DO
+
+        break;
+
+      // Docks (3) can't respawn.
+    }
+  }
 }
 
 
@@ -962,7 +999,6 @@ function startTurn(room, gameStart = false) {
     It simply creates the map and everything on it, including resources, docks (and their trading routes), etc.
 
   */
-  // TO DO
   if(gameStart) {
     // send the map seed
     mPack["mapSeed"] = curRoom.mapSeed;
@@ -1220,6 +1256,11 @@ function startTurn(room, gameStart = false) {
       switch(role) {
         // Captain
         case 0:
+          // replenish crew
+          // REMEMBER: curShip.workingCrew is the total crew number 
+          //   => curShip.resources only contains the current resources, with allocated stuff subtracted
+          curShip.resources[1] = curShip.workingCrew;
+
           // (Basic) Ship resources (gold, crew, wood, gun powder)
           pPack["resources"] = curShip.resources;
 
@@ -1315,7 +1356,11 @@ function finishTurn(room) {
   console.log("Finishing turn in room " + room)
   let curRoom = rooms[room];
 
-  // Fight battles
+  /*** 
+
+    FIGHT BATTLES
+
+  ***/
   // Ships shoot cannonballs. They always fire everything at once.
   // We follow the cannonball along its path. 
   //  => If it hits something, it damages that thing, and then disappears. (If that is an AI ship, it might just fight back)
@@ -1391,8 +1436,11 @@ function finishTurn(room) {
         
         // bS stands for "bullet steps", not what you think it might mean
         for(let bS = 0; bS < range; bS++) {
-          tempX += movementVector[0];
-          tempY += movementVector[1];
+          tempX += directionVector[0];
+          tempY += directionVector[1];
+
+          if(tempX < 0) { tempX += curRoom.mapWidth } else if(tempX >= curRoom.mapWidth) { tempX -= curRoom.mapWidth }
+          if(tempY < 0) { tempY += curRoom.mapHeight } else if(tempY >= curRoom.mapHeight) { tempY -= curRoom.mapHeight }
 
           let tile = curRoom.map[tempY][tempX];
 
@@ -1407,9 +1455,28 @@ function finishTurn(room) {
           // if we're still here, this means there is something to hit
           // hit it, then break out of the loop (the bullet is finished)
           } else {
-            // TO DO: loop through all units, apply damage
-            // Send message (succesful attack, killed blabla)
-            // If monster or ai ship killed, receive reward 
+            for(let i = 0; i < tile.monsters.length; i++) {
+              dealDamage(tile.monsters[i], 10);
+
+              // TO DO: Receive reward
+              // TO DO: Send message with succesful attack??
+            }
+
+            for(let i = 0; i < tile.aiShips.length; i++) {
+              dealDamage(tile.aiShips[i], 10);
+
+              // TO DO: Receive reward
+              // TO DO: Send message with succesful attack??
+
+              // TO DO: With a certain chance, the ai ship FIGHTS BACK
+            }
+
+            for(let i = 0; i < tile.playerShips.length; i++) {
+              dealDamage(tile.playerShips[i], 10);
+
+              // TO DO: Receive reward
+              // TO DO: Send message with succesful attack??
+            }
           } 
         }
       }
@@ -1420,24 +1487,40 @@ function finishTurn(room) {
 
   }
 
-  // Let monsters fight as well!
-  // TO DO
-  // IDEA: Monsters already have a target set. I don't need to check everything in their vicinity, I think?
+  /*** 
 
+    LET MONSTERS FIGHT
 
-  // Move player ships
-  // Also:
-  //  => Replenish crew
-  //  => Check if the ship is dead
+  ***/
+  // Attack the target, if we're close enough
+  // TO DO (QUESTION): Do I still need to check everything in their vicinity? Meh, makes monsters more dangerous, but also unrealistic (you can't fight ten ships simultaneously)
+  for(let i = 0; i < curRoom.monsters.length; i++) {
+    const target = curRoom.monsters[i].target;
+    if(target != null) {
+      const dist = Math.abs(target.x - curRoom.monsters[i].x) + Math.abs(target.y - curRoom.monsters[i].y);
+
+      // TO DO: Get attack range from monster object
+      let attackRange = 6;
+      if(dist <= attackRange) {
+        dealDamage(target);
+      }
+    }
+  }
+
+  /*** 
+
+    MOVE PLAYER SHIPS
+
+  ***/
+  let averageResources = [0,0,0,0]; // to keep track of average player resources, to know what docks should deal
   for(let i = 0; i < curRoom.playerShips.length; i++) {
-    /*** 
-
-      MOVE PLAYER SHIP
-
-
-    ***/
     // get ship
     let curShip = curRoom.playerShips[i];
+
+    // (update average resources)
+    for(let res = 0; res < 4; res++) {
+      averageResources += curShip.resources[res];
+    }
 
     // get vector from orientation
     let angle = curShip.orientation * 45 * Math.PI / 180;
@@ -1460,7 +1543,9 @@ function finishTurn(room) {
       // check if the next tile (we want to go to) is reachable
       // NOT REACHABLE if: an island or a dock
       if(isIsland(tile) || hasDock(tile)) {
-        // TO DO: DAMAGE THE SHIP (and inform captain of damage)
+        dealDamage(curShip, 10)
+
+        // TO DO: Inform captain of damage
 
         break;
 
@@ -1469,20 +1554,17 @@ function finishTurn(room) {
         x = tempX;
         y = tempY;
       }
-
-
-      /*** 
-
-      REPLENISH CREW
-
-      ***/
     }
 
     // move the unit to the final location
     placeUnit(curRoom, oldObj, x, y, 'playerShips');
   }
 
-  // Move AI ships
+  /*** 
+
+    MOVE AI SHIPS
+
+  ***/
   // Just follow their predetermined route
   for(let i = 0; i < curRoom.aiShips.length; i++) {
     // get the SHIP
@@ -1500,12 +1582,13 @@ function finishTurn(room) {
 
     // move to next spot
     let nextSpot = routeObject.route[s.routePointer]
-    s.x = nextSpot[0];
-    s.y = nextSpot[1];
+
+    // IMPORTANT: Use the placeUnit function! Otherwise it doesn't update the map (correctly)
+    placeUnit(curRoom, { x: s.x, y: s.y, index: i}, nextSpot[0], nextSpot[1], 'aiShips');
 
     // if we're at the end, pick a new route
     if(s.routePointer == (routeObject.route.length - 1)) {
-      let newDock = this.docks[ routeObject.target ];
+      let newDock = curRoom.docks[ routeObject.target ];
       let routeIndex = Math.floor( Math.random() * newDock.routes.length );
 
       // Save the dock we're coming form (which was previously our target) and which of its routes we're taking
@@ -1514,13 +1597,195 @@ function finishTurn(room) {
     }
   }
 
-  // Move monsters
-  // TO DO
+  /*** 
+
+    MOVE MONSTERS
+
   // NOTE: They move AFTER the player ships, as monsters can then succesfully CHASE them.
+  ***/
+  
+
+  // For each monster ...
+  for(let i = 0; i < curRoom.monsters.length; i++) {
+    let curMon = curRoom.monsters[i];
+    // Loop through their sight radius to pick a target
+    // We use a SPIRAL, starting from the right hand of the monster. (TO DO: Maybe give monsters orientation as well, start the spiral from there)
+    // Just pick the first one we can find (which should automatically be within the sight distance)
+
+    // TO DO: Get these from the monster object
+    let sightRadius = 6;
+    let chaseSpeed = 3;
+
+    let targetPos;
+
+    // if we've chased for long enough, let go
+    // TO DO: Do we always let go? Or only after we've destroyed the ship/stolen what we needed?
+    if(curMon.chasingCounter >= 4) {
+      curMon.chasingCounter = 0;
+      curMon.chasing = false;
+      curMon.target = null;
+    }
+
+    /***
+
+      PICK A TARGET
+
+    ***/
+    let bestDeepSeaTile = null;
+    let bestRemainingTile = null;
+
+    if(curMon.target == null) {
+      // (di, dj) is a vector - direction in which we move right now
+      let curDir = [1,0]
+      // length of current segment
+      let segLength = 1;
+
+      // with sight radius of "X", the number of sight points would be X*X-1 
+      let numberOfSightPoints = sightRadius*sightRadius - 1;
+
+      // current position (x,y) and how much of current segment we passed
+      let tempX = curMon.x;
+      let tempY = curMon.y;
+      let segPassed = 0;
+      for (let n = 0; n < numberOfSightPoints; n++) {
+          // make a step, add 'direction' vector to current position
+          tempX += curDir[0];
+          tempY += curDir[1];
+
+          if(tempX < 0) { tempX += curRoom.mapWidth } else if(tempX >= curRoom.mapWidth) { tempX -= curRoom.mapWidth }
+          if(tempY < 0) { tempY += curRoom.mapHeight } else if(tempY >= curRoom.mapHeight) { tempY -= curRoom.mapHeight }
+          
+          // here we actually check if there's something of value
+          let curTile = curRoom.map[tempY][tempX];
+
+          // if we're one tile away, already find possible tiles
+          if(n < 8) {
+            if(curTile.val <= -0.3) {
+              if(bestDeepSeaTile == null || Math.random() >= 0.5) {
+                bestDeepSeaTile = [tempX, tempY]
+              }
+            } else if(curTile.val < 0.2) {
+              if(bestRemainingTile == null || Math.random() >= 0.5) {
+                bestRemainingTile = [tempX, tempY]
+              }
+            }
+          }
+
+          // if this tile has units, pick the first one we like!
+          // It always picks player ships first. Then docks (with a chance of failure). Then ai ships (with a chance of failure)
+          if(curTile.hasUnits) {
+            if(curTile.playerShips.length > 0) {
+              curMon.target = curTile.playerShips[ Math.floor(Math.random() * curTile.playerShips.length) ];
+            } else if(curTile.dock != null && Math.random() >= 0.5) {
+              curMon.target = curTile.dock
+            } else if(curTile.aiShips.length > 0 && Math.random() >= 0.5) {
+              curMon.target = curTile.aiShips[ Math.floor(Math.random() * curTile.aiShips.length) ];
+            }
+          }
+
+          // this code is for switching to the next tile again.
+          // this is responsible for rotating to a new segment (and increasing length) once this one's finished
+          segPassed++;
+          if (segPassed == segLength) {
+              // done with current segment
+              segPassed = 0;
+
+              // 'rotate' directions
+              curDir = [-curDir[1], curDir[0]]
+
+              // increase segment length if necessary
+              if (curDir[1] == 0) {
+                  segLength++;
+              }
+          }
+      }
+    }
+
+    /***
+
+      MOVE TOWARDS TARGET
+
+    ***/
+    // if we have a target, keep pursuing it
+    if(curMon.target != null) {
+      curMon.chasingCounter++;
+      targetPos = [curMon.target.x, curMon.target.y];
+
+      // if we're already at our target, no need to calculate the route again!
+      if((targetPos[0] == curMon.x && targetPos[1] == curMon.y)) {
+        // nothing
+      } else {
+        // calculate a route to this position
+        let tempRoute = calculateRoute(curRoom, [curMon.x, curMon.y], targetPos)
+
+        // if destination was unreachable, too bad, try again next turn
+        if(tempRoute.length < 1) {
+          continue;
+        }
+
+        // shave first bit from the route (that's the monster's current position)
+        // it's possible that the route is just the starting tile, nothing else, that's why the IF statement is
+        tempRoute.splice(0, 1);               
+
+        // follow the route for as long as our moveSpeed allows
+        let routeIndex = Math.min(tempRoute.length - 1, chaseSpeed);
+        targetPos = tempRoute[routeIndex]
+      }
+
+    // if there's no target, pick the best tile around us 
+    } else {
+      targetPos = bestDeepSeaTile;
+
+      // if there IS no deep sea tile, choose the best remaining tile
+      // alternatively, there's a slight (10%) chance of going out of the deep sea.
+      if(targetPos == null || Math.random() >= 0.9) { targetPos = bestRemainingTile; }
+    }
+
+
+    // check one last time that we have a position to go to
+    if(targetPos != null || targetPos.length > 0) { 
+      // Use the placeUnit function to move the unit across the map, as close as possible towards the target position
+      placeUnit(curRoom, {x: curMon.x, y: curMon.y, index: i}, targetPos[0], targetPos[1], 'monsters');
+    }
+  }
+
+  /*** 
+
+    CHANGE DOCK DEALS
+
+  ***/
+  let changeDeals = (Math.random() <= 0.2); // on average, change deals every ~5 turns
 
   // With X% probability, change the deals on the docks
-  // TO DO: When looping through the ships, save each ship's resources
-  //   => Use the average for creating deals
+  // Use the "averageResources" variable to get a random deal, then improve it (by lowering one and raising the other - no negative numbers)
+  // Scale the result based on dock size
+  if(changeDeals) {
+    for(let d = 0; d < curRoom.docks.length; d++) {
+      let good1 = Math.floor(Math.random() * 4)
+      let good2 = Math.floor(Math.random() * 4)
+
+      // TO DO (QUESTION): Is this a good concept?
+      if(good1 == 1) { good1 = 0; } // you cannot trade away your crew, instead it ensures more deals start with you spending gold
+
+      let val1 = Math.max( averageResources[good1] - Math.random()*3, 0);
+      let val2 = averageResources[good2] + Math.random()*3
+      const maxVal = Math.max(val1, val2);
+
+      // this formula is similar to how we determine how many routes each dock gets
+      // the larger the dock, the more I want to "compress" its size with a square root (or similar function)
+      const dockSize = Math.sqrt(curRoom.docks[d].size)*0.5;
+      val1 = val1 / maxVal * dockSize;
+      val2 = val2 / maxVal * dockSize;
+
+      // this is the final deal, with the right goods and correctly scaled values
+      const finalDeal = [[good1, val1], [good2, val2]];
+
+      // save the deal on the dock
+      curRoom.docks[d].deal = finalDeal
+
+      // TO DO: Update monitors (not necessary right now)
+    }
+  }
 
   // Start next turn
   startTurn(room)
@@ -1542,9 +1807,11 @@ function finishTurn(room) {
 function createShip(index) {
 
   return {
-    num: index, 
+    num: index,
+    myUnitType: 0, 
     players: [], 
-    resources: [10, 10, 10, 10], // [5,1,1,0], 
+    resources: [10, 0, 10, 10], // [5,1,1,0], 
+    workingCrew: 10,
     x: 0, 
     y: 0, 
     orientation: 0, 
@@ -1679,7 +1946,11 @@ function discoverIslands(room) {
         let randDock = room.islands[islandIndex].freeSpots[ Math.floor(Math.random() * islandSize)]
 
         // create new DOCK OBJECT
-        room.docks.push( { x: randDock.x, y: randDock.y, size: islandSize, deal: [[0, 4], [2, 6]] } );
+        // deals are random (there's no information about what might be useful)
+        // TO DO: Scale these and find SOME heuristic for generating nice dock deals at the start
+        let good1 = Math.floor(Math.random()*4), good2 = Math.floor(Math.random()*4), val1 = Math.round(Math.random()*5), val2 = Math.round(Math.random()*5);
+
+        room.docks.push( { x: randDock.x, y: randDock.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
 
         // add this object into the map (only by index)
         room.map[randDock.y][randDock.x].dock = (room.docks.length - 1);
@@ -1830,6 +2101,7 @@ function createDockRoutes(room) {
 
 function createAIShip(route, routeIndex) {
   return { 
+    myUnitType: 2,
     x: route[0], 
     y: route[1], 
     routeIndex: routeIndex, 
@@ -2032,11 +2304,15 @@ function createMonster(myType, index) {
 
   return {
     myMonsterType: myType,
+    myUnitType: 1,
     index: index,
     x: 0,
     y: 0,
     level: Math.round(Math.random() * 4), // generates a random level for this monster
-    dna: dna
+    dna: dna,
+    chasing: false,
+    target: null,
+    chasingCounter: 0,
   }
 }
 
