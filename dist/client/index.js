@@ -1041,6 +1041,10 @@ function loadErrorMessage(msg, i) {
             finalMsg = 'The game has started! Good luck!';
             msgVisualType = 1;
             break;
+
+        case 9:
+            finalMsg = 'Trade with dock failed!';
+            break;
     }
 
     var errorMsg = document.createElement("span");
@@ -1787,6 +1791,8 @@ var GamePlay = function (_Phaser$State) {
     }, {
         key: 'create',
         value: function create() {
+            var _this2 = this;
+
             var gm = this.game;
             var socket = _serverInfo.serverInfo.socket;
 
@@ -1931,9 +1937,15 @@ var GamePlay = function (_Phaser$State) {
 
             // Display all the players in the game and the color of their ship (and name/flag?)
 
-            // load timer
+            // load timer; the first turn is always twice as long!
             this.timerText = gm.add.text(gm.width * 0.5, 60, "", _styles.mainStyle.timerText());
-            this.timer = _serverInfo.serverInfo.timer;
+            this.timer = _serverInfo.serverInfo.timer * 2;
+
+            // Display NIGHT OVERLAY (for nighttime)
+            this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
+            this.lightSprite = gm.add.image(0, 0, this.shadowTexture);
+            this.lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+            this.updateShadowTexture();
 
             // load GUI overlay (displays room code and such)
             (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
@@ -1953,8 +1965,9 @@ var GamePlay = function (_Phaser$State) {
                 // move all units to their new positions
                 ths.moveUnits();
 
-                // TO DO
-                // Reset stuffiebuffie
+                // update NIGHT OVERLAY
+                // TO DO: Only if it's actually nighttime!
+                _this2.updateShadowTexture();
             });
 
             console.log("Game Play state");
@@ -1964,6 +1977,31 @@ var GamePlay = function (_Phaser$State) {
         value: function update() {
             // Update timer
             (0, _timers.gameTimer)(this, _serverInfo.serverInfo);
+        }
+    }, {
+        key: 'updateShadowTexture',
+        value: function updateShadowTexture() {
+            this.shadowTexture.context.fillStyle = 'rgb(0, 0, 0)';
+            this.shadowTexture.context.fillRect(0, 0, this.game.width, this.game.height);
+
+            // For all docks, display a light
+            var docks = this.dockSprites;
+            for (var i = 0; i < docks.length; i++) {
+                var x = docks[i].x + 0.5 * this.tileSize,
+                    y = docks[i].y,
+                    radius = this.tileSize * 2;
+
+                var gradient = this.shadowTexture.context.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, 'rgba(255, 0, 0, 1.0)');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0.0)');
+
+                this.shadowTexture.context.beginPath();
+                this.shadowTexture.context.fillStyle = gradient;
+                this.shadowTexture.context.arc(x, y, radius, 0, Math.PI * 2, false);
+                this.shadowTexture.context.fill();
+            }
+
+            this.shadowTexture.dirty = true;
         }
     }]);
 
@@ -2940,6 +2978,15 @@ function loadFireButton() {
     return curString;
 }
 
+function loadDeal(deal) {
+    var resDict = ['Gold', 'Crew', 'Wood', 'Ammo']; //resDict[ deal[0][0] ] for resource as a string
+
+    var good1 = '<strong>' + deal[0][1] + ' x </strong><img src="assets/resourceIcon' + deal[0][0] + '.png" />';
+    var good2 = '<img src="assets/resourceIcon' + deal[1][0] + '.png" />' + '<strong> x ' + deal[1][1] + '</strong>';
+
+    return '<p class="captain-dockDeal">' + good1 + ' ==> ' + good2 + '</p>';
+}
+
 /*
     This function loads the preparation interface for each role
 
@@ -3057,7 +3104,7 @@ function loadPlayInterface(num, cont) {
 
                         // Display the proposed trade, saved in serverInfo.dockTrade
                         // TO DO: Make the trade look nice (with icons and all)
-                        span2.innerHTML = '<p>Current deal is: ' + _serverInfo.serverInfo.dockTrade[0] + ' for ' + _serverInfo.serverInfo.dockTrade[1] + '</p>';
+                        span2.innerHTML = loadDeal(param.deal);
 
                         var btn2 = document.createElement("button");
                         btn2.setAttribute('data-taskid', _i);
@@ -3066,7 +3113,7 @@ function loadPlayInterface(num, cont) {
 
                         btn2.addEventListener('click', function () {
                             // send signal to server
-                            socket.emit('dock-trade');
+                            socket.emit('dock-trade', param.index);
 
                             // pop this task off the list
                             // set it to null; it will just be ignored from now on
@@ -3883,7 +3930,9 @@ var ControllerWaiting = function (_Phaser$State) {
       // (by calling LOAD_TAB with value 0; third parameter loads play interface instead of prep interface)
       (0, _loadTab2.default)("label0", curTab, 1);
 
-      this.timer = _serverInfo.serverInfo.timer;
+      // The first turn is always twice as long!
+      this.timer = _serverInfo.serverInfo.timer * 2;
+
       (0, _mainSocketsController2.default)(socket, gm, _serverInfo.serverInfo);
 
       console.log("Controller Play state");

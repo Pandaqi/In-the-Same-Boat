@@ -238,9 +238,15 @@ class GamePlay extends Phaser.State {
 
     // Display all the players in the game and the color of their ship (and name/flag?)
 
-    // load timer
+    // Display NIGHT OVERLAY (for nighttime)
+    this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
+    this.lightSprite = gm.add.image(0,0, this.shadowTexture);
+    this.lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+    this.lightSprite.visible = false;    
+
+    // load timer; the first turn is always twice as long!
     this.timerText = gm.add.text(gm.width*0.5, 60, "", mainStyle.timerText())
-    this.timer = serverInfo.timer
+    this.timer = serverInfo.timer*2
 
     // load GUI overlay (displays room code and such)
     loadGUIOverlay(gm, serverInfo, mainStyle.mainText(), mainStyle.subText())
@@ -260,8 +266,25 @@ class GamePlay extends Phaser.State {
       // move all units to their new positions
       ths.moveUnits();
 
-      // TO DO
-      // Reset stuffiebuffie
+      // switch to day/night if necessary
+      serverInfo.turnCount++;
+      if(serverInfo.turnCount % 10 == 0) {
+        serverInfo.dayTime = !serverInfo.dayTime;
+
+        // if night, the overlay is turned on
+        // if day, the overlay is turned off
+        if(!serverInfo.dayTime) {
+          this.lightSprite.visible = true;
+          this.updateShadowTexture();
+        } else {
+          this.lightSprite.visible = false;
+        }
+      }
+
+      if(!serverInfo.dayTime) {
+        // update NIGHT OVERLAY; Only if it's actually nighttime!
+        this.updateShadowTexture();
+      }
     })
 
     console.log("Game Play state")
@@ -270,6 +293,31 @@ class GamePlay extends Phaser.State {
   update () {
     // Update timer
     gameTimer(this, serverInfo)
+  }
+
+  updateShadowTexture() {
+    this.shadowTexture.context.fillStyle = 'rgb(0, 0, 0)';
+    this.shadowTexture.context.fillRect(0, 0, this.game.width, this.game.height);
+
+    // For all docks, display a light
+    let docks = this.dockSprites;
+    for(let i = 0; i < docks.length; i++) {
+      let x = docks[i].x + 0.5*this.tileSize, y = docks[i].y, radius = this.tileSize*2 + Math;
+
+      var gradient =
+          this.shadowTexture.context.createRadialGradient(
+              x, y, 0,
+              x, y, radius);
+      gradient.addColorStop(0, 'rgba(255, 150, 150, 1.0)');
+      gradient.addColorStop(1, 'rgba(255, 150, 150, 0.0)');
+
+      this.shadowTexture.context.beginPath();
+      this.shadowTexture.context.fillStyle = gradient;
+      this.shadowTexture.context.arc(x, y, radius, 0, Math.PI*2, false);
+      this.shadowTexture.context.fill();      
+    }
+
+    this.shadowTexture.dirty = true;
   }
 }
 

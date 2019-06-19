@@ -46,6 +46,10 @@ export default function loadErrorMessage(msg, i) {
             finalMsg = 'The game has started! Good luck!';
             msgVisualType = 1;
             break;
+
+        case 9:
+            finalMsg = 'Trade with dock failed!'
+            break;
     }
 
     let errorMsg = document.createElement("span")

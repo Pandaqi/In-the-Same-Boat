@@ -50,7 +50,6 @@ io.on('connection', socket => {
       players: {},
 
       gameStarted: false,
-      curRound: 0,
       gameState: "Lobby",
       timerEnd: 0,
       timerLeft: 0,
@@ -64,6 +63,9 @@ io.on('connection', socket => {
       shipDrawings: [],
 
       averagePlayerLevel: 0,
+
+      turnCount: 0,
+      dayTime: true,
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -544,14 +546,19 @@ io.on('connection', socket => {
     // TO DO: If island is discovered, inform everyone and display/reveal it on the monitor
   });
 
-  socket.on('dock-trade', function() {
-    // TO DO
-    // The dock we're trading with should be saved on the ship (when we arrived there)
-    // The deal should be saved on the dock object itself
+  socket.on('dock-trade', dockIndex => {
+    // get the deal, create an object that holds the cost (not the reward)
+    let deal = rooms[socket.mainRoom].docks[dockIndex].deal;
+    let costs = {}
+    costs[deal[0][0]] = deal[0][1];
 
-    // Check if we have the resources
-    // If so, trade and update stats
-    // If not, return error message
+    // check if we have the resources for this trade ("9" is the error message type in case it fails)
+    if(resourceCheck(socket, 0, 0, costs, 9)) {
+      // if yes, we receive the other type of resources from the trade!
+      curShip.resources[deal[1][0]] += deal[1][1];
+
+      // TO DO: Reveal dock if this is the first trade here (and the dock has thus been "discovered")
+    }
   });
 
 
@@ -942,18 +949,21 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
   @parameter obj => the victim of the attack
   @parameter attacker => the ... attacker
   @parameter dmg => the amount of damage done by this attack
+  @parameter self => self-inflicted damage
 */
-function dealDamage(room, obj, attacker, dmg) {
+function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
   obj.health -= dmg;
 
-  // if the attacker was a player ship, they receive a (feedback) message about the attack
-  if(attacker.myUnitType == 0) {
-    attacker.errorMessages.push([6,0]);
-  }
+  if(!selfInflicted) {
+    // if the attacker was a player ship, they receive a (feedback) message about the attack
+    if(attacker.myUnitType == 0) {
+      attacker.errorMessages.push([6,0]);
+    }
 
-  // if the victim was a player ship, they receive an (error) message about the attack
-  if(obj.myUnitType == 0) {
-    attack.errorMessages.push([4,0]);
+    // if the victim was a player ship, they receive an (error) message about the attack
+    if(obj.myUnitType == 0) {
+      attacker.errorMessages.push([4,0]);
+    }
   }
 
   // TO DO: Differentiate messages more, using the second parameter (now it's just a vague "You were attacked!")
@@ -1046,6 +1056,17 @@ function startTurn(room, gameStart = false) {
   console.log("Starting turn in room " + room)
 
   let curRoom = rooms[room]
+
+  /* 
+
+    DAY/NIGHT CYCLE
+  
+  */
+  curRoom.turnCount++;
+
+  if(curRoom.turnCount % 10 == 0) {
+    curRoom.dayTime = !curRoom.dayTime;
+  }
 
   /* 
 
@@ -1174,7 +1195,12 @@ function startTurn(room, gameStart = false) {
       if(hasDock(curTile)) {
         // send the deal to the captain
         const ind = curTile.dock;
-        captainTasks.push([2,ind]);
+
+        // get the deal
+        const deal = curRoom.docks[curTile.dock].deal
+
+        // send the message type ("trade with dock"), the deal, and the dock index
+        captainTasks.push([2, { deal: deal, index: ind }]);
 
         curShip.captainCanTrade = ind;
       }
@@ -1625,7 +1651,7 @@ function finishTurn(room) {
       // check if the next tile (we want to go to) is reachable
       // NOT REACHABLE if: an island or a dock
       if(isIsland(tile) || hasDock(tile)) {
-        dealDamage(curRoom, curShip, curShip, 10)
+        dealDamage(curRoom, curShip, curShip, 10, true)
 
         // Inform captain of damage
         curShip.errorMessages.push([5,0]);
@@ -1684,7 +1710,6 @@ function finishTurn(room) {
 
   // NOTE: They move AFTER the player ships, as monsters can then succesfully CHASE them.
   ***/
-  
 
   // For each monster ...
   for(let i = 0; i < curRoom.monsters.length; i++) {
@@ -1851,8 +1876,8 @@ function finishTurn(room) {
       // this formula is similar to how we determine how many routes each dock gets
       // the larger the dock, the more I want to "compress" its size with a square root (or similar function)
       const dockSize = Math.sqrt(curRoom.docks[d].size)*0.5;
-      val1 = val1 / maxVal * dockSize;
-      val2 = val2 / maxVal * dockSize;
+      val1 = Math.round( val1 / maxVal * dockSize );
+      val2 = Math.round( val2 / maxVal * dockSize );
 
       // this is the final deal, with the right goods and correctly scaled values
       const finalDeal = [[good1, val1], [good2, val2]];

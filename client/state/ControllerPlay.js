@@ -209,7 +209,9 @@ class ControllerWaiting extends Phaser.State {
     // (by calling LOAD_TAB with value 0; third parameter loads play interface instead of prep interface)
     LOAD_TAB("label0", curTab, 1)
 
-    this.timer = serverInfo.timer
+    // The first turn is always twice as long!
+    this.timer = serverInfo.timer*2
+
     loadMainSockets(socket, gm, serverInfo)
 
     console.log("Controller Play state");
@@ -242,6 +244,15 @@ class ControllerWaiting extends Phaser.State {
 
       // update ship health
       document.getElementById('healthBar').style.width = serverInfo.health + '%';
+
+      // switch to day/night if necessary
+      serverInfo.turnCount++;
+      if(serverInfo.turnCount % 10 == 0) {
+        serverInfo.dayTime = !serverInfo.dayTime;
+
+        // TO DO
+        // Do something with the fact that it's now night?
+      }
 
       // reload first tab
       LOAD_TAB("label0", curTab, 1)

@@ -201,6 +201,15 @@ function loadFireButton() {
     return curString;
 }
 
+function loadDeal(deal) {
+    const resDict = ['Gold', 'Crew', 'Wood', 'Ammo']; //resDict[ deal[0][0] ] for resource as a string
+
+    const good1 = '<strong>' + deal[0][1] + ' x </strong><img src="assets/resourceIcon' + deal[0][0] + '.png" />'
+    const good2 = '<img src="assets/resourceIcon' + deal[1][0] + '.png" />' + '<strong> x ' + deal[1][1] + '</strong>'
+
+    return '<p class="captain-dockDeal">' + good1 + ' ==> ' + good2 + '</p>';
+}
+
 /*
     This function loads the preparation interface for each role
 
@@ -318,7 +327,7 @@ export default function loadPlayInterface(num, cont) {
 
                         // Display the proposed trade, saved in serverInfo.dockTrade
                         // TO DO: Make the trade look nice (with icons and all)
-                        span2.innerHTML = '<p>Current deal is: ' + serverInfo.dockTrade[0] + ' for ' + serverInfo.dockTrade[1] + '</p>';
+                        span2.innerHTML = loadDeal(param.deal);
 
                         let btn2 = document.createElement("button")
                         btn2.setAttribute('data-taskid', i);
@@ -327,7 +336,7 @@ export default function loadPlayInterface(num, cont) {
 
                         btn2.addEventListener('click', function() {
                             // send signal to server
-                            socket.emit('dock-trade');
+                            socket.emit('dock-trade', param.index);
 
                             // pop this task off the list
                             // set it to null; it will just be ignored from now on

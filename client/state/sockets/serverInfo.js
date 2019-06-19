@@ -10,6 +10,9 @@ const serverInfo = {
 
   timer: 0,
 
+  turnCount: 1,
+  dayTime: true,
+
   language: 'en',
 
   health: 100,
