@@ -62,6 +62,8 @@ io.on('connection', socket => {
       monsterTypes: [],
 
       shipDrawings: [],
+
+      averagePlayerLevel: 0,
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -563,7 +565,7 @@ io.on('connection', socket => {
     if( resourceCheck(socket, role, curLevel) ) {
       // ... execute upgrade
       curShip.roleStats[role].lvl += 1;
-      curShip.roleStates[role].lvlUp = true;
+      curShip.roleStats[role].lvlUp = true;
     }
   })
 
@@ -944,14 +946,19 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
 function dealDamage(room, obj, attacker, dmg) {
   obj.health -= dmg;
 
-  // TO DO: Inform player of damage ??
-  // Tell attacker it was succesful, and obj that he/she was attacked
+  // if the attacker was a player ship, they receive a (feedback) message about the attack
+  if(attacker.myUnitType == 0) {
+    attacker.errorMessages.push([6,0]);
+  }
 
-  // THIS IS THE PLAN
-  // => Clear out the old errorMessages _before_ any dealDamage happens (in this turn)
-  // => Then, each dealDamage is added to this list. 
-  // => HOWEVER, if a similar message already exists, nothing new is added. 
-  //    (If you have three cannonballs hitting the same ship, you don't want three messages saying "Succesful attack! You hit ship X!")
+  // if the victim was a player ship, they receive an (error) message about the attack
+  if(obj.myUnitType == 0) {
+    attack.errorMessages.push([4,0]);
+  }
+
+  // TO DO: Differentiate messages more, using the second parameter (now it's just a vague "You were attacked!")
+  // TO DO: If a similar message already exists, nothing new is added. 
+  //        => (If you have three cannonballs hitting the same ship, you don't want three messages saying "Succesful attack! You hit ship X!")
 
   // TO DO: This could be more efficient. We're repeating the code used when first CREATING monsters/aiShips/etc. 
   //        => On the other hand, it's not so bad as it's slightly different and short code :p
@@ -966,11 +973,20 @@ function dealDamage(room, obj, attacker, dmg) {
       case 0:
         // TO DO ... what do we do?
 
+        // TO DO ... give REWARD to the attacker?
+
         break;
 
       // Monster: respawn to respawn location for this type
       // placeUnit() on the new location, change the monster's attributes
       case 1:
+        // give reward to attacker
+        if(attacker.myUnitType == 0) {
+          // save it; monsters always give gold
+          attacker.resources[0] += obj.loot; 
+        }
+
+        // get a spawn point
         let spawnPoint = room.spawnPoints[ Math.floor(Math.random() * room.spawnPoints.length) ];
 
         // move monster to new location
@@ -978,12 +994,23 @@ function dealDamage(room, obj, attacker, dmg) {
 
         // give it new attributes (just replace the old object with a new one)
         let randomMonsterType = Math.floor( Math.random() * room.monsterTypes.length );
-        room.monsters[obj.index] = createMonster(randomMonsterType, obj.index);
+        room.monsters[obj.index] = createMonster(randomMonsterType, obj.index, room.averagePlayerLevel);
 
         break;
 
       // AI ship: respawn to random dock (with a route, which you pick immediately)
       case 2:
+        // give reward to attacker
+        if(attacker.myUnitType == 0) {
+          // calculate reward
+          // AI ships have different resources, based on their type
+          // Those resources are scaled by the ship level (and attack strength)
+          for(let res = 0; res < 4; res++) {
+            // save it; get it directly from the object
+            attacker.resources[res] += obj.loot[res];
+          }
+        }
+
         // Find a dock (WITH routes)
         let dockIndex, dockRoutes;
         do {
@@ -996,11 +1023,10 @@ function dealDamage(room, obj, attacker, dmg) {
         let randRoute = room.docks[dockIndex].routes[routeIndex][0];
 
         // Change to a new ship
-        room.aiShips[obj.index] = createAIShip([randRoute[0], randRoute[1]], routeIndex);
+        room.aiShips[obj.index] = createAIShip([randRoute[0], randRoute[1]], routeIndex, room.averagePlayerLevel);
 
         // Start at one of the routes (placeUnit)
         placeUnit(room, {x: obj.x, y: obj.y, index: obj.index}, randRoute[0], randRoute[1], 'aiShips');
-
         break;
 
       // Docks (3) can't respawn.
@@ -1191,10 +1217,6 @@ function startTurn(room, gameStart = false) {
             break;
     }
 
-    // TO DO: Override for testing. Remove this in deployment
-    mapSize = 20;
-    sightLvl = 2;
-
     // Loop through these tiles to find all units within them
     // Generate a 2D array with a "personalized" view of all the units
     curShip.personalUnits = [];
@@ -1244,6 +1266,7 @@ function startTurn(room, gameStart = false) {
           if(mapTile.playerShips.length > 0) {
             for(let aa = 0; aa < mapTile.playerShips.length; aa++) {
               const myIndex = mapTile.playerShips[aa];
+              if(myIndex == curShip.num) { continue; } // if this is our own ship, ignore it
               curShip.personalUnits.push({ myType: 0, index: curRoom.playerShips[myIndex].num, x: x, y: y });
             }
           }
@@ -1251,15 +1274,19 @@ function startTurn(room, gameStart = false) {
       }
     }
 
-    // TO DO: I think we need to subtract our own ship :p
-    // Or, we could accept we'll always find ourselves, and just say "units found > 1"
     // This checks if we can fire or not (and sends the captain that task, if so)
+    // If we can see enemies in our vicinity, the fire button appears
     if(curShip.personalUnits.length > 0) {
       captainTasks.push([0,0])
       curShip.captainCanFire = true;
     } else {
       curShip.captainCanFire = false;
     }
+
+    // add our own ship to personalUnits
+    // NOTE: This is done AFTER the previous code, because otherwise we'd need to subtract our own ship there
+    // TO DO: Actually, we don't need this. We can just save our own drawing on the client and display our own ship, as we're already sending x and y coordinates
+    curShip.personalUnits.push({ myType: 0, index: curShip.num, x: Math.floor(mapSize*0.5), y: Math.floor(mapSize*0.5) });
 
     curShip.captainTasks = captainTasks;
   }
@@ -1306,6 +1333,9 @@ function startTurn(room, gameStart = false) {
 
           // List of current tasks
           pPack["taskList"] = curShip.captainTasks;
+
+          // List of (feedback) messages
+          pPack["errorMessages"] = curShip.errorMessages;
 
           // if we can fire, calculate the cost of firing
           if(curShip.captainCanFire) {
@@ -1356,7 +1386,7 @@ function startTurn(room, gameStart = false) {
           // Perhaps, they could receive the previous setting on their sails, but doesn't feel really necessary
           break;
 
-        // Weapon Specialist
+        // Cannoneer
         case 4:
           // Send the correct cannon load (just a number, negative means the cannon hasn't been bought yet)
           pPack["shipCannons"] = curShip.cannons;
@@ -1395,6 +1425,32 @@ function startTurn(room, gameStart = false) {
 function finishTurn(room) {
   console.log("Finishing turn in room " + room)
   let curRoom = rooms[room];
+
+  /***
+
+    RESET STUFF (like messages)
+
+  **/
+  let averagePlayerLevel = 0;
+  for(let i = 0; i < curRoom.playerShips.length; i++) {
+    let curShip = curRoom.playerShips[i];
+
+    // clear error messages
+    curShip.errorMessages = [];
+
+    // count the average for this ship
+    // IGNORE the captain
+    let tempAverage = 0;
+    for(let role = 1; role < curShip.roleStats.length; role++) {
+      tempAverage += curShip.roleStats[role].lvl;
+    }
+    tempAverage *= (1/curShip.roleStats.length);
+
+    // add it to the total average; weighted
+    averagePlayerLevel += (1/curRoom.playerShips.length) * tempAverage;
+  }
+
+  curRoom.averagePlayerLevel = averagePlayerLevel;
 
   /*** 
 
@@ -1494,25 +1550,16 @@ function finishTurn(room) {
           } else {
             for(let i = 0; i < tile.monsters.length; i++) {
               dealDamage(curRoom, curRoom.monsters[ tile.monsters[i] ], curShip, 10);
-
-              // TO DO: Receive reward
-              // TO DO: Send message with succesful attack??
             }
 
             for(let i = 0; i < tile.aiShips.length; i++) {
               dealDamage(curRoom, curRoom.aiShips[ tile.aiShips[i] ], curShip, 10);
-
-              // TO DO: Receive reward
-              // TO DO: Send message with succesful attack??
 
               // TO DO: With a certain chance, the ai ship FIGHTS BACK
             }
 
             for(let i = 0; i < tile.playerShips.length; i++) {
               dealDamage(curRoom, curRoom.playerShips[ tile.playerShips[i] ], curShip, 10);
-
-              // TO DO: Receive reward
-              // TO DO: Send message with succesful attack??
             }
           } 
         }
@@ -1534,11 +1581,10 @@ function finishTurn(room) {
   for(let i = 0; i < curRoom.monsters.length; i++) {
     const target = curRoom.monsters[i].target;
     if(target != null) {
-      // TO DO: Get attack range from monster object
       // Check if the distance is within our attacking range
-      let attackRange = 2;
+      let attackRange = curRoom.monsters[i].range;
       if(wrapDistance(target, curRoom.monsters[i], curRoom.mapWidth, curRoom.mapHeight) <= attackRange) {
-        dealDamage(curRoom, target, curRoom.monsters[i], 10);
+        dealDamage(curRoom, target, curRoom.monsters[i], curRoom.monsters[i].attackStrength);
       }
     }
   }
@@ -1581,8 +1627,8 @@ function finishTurn(room) {
       if(isIsland(tile) || hasDock(tile)) {
         dealDamage(curRoom, curShip, curShip, 10)
 
-        // TO DO: Inform captain of damage
-
+        // Inform captain of damage
+        curShip.errorMessages.push([5,0]);
         break;
 
       // if it's reachable, then we just update the position and move to the next step
@@ -1606,9 +1652,8 @@ function finishTurn(room) {
     // get the SHIP
     let s = curRoom.aiShips[i];
 
-    // TO DO
     // Get ship properties (like speed) from the ai ship object
-    let shipSpeed = 3;
+    let shipSpeed = s.speed;
 
     // get the route object (contains the actual route ("route") and the dock where the route ends ("target"))
     let routeObject = curRoom.docks[ s.routeIndex[0] ].routes[ s.routeIndex[1] ];
@@ -1648,9 +1693,8 @@ function finishTurn(room) {
     // We use a SPIRAL, starting from the right hand of the monster. (TO DO: Maybe give monsters orientation as well, start the spiral from there)
     // Just pick the first one we can find (which should automatically be within the sight distance)
 
-    // TO DO: Get these from the monster object
-    let sightRadius = 6;
-    let chaseSpeed = 3;
+    let sightRadius = curMon.sight;
+    let chaseSpeed = curMon.speed;
 
     let targetPos;
 
@@ -1776,7 +1820,7 @@ function finishTurn(room) {
 
 
     // check one last time that we have a position to go to
-    if(targetPos != null || targetPos.length > 0) { 
+    if(targetPos != null && targetPos.length > 0) { 
       // Use the placeUnit function to move the unit across the map, as close as possible towards the target position
       placeUnit(curRoom, {x: curMon.x, y: curMon.y, index: i}, targetPos[0], targetPos[1], 'monsters');
     }
@@ -1855,7 +1899,8 @@ function createShip(index) {
       { lvl: 0, lvlUp: false }, 
       { lvl: 0, lvlUp: false, sailLvl: 0, peddleLvl: 0 }, 
       { lvl: 0, lvlUp: false } ], 
-    cannons: [2, -1, -1, -1]
+    cannons: [2, -1, -1, -1],
+    errorMessages: [],
   }
 
 }
@@ -1957,6 +2002,10 @@ function createBaseMap(room) {
   // seed the noise object (with the mapSeed)
   noise.seed(room.mapSeed);
 
+  // this variable is for determining monster spawn points 
+  // (which is done simultaneously with creating the map)
+  let tempSpawnPoints = [];
+
   // initialize some variables determining map size (and zoom level)
   let x1 = 0, y1 = 0, x2 = 10, y2 = 10
   let mapWidth = 60, mapHeight = 30;
@@ -1965,6 +2014,12 @@ function createBaseMap(room) {
   room.mapHeight = mapHeight;
 
   room.map = []; //initialize map variable (I almost forgot)
+
+  /*
+
+    CREATING THE LARGE 2D (map) ARRAY
+
+  */
 
   // loop through all tiles, determine noise level, and save it
   for (let y = 0; y < mapHeight; y++) {
@@ -1984,9 +2039,54 @@ function createBaseMap(room) {
       let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
       let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
 
-      room.map[y][x] = { val: noise.perlin4(nx, ny, nz, nw), monsters: [], playerShips: [], aiShips: [] };
+      // Save the noise value in the (huge) 2D map array
+      // Also initialize empty variables for possible units that might be on this tile later
+      const value = noise.perlin4(nx, ny, nz, nw);
+      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [] };
+
+      // if it's a (really) deep sea tile, save it as a possible spawn point
+      if(value < -0.6) {
+        tempSpawnPoints.push({ x: x, y: y})
+      }
     }
   }
+
+  /*
+
+    DETERMINING MONSTER SPAWN POINTS
+
+  */
+
+  // go through all spawn points and weed out the ones we don't need
+  // determine how many spawn points we want: at least 2, at most 4
+  const numSpawnPoints = Math.floor(Math.random() * 3) + 2;
+  let actualSpawnPoints = [];
+
+  // if there are no spawn points (should be VERY rare), add random ones until we reach the desired number
+  const spawnPointDiff = numSpawnPoints - tempSpawnPoints.length;
+  if(spawnPointDiff > 0) {
+    for(let i = 0; i < spawnPointDiff; i++) {
+      let rX, rY
+      do {
+        rX = Math.floor(Math.random() * room.mapWidth);
+        rY = Math.floor(Math.random() * room.mapHeight); 
+      } while(isIsland(room.map[rY][rX]))
+      tempSpawnPoints.push({x: rX, y: rY});
+    }
+  }
+
+  // say we have X total spawn points, and we want to reduce it to Y
+  // then for each chunk of (X/Y) spawn points, we want to pick only one
+  // WHY? Because then our spawn points are automatically distributed at a good distance from each other
+  // WHY the Math.random()? To shift the choosing algorithm a little, otherwise it always chooses the first one of the chunk
+  const chunkSize = (tempSpawnPoints.length / numSpawnPoints);
+  for(let i = 0; i < numSpawnPoints; i++) {
+    let convIndex = Math.floor( (i + Math.random()) * chunkSize );
+
+    actualSpawnPoints.push(tempSpawnPoints[convIndex]);
+  }
+
+  room.spawnPoints = actualSpawnPoints;
 }
 
 /*** == Begin of DISCOVERING and SAVING islands + docks == ***/
@@ -2151,9 +2251,8 @@ function createDockRoutes(room) {
         // save the dock and route index where you started
         // this is used to follow the route
 
-        // TO DO: Give the ship some more properties (outside of its position and route)
         // This creates a new AI SHIP OBJECT (create function for this?)
-        room.aiShips.push( createAIShip(randRoute, [i,r])  );
+        room.aiShips.push( createAIShip(randRoute, [i,r], room.averagePlayerLevel)  );
 
         // also place the AI ship on the map
         placeUnit(room, { x: -1, y: -1, index: (room.aiShips.length-1) }, randRoute[0], randRoute[1], 'aiShips');
@@ -2164,15 +2263,57 @@ function createDockRoutes(room) {
   }
 }
 
-function createAIShip(pos, routeIndex) {
+function createAIShip(pos, routeIndex, averageLevel) {
+  // determine ship type
+  // there are four types of ships
+  //    1) Fishermen: lots of food and some crew, but no other resources and a small attack strength
+  //    2) Recreational: lots of gold and wood, but no crew and nearly no attack strength
+  //    3) Merchants: lots of all resources (esp. gold and wood), but also some attack strength
+  //    4) Pirates: lots of all resources (esp. crew and cannonballs), but a large attack strength
+  let shipType = Math.floor(Math.random() * 4);
+
+  // some dictionaries for default values for each ship type
+  let healthPerType = [10, 20, 30, 40];
+  let speedPerType = [1, 2, 2, 3];
+  let attackPerType = [5, 0, 20, 30];
+  let rangePerType = [1, 0, 2, 3];
+  let lootPerType = [ [0,1,0,0], [2,0,2,0] , [4,1,2,1] , [3,3,2,5] ];
+
+  // determine the level
+  const randLevel = Math.max( Math.round( averageLevel + Math.random()*1.5 - 0.75 ), 0)
+  
+  // use that to calculate all stats/properties
+  let startHealth = Math.round( Math.random() * healthPerType[shipType] * randLevel + 1);
+  let movementSpeed = Math.round( Math.random() * speedPerType[shipType] * (randLevel/3) + 1);
+  let attackStrength = Math.round( Math.random() * attackPerType[shipType] * randLevel + 1); 
+  let attackRange = Math.round( Math.random() * rangePerType[shipType] * (randLevel/3) + 1);
+
+  // loot has a more difficult calculation
+  // get base loot, make a small adjustment (at most 0.5 up or down), multiply by randLevel
+  // "Math.max" ensures that the value doesn't become negative
+  let loot = [0,0,0,0];
+  for(let res = 0; res < 4; res++) {
+    loot += Math.round( Math.max( (lootPerType[res] + Math.random()*1.0 - 0.5), 0) * randLevel );
+  }
+
   return { 
     myUnitType: 2,
     x: pos[0], 
     y: pos[1], 
+
     routeIndex: routeIndex, 
     routePointer: 0,
-    health:20,
-    myShipType:0 }
+
+    health: startHealth,
+    level: randLevel,
+    attack: attackStrength,
+    speed: movementSpeed,
+    range: attackRange,
+
+    loot: loot,
+
+    myShipType: shipType 
+  }
 }
 
 function calculateRoute(room, start, end) {
@@ -2316,7 +2457,7 @@ function createSeaMonsters(room) {
 
   for(let i = 0; i < numMonsters; i++) {
     let randomMonsterType = Math.floor( Math.random() * room.monsterTypes.length );
-    let newMon = createMonster(randomMonsterType, i);
+    let newMon = createMonster(randomMonsterType, i, room.averagePlayerLevel);
 
     room.monsters.push( newMon );
   }
@@ -2346,8 +2487,8 @@ function createSeaMonsters(room) {
   If it has a 1, it has talent for this, and gets a buff for this property.
 
 */
-function createMonster(myType, index) {
-  // TO DO: Stats are differentiated, once in combat, based on the monster LEVEL and DNA (or "fingerprint")
+function createMonster(myType, index, averageLevel) {
+  // Stats are differentiated based on the monster LEVEL and DNA (or "fingerprint")
 
   // create dna
   // NOTE: Right now, points are distributed equally. No property has more than 1, or less than 0.
@@ -2365,15 +2506,39 @@ function createMonster(myType, index) {
     }
   }
 
+  // 0-10 without modifiers, otherwise 0-20, always multiplied by the level
+  // the level is determined by the average player level in the world (which is kept track of by finishTurn function) => with some small adjustments
+  const randLevel = Math.max( Math.round( averageLevel + Math.random()*1.5 - 0.75 ), 0)
+  const startHealth = Math.round( (Math.random()*10 + dna[2]*10)*randLevel );
+
+  // calculate loot
+  // each monster gives 1 base gold + 1-4 for high HEALTH + 1-4 for high LOOT
+  // always multiplied by level
+  let loot = Math.round( (1 + (Math.random() * 3 + 1) * dna[2] + (Math.random() * 3 + 1) * dna[4]) * randLevel );
+
+  // Attack RANGE (dna[1]), attack SIGHT (dna[1]), attack STRENGTH (dna[0]), chase SPEED (dna[3])
+  let chaseSpeed = Math.round( Math.random() * (randLevel/2) + 1) + dna[3] * 3;
+
+  let attackStrength = Math.round( Math.random() * (randLevel/3) * 10 + dna[0] * 20); 
+  let sightRange = Math.round( Math.random()*randLevel + 2) + dna[1] * 3;
+  let attackRange = Math.min( Math.round(sightRange/3), 1);
+
   return {
     myMonsterType: myType,
     myUnitType: 1,
     index: index,
     x: 0,
     y: 0,
-    level: Math.round(Math.random() * 4), // generates a random level for this monster
-    health: 20,
+    level: randLevel, 
+    health: startHealth,
+
     dna: dna,
+    loot: loot,
+    speed: chaseSpeed,
+    range: attackRange,
+    sight: sightRange,
+    attack: attackStrength,
+
     chasing: false,
     target: null,
     chasingCounter: 0,

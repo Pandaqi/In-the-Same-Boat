@@ -76,7 +76,7 @@ Object.defineProperty(exports, "__esModule", {
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 var serverInfo = {
-  SERVER_IP: 'http://localhost:8000', /*'https://trampolinedraak.herokuapp.com',*/
+  SERVER_IP: 'http://localhost:8000', /*'https://in-the-same-boat.herokuapp.com',*/
   socket: null,
   server: null,
   roomCode: '',
@@ -87,13 +87,13 @@ var serverInfo = {
 
   language: 'en',
 
+  health: 100,
+
   // These variables are for the player interface only
   // They keep track of what you've already done/seen/activated
   submittedPreparation: {},
   submittedUpgrade: {},
-  errorMessages: [],
-
-  health: 100,
+  errorMessages: [[8, 0]], // each game starts with the messages "the game has started, good luck!"
 
   // Backup ship drawing, in case preparation is skipped
   backupShipDrawing: "data:image/png;base64,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",
@@ -587,7 +587,7 @@ exports.default = loadMainSockets;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Weapon Specialist'];
+var ROLE_DICTIONARY = exports.ROLE_DICTIONARY = ['Captain', 'First Mate', 'Cartographer', 'Sailor', 'Cannoneer'];
 
 /***/ }),
 /* 8 */
@@ -1001,6 +1001,7 @@ function loadErrorMessage(msg, i) {
     var msgRole = _roleDictionary.ROLE_DICTIONARY[msg[i][1]];
 
     var finalMsg = '';
+    var msgVisualType = 0; // 0 = error message, 1 = reward/feedback message
     switch (msgType) {
         case 0:
             finalMsg = 'Upgrade by <em>' + msgRole + '</em> failed!';
@@ -1017,10 +1018,39 @@ function loadErrorMessage(msg, i) {
         case 3:
             finalMsg = "You don't have enough crew to fire the cannons!";
             break;
+
+        case 4:
+            finalMsg = 'You were attacked!';
+            break;
+
+        case 5:
+            finalMsg = 'Your ship hit something.';
+            break;
+
+        case 6:
+            finalMsg = 'Your cannonball hit a target!';
+            msgVisualType = 1;
+            break;
+
+        case 7:
+            finalMsg = 'You killed something! Check your resources for loot.';
+            msgVisualType = 1;
+            break;
+
+        case 8:
+            finalMsg = 'The game has started! Good luck!';
+            msgVisualType = 1;
+            break;
     }
 
     var errorMsg = document.createElement("span");
-    errorMsg.classList.add("captain-error");
+
+    if (msgVisualType == 0) {
+        errorMsg.classList.add("captain-error");
+    } else {
+        errorMsg.classList.add("captain-feedback");
+    }
+
     errorMsg.setAttribute('data-errorid', i);
     errorMsg.innerHTML = "<p>" + finalMsg + "</p>";
 
@@ -1564,7 +1594,9 @@ var GamePrep = function (_Phaser$State) {
 
   _createClass(GamePrep, [{
     key: 'preload',
-    value: function preload() {}
+    value: function preload() {
+      this.game.stage.backgroundColor = "#FFFFFF";
+    }
   }, {
     key: 'create',
     value: function create() {
@@ -1579,9 +1611,9 @@ var GamePrep = function (_Phaser$State) {
 
       // display a loading bar
       this.loadingSprite = gm.add.sprite(gm.width * 0.5, 400, 'nonexistent_index');
-      this.loadingSprite.anchor.setTo(0, 0.5);
+      this.loadingSprite.anchor.setTo(0.5, 0.5);
       this.loadingSprite.height = 50;
-      this.loadingSprite.width = 500;
+      this.loadingSprite.width = 0;
 
       // update loading bar during the state (when progress signals are received from the server)
       // @parameter data => percentage of preparation that has finished
@@ -1680,6 +1712,7 @@ var GamePlay = function (_Phaser$State) {
     _createClass(GamePlay, [{
         key: 'preload',
         value: function preload() {
+            this.game.stage.backgroundColor = "#FFFFFF";
 
             /*
                 Load all images into the cache
@@ -1721,16 +1754,39 @@ var GamePlay = function (_Phaser$State) {
                 this.game.load.image('aiShipNum0', _serverInfo.serverInfo.backupShipDrawing);
                 this.game.load.image('aiShipNum1', _serverInfo.serverInfo.backupShipDrawing);
                 this.game.load.image('aiShipNum2', _serverInfo.serverInfo.backupShipDrawing);
+                this.game.load.image('aiShipNum3', _serverInfo.serverInfo.backupShipDrawing);
             }
 
             // docks
             this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
         }
     }, {
+        key: 'moveUnits',
+        value: function moveUnits() {
+            // TO DO: units are placed just above their tile, so that it looks like they "stick out" of the map
+            // TO DO: Check if multiple units are on the same tile, and if so, scale them down and position them out of each other's way
+            //        => Use the old "circle" method. Place them in a circle with equal distance between them.
+            //        => But before we can do that, save the units in each tile SOMEWHERE, and use that
+            this.unitsOnMap = [];
+
+            for (var i = 0; i < this.monsterSprites.length; i++) {
+                this.monsterSprites[i].x = _serverInfo.serverInfo.monsters[i].x * this.tileSize;
+                this.monsterSprites[i].y = (_serverInfo.serverInfo.monsters[i].y - 0.5) * this.tileSize;
+            }
+
+            for (var _i3 = 0; _i3 < this.aiShipSprites.length; _i3++) {
+                this.aiShipSprites[_i3].x = _serverInfo.serverInfo.aiShips[_i3].x * this.tileSize;
+                this.aiShipSprites[_i3].y = (_serverInfo.serverInfo.aiShips[_i3].y - 0.5) * this.tileSize;
+            }
+
+            for (var _i4 = 0; _i4 < this.playerShipSprites.length; _i4++) {
+                this.playerShipSprites[_i4].x = _serverInfo.serverInfo.playerShips[_i4].x * this.tileSize;
+                this.playerShipSprites[_i4].y = (_serverInfo.serverInfo.playerShips[_i4].y - 0.5) * this.tileSize;
+            }
+        }
+    }, {
         key: 'create',
         value: function create() {
-            var _this2 = this;
-
             var gm = this.game;
             var socket = _serverInfo.serverInfo.socket;
 
@@ -1738,8 +1794,7 @@ var GamePlay = function (_Phaser$State) {
                 Recreate the map (based on the seed)
               This creates the 4D noise value on each location, and immediately displays the correct (colored) square
                 TO DO: Determine islands by myself? Or receive them from the server? (Might just as well send them, if we're sending this much information)
-              TO DO: Create/place units (docks, aiShips, monsters, playerShips)
-              TO DO: Update these units when receiving a server signal (at start of new turn)
+                     => Because, I need to know which tiles to "reveal" on the map, and where to put the text with the ISLAND NAME
               ***/
 
             // seed the noise object (with the mapSeed)
@@ -1757,6 +1812,7 @@ var GamePlay = function (_Phaser$State) {
 
             var graphics = this.add.graphics(0, 0);
             var tileSize = Math.min(window.innerWidth / mapWidth, window.innerHeight / mapHeight);
+            this.tileSize = tileSize;
 
             // loop through all tiles, determine noise level, and save it
             for (var y = 0; y < mapHeight; y++) {
@@ -1796,6 +1852,9 @@ var GamePlay = function (_Phaser$State) {
                     }
 
                     graphics.drawRect(x * tileSize, y * tileSize, tileSize, tileSize);
+
+                    graphics.lineStyle(2, 0xF9E4B7, 1); // last parameter is transparency: might be too expensive for the computer to set this to something else than 0
+                    graphics.drawRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 }
             }
 
@@ -1815,7 +1874,7 @@ var GamePlay = function (_Phaser$State) {
 
                 var cacheLabel = 'dock';
 
-                var newSprite = gm.add.sprite(_x * tileSize, _y * tileSize, cacheLabel);
+                var newSprite = gm.add.sprite(_x * tileSize, (_y - 0.5) * tileSize, cacheLabel);
                 newSprite.width = newSprite.height = tileSize;
                 this.dockSprites.push(newSprite);
             }
@@ -1824,13 +1883,13 @@ var GamePlay = function (_Phaser$State) {
             console.log(_serverInfo.serverInfo.monsters);
             var monsters = _serverInfo.serverInfo.monsters;
             this.monsterSprites = [];
-            for (var _i3 = 0; _i3 < monsters.length; _i3++) {
-                var _x2 = monsters[_i3].x,
-                    _y2 = monsters[_i3].y;
+            for (var _i5 = 0; _i5 < monsters.length; _i5++) {
+                var _x2 = monsters[_i5].x,
+                    _y2 = monsters[_i5].y;
 
-                var _cacheLabel = 'monsterNum' + monsters[_i3].myMonsterType;
+                var _cacheLabel = 'monsterNum' + monsters[_i5].myMonsterType;
 
-                var _newSprite = gm.add.sprite(_x2 * tileSize, _y2 * tileSize, _cacheLabel);
+                var _newSprite = gm.add.sprite(0, 0, _cacheLabel);
                 _newSprite.width = _newSprite.height = tileSize;
                 this.monsterSprites.push(_newSprite);
             }
@@ -1840,13 +1899,13 @@ var GamePlay = function (_Phaser$State) {
 
             var aiShips = _serverInfo.serverInfo.aiShips;
             this.aiShipSprites = [];
-            for (var _i4 = 0; _i4 < aiShips.length; _i4++) {
-                var _x3 = aiShips[_i4].x,
-                    _y3 = aiShips[_i4].y;
+            for (var _i6 = 0; _i6 < aiShips.length; _i6++) {
+                var _x3 = aiShips[_i6].x,
+                    _y3 = aiShips[_i6].y;
 
-                var _cacheLabel2 = 'aiShipNum' + aiShips[_i4].myShipType;
+                var _cacheLabel2 = 'aiShipNum' + aiShips[_i6].myShipType;
 
-                var _newSprite2 = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, _cacheLabel2);
+                var _newSprite2 = gm.add.sprite(0, 0, _cacheLabel2);
                 _newSprite2.width = _newSprite2.height = tileSize;
                 this.aiShipSprites.push(_newSprite2);
             }
@@ -1856,15 +1915,17 @@ var GamePlay = function (_Phaser$State) {
 
             var playerShips = _serverInfo.serverInfo.playerShips;
             this.playerShipSprites = [];
-            for (var _i5 = 0; _i5 < playerShips.length; _i5++) {
-                var _x4 = playerShips[_i5].x,
-                    _y4 = playerShips[_i5].y;
-                var _cacheLabel3 = 'shipNum' + playerShips[_i5].num;
+            for (var _i7 = 0; _i7 < playerShips.length; _i7++) {
+                var _x4 = playerShips[_i7].x,
+                    _y4 = playerShips[_i7].y;
+                var _cacheLabel3 = 'shipNum' + playerShips[_i7].num;
 
-                var _newSprite3 = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, _cacheLabel3);
+                var _newSprite3 = gm.add.sprite(0, 0, _cacheLabel3);
                 _newSprite3.width = _newSprite3.height = tileSize;
                 this.playerShipSprites.push(_newSprite3);
             }
+
+            this.moveUnits();
 
             // Display the messages from the radio
 
@@ -1889,21 +1950,8 @@ var GamePlay = function (_Phaser$State) {
                 // reset the timer 
                 ths.timer = _serverInfo.serverInfo.timer;
 
-                // move the units around
-                for (var _i6 = 0; _i6 < _this2.monsterSprites.length; _i6++) {
-                    _this2.monsterSprites[_i6].x = _serverInfo.serverInfo.monsters[_i6].x * tileSize;
-                    _this2.monsterSprites[_i6].y = _serverInfo.serverInfo.monsters[_i6].y * tileSize;
-                }
-
-                for (var _i7 = 0; _i7 < _this2.aiShipSprites.length; _i7++) {
-                    _this2.aiShipSprites[_i7].x = _serverInfo.serverInfo.aiShips[_i7].x * tileSize;
-                    _this2.aiShipSprites[_i7].y = _serverInfo.serverInfo.aiShips[_i7].y * tileSize;
-                }
-
-                for (var _i8 = 0; _i8 < _this2.playerShipSprites.length; _i8++) {
-                    _this2.playerShipSprites[_i8].x = _serverInfo.serverInfo.playerShips[_i8].x * tileSize;
-                    _this2.playerShipSprites[_i8].y = _serverInfo.serverInfo.playerShips[_i8].y * tileSize;
-                }
+                // move all units to their new positions
+                ths.moveUnits();
 
                 // TO DO
                 // Reset stuffiebuffie
@@ -2328,7 +2376,7 @@ var ControllerPrep = function (_Phaser$State) {
         newTab.style.zIndex = 5 - i;
 
         // add the ICON and the ROLE NAME within the tab
-        newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
+        newTab.innerHTML = '<img src="assets/roleIcon' + roleNum + '.png"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[roleNum] + '</span>';
 
         // when you click this tab, unload the previous tab, and load the new one!
         // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
@@ -2753,12 +2801,8 @@ function compassMove(ev) {
 
     // get distance from current angle to current ship orientation
     // if this distance is above delta, you're too far
-    var angleDiff;
-    if (_serverInfo.serverInfo.oldOrientation == undefined) {
-        angleDiff = (angle - _serverInfo.serverInfo.orientation + 180) % 360 - 180;
-    } else {
-        angleDiff = (angle - _serverInfo.serverInfo.oldOrientation + 180) % 360 - 180;
-    }
+    var getOldOrientation = _serverInfo.serverInfo.oldOrientation * 45; // convert old orientation into degrees
+    var angleDiff = (angle - getOldOrientation + 180) % 360 - 180;
 
     if (angleDiff < -180) {
         angleDiff += 360;
@@ -2768,12 +2812,33 @@ function compassMove(ev) {
         return;
     } else {
         // Snap angle to fixed directions (8 dir, around center)
-        angle = Math.round(angle / 45) * 45;
+        // Make sure angle is within the [0,360] range with a modulo
+        angle = Math.round(angle % 360 / 45) * 45;
 
         // Update compass pointer
         document.getElementById('firstmate-compassPointer').style.transform = 'rotate(' + angle + 'deg)';
         document.getElementById('firstmate-compassPointer').setAttribute('data-angle', angle);
     }
+}
+
+/*
+    This function sends the value of the compass to the server, once you've released it
+
+    @socket => the current socket (used for sending the signal)
+    @curOrientation => the current arrow orientation on the client, which is exactly the info we need to send
+*/
+function sendCompassInformation(socket, curOrientation) {
+    // Send signal to the server (with the new orientation)
+    // (below, we check if the orientation actually changed, and only THEN send the signal)
+    var newOrient = Math.round(curOrientation / 45);
+
+    // if these two are equal, we didn't change course, so we wouldn't send a signal
+    if (newOrient != _serverInfo.serverInfo.oldOrientation) {
+        socket.emit('compass-up', newOrient);
+    }
+
+    // Update our own orientation (to remember it when switching tabs)
+    _serverInfo.serverInfo.orientation = newOrient;
 }
 
 function startCanvasDrag(ev) {
@@ -2784,13 +2849,17 @@ function startCanvasDrag(ev) {
     document.getElementById('canvas-container').oldMovePoint = { x: ev.pageX, y: ev.pageY };
 
     document.addEventListener('mousemove', mapMove);
+    document.addEventListener('touchmove', mapMove);
 }
 
 function stopCanvasDrag(ev) {
     document.removeEventListener('mousemove', mapMove);
+    document.removeEventListener('touchmove', mapMove);
 }
 
 function mapMove(ev) {
+    ev.preventDefault();
+
     var cv = document.getElementById('canvas-container');
 
     // get movement delta
@@ -3049,11 +3118,7 @@ function loadPlayInterface(num, cont) {
             bgOrient.style.position = 'absolute';
             bgOrient.style.opacity = 0.5;
 
-            if (_serverInfo.serverInfo.oldOrientation == undefined) {
-                bgOrient.style.transform = 'rotate(' + _serverInfo.serverInfo.orientation * 45 + 'deg)';
-            } else {
-                bgOrient.style.transform = 'rotate(' + _serverInfo.serverInfo.oldOrientation * 45 + 'deg)';
-            }
+            bgOrient.style.transform = 'rotate(' + _serverInfo.serverInfo.oldOrientation * 45 + 'deg)';
 
             cont.appendChild(bgOrient);
 
@@ -3079,33 +3144,29 @@ function loadPlayInterface(num, cont) {
             // when the mouse is down, start listening to mouse movements
             compassPointer.addEventListener('mousedown', function (ev) {
                 this.addEventListener('mousemove', compassMove);
+                compassMove(ev); // already register a mouse move
+            }, false);
 
-                // already register a mouse move
+            // do the same for touch events
+            compassPointer.addEventListener('touchstart', function (ev) {
+                ev.preventDefault();
+
+                this.addEventListener('touchmove', compassMove);
                 compassMove(ev);
             }, false);
 
             // when the mouse is released, stop moving the compass, send a signal with update (only if it actually changed), update my own info (for tab switching)
             compassPointer.addEventListener('mouseup', function (ev) {
                 this.removeEventListener('mousemove', compassMove);
+                sendCompassInformation(socket, compassPointer.getAttribute('data-angle'));
+            }, false);
 
-                // Send signal to the server (with the new orientation)
-                // (below, we check if the orientation actually changed, and only THEN send the signal)
-                var newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
+            // do the same for touch events
+            compassPointer.addEventListener('touchend', function (ev) {
+                ev.preventDefault();
 
-                // Update serverInfo
-                // Save the current orientation of the ship on the map (so we know what a compass change means)
-                // (this is a trick to save the old orientation once, just before we change it, but not after that)
-                if (_serverInfo.serverInfo.oldOrientation == undefined || _serverInfo.serverInfo.oldOrientation == _serverInfo.serverInfo.orientation) {
-                    _serverInfo.serverInfo.oldOrientation = _serverInfo.serverInfo.orientation;
-                }
-
-                // if these two are equal, we didn't change course, so we wouldn't send a signal
-                if (newOrient != _serverInfo.serverInfo.oldOrientation) {
-                    socket.emit('compass-up', newOrient);
-                }
-
-                // Update our own orientation (to remember it when switching tabs)
-                _serverInfo.serverInfo.orientation = newOrient;
+                this.removeEventListener('touchmove', compassMove);
+                sendCompassInformation(socket, compassPointer.getAttribute('data-angle'));
             }, false);
 
             break;
@@ -3160,9 +3221,6 @@ function loadPlayInterface(num, cont) {
                     mapSize = 9;
                     break;
             }
-
-            // TO DO: Override for testing. Remove this in deployment
-            mapSize = 20;
 
             // TO DO
             // this is the total size of the map (displayed on monitor)
@@ -3239,7 +3297,6 @@ function loadPlayInterface(num, cont) {
 
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
             // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
-            // serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
 
             var u = _serverInfo.serverInfo.mapUnits;
             for (var _i3 = 0; _i3 < u.length; _i3++) {
@@ -3258,8 +3315,6 @@ function loadPlayInterface(num, cont) {
                     label = 'aiShipNum' + unit.index;
                 } else if (unit.myType == 3) {
                     label = 'dock';
-
-                    console.log(_serverInfo.serverInfo.x + unit.x, _serverInfo.serverInfo.y + unit.y);
                 }
 
                 var newSprite = canvas.myGame.add.sprite(unit.x * localTileSize, unit.y * localTileSize, label);
@@ -3273,6 +3328,10 @@ function loadPlayInterface(num, cont) {
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false);
             canvas.addEventListener('mouseup', stopCanvasDrag, false);
+
+            // do the same for touch
+            canvas.addEventListener('touchstart', startCanvasDrag, false);
+            canvas.addEventListener('touchend', stopCanvasDrag, false);
 
             // Add circular vignet over the image, so it looks like we're watching through binoculars/a telescope
             // This is a png image, with absolute positioning over the canvas, BECAUSE PHASER WOULDN'T LET ME DO IT IN A NORMAL WAY AAAAAAH I HATE MAAAASKS
@@ -3429,7 +3488,7 @@ function loadPlayInterface(num, cont) {
 
             break;
 
-        // Weapon Specialist:
+        // Cannoneer:
         //  => display ship (top-view; shows where each cannon is)
         //  => display all cannons (bought or not, current load, loading button)
         case 4:
@@ -3674,6 +3733,7 @@ var ControllerWaiting = function (_Phaser$State) {
           this.game.load.image('aiShipNum0', _serverInfo.serverInfo.backupShipDrawing);
           this.game.load.image('aiShipNum1', _serverInfo.serverInfo.backupShipDrawing);
           this.game.load.image('aiShipNum2', _serverInfo.serverInfo.backupShipDrawing);
+          this.game.load.image('aiShipNum3', _serverInfo.serverInfo.backupShipDrawing);
         }
 
         // docks
@@ -3690,7 +3750,9 @@ var ControllerWaiting = function (_Phaser$State) {
 
       var div = document.getElementById("main-controller");
 
-      /**** DO SOME EXTRA INITIALIZATION *****/
+      /**** 
+          DO SOME EXTRA INITIALIZATION 
+        *****/
       // TO DO: This could be much simpler. No need to go through all the roles; just initialize everything to zero.
       // loop through all the roles
       var roles = _serverInfo.serverInfo.myRoles;
@@ -3726,9 +3788,12 @@ var ControllerWaiting = function (_Phaser$State) {
             break;
 
           // First mate
-          // Set compass level to 0
+          // Set compass level to 0; set (and save) orientation
           case 1:
             _serverInfo.serverInfo.roleStats[1].lvl = 0;
+
+            _serverInfo.serverInfo.oldOrientation = 0;
+            _serverInfo.serverInfo.orientation = 0;
 
             break;
 
@@ -3760,7 +3825,9 @@ var ControllerWaiting = function (_Phaser$State) {
         }
       }
 
-      /**** DISPLAY INTERFACE *****/
+      /**** 
+          DISPLAY INTERFACE 
+        *****/
 
       // Add the health bar at the top
       var healthBar = document.createElement("div");
@@ -3792,7 +3859,7 @@ var ControllerWaiting = function (_Phaser$State) {
         newTab.style.zIndex = 5 - _i4;
 
         // add the ICON and the ROLE NAME within the tab
-        newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[_roleNum] + '</span>';
+        newTab.innerHTML = '<img src="assets/roleIcon' + _roleNum + '.png"/><span class="shipRoleTitle">' + _roleDictionary.ROLE_DICTIONARY[_roleNum] + '</span>';
 
         // when you click this tab, unload the previous tab, and load the new one!
         // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
@@ -3821,8 +3888,13 @@ var ControllerWaiting = function (_Phaser$State) {
 
       console.log("Controller Play state");
 
+      /**** 
+          LISTEN FOR "NEW TURN" SIGNALS
+        *****/
+
       // Function that is called whenever a new turn starts
       // Resets timer, cleans interface variables, reloads first tab
+      // This is called AFTER the pre-signal that sets all sorts of information
       var ths = this;
       socket.on('new-turn', function (data) {
         console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
@@ -3833,8 +3905,12 @@ var ControllerWaiting = function (_Phaser$State) {
         }
 
         // clean interface variables
+        // errorMessages are "cleaned" by the server sending a new array, which might be empty
         _serverInfo.serverInfo.submittedUpgrade = {};
-        _serverInfo.serverInfo.errorMessages = [];
+        _serverInfo.serverInfo.roleStats[4].cannonsLoaded = {};
+
+        // save orientation, so you can play with it without the ghost ship changing
+        _serverInfo.serverInfo.oldOrientation = _serverInfo.serverInfo.orientation;
 
         // update ship health
         document.getElementById('healthBar').style.width = _serverInfo.serverInfo.health + '%';

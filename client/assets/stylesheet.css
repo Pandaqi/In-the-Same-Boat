@@ -256,6 +256,9 @@ button:hover {
   flex-direction: row;
   justify-content: center;
   align-items: center;
+
+  position:relative;
+  z-index:100;
 }
 
 .upgradeResourcesNeeded {
@@ -325,7 +328,7 @@ button:hover {
     /* color:white; */
 }
 
-.captain-error {
+.captain-error, .captain-feedback {
   display: block;
   background-color: red;
   padding: 10px;
@@ -334,7 +337,7 @@ button:hover {
   position: relative; /* otherwise the "X" delete symbol thinks it needs to position absolutely to the window */
 }
 
-.captain-error::after {
+.captain-error::after, .captain-feedback::after {
   content: 'X';
   position: absolute;
   color: darkred;
@@ -342,6 +345,15 @@ button:hover {
   top: 6px;
   font-size: 24px;
   font-family: 'Pirata One', cursive;
+}
+
+.captain-feedback {
+  background-color:green;
+  box-shadow: 0px 0px 5px green;
+}
+
+.captain-feedback::after {
+  color:darkgreen;
 }
 
 

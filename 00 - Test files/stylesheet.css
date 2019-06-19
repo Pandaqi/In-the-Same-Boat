@@ -3,7 +3,9 @@ body, html {
 	padding:0;
 	width:100%;
 	height:100%;
-	background-color:#000;
+	/* background-color:#000; */
+  background-color:#956F4E;
+  color:white;
 }
 
 p {
@@ -14,6 +16,8 @@ p {
 h1 {
     margin-top:20px;
     margin-bottom:0px;
+    font-family: 'Pirata One', cursive;
+    color:#000;
 }
 
 /*** 
@@ -182,7 +186,6 @@ h1 {
 
 .shipRoleGroup > img {
     max-height:100%;
-    margin-right:10px;
 }
 
 .shipRoleGroup .shipRoleTitle {
@@ -197,6 +200,10 @@ h1 {
 
 .tabSelected .shipRoleTitle {
     display:block;
+}
+
+.tabSelected img {
+    display:none;
 }
 
 /*** 
@@ -220,6 +227,60 @@ h1 {
 
 /*** 
  * 
+ * General interface rules (buttons, sliders, etc.)
+ *
+ ***/
+
+button {
+    font-family: 'Pirata One', cursive;
+    color:#CCC;
+    border:none;
+    cursor:pointer;
+    width:100%;
+    padding:10px;
+    background-color:#431B13;
+    font-size:24px;
+    margin-top:5px;
+}
+
+button:hover {
+    color:#FFF;
+    background-color:#891B13;
+}
+
+.upgradeButton {
+  padding:0px;
+  background-color:orange;
+  color:darkred;
+  display:flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  position:relative;
+  z-index:100;
+}
+
+.upgradeResourcesNeeded {
+  display:flex;
+  flex-direction:column;
+  margin:5px;
+}
+
+.upgradeResourcesNeeded img {
+  max-height: 20px;
+}
+
+.upgradeResourcesNeeded span {
+  font-size:16px;
+}
+
+.upgradeButtonLabel {
+  margin-right:40px;
+}
+
+/*** 
+ * 
  * Rules for the CAPTAIN interface
  *
  ***/
@@ -235,15 +296,18 @@ h1 {
 
     display:flex;
     margin-top:5px;
+
+    align-items: center;
 }
 
 .captain-crewMember span {
-    width:100%;
+    /*width:100%;*/
 }
 
+/*
 .captain-crewMember button {
     font-family:inherit;
-    background-color:#431B13; /* rgba(60, 0, 0, 0.5); */
+    background-color:#431B13; // rgba(60, 0, 0, 0.5); 
     color:#CCC;
     border:none;
     margin-left:5px;
@@ -252,8 +316,9 @@ h1 {
 
 .captain-crewMember button:hover {
     color:#FFF;
-    background-color:#891B13; /*rgba(200, 0, 0, 0.5);*/
+    background-color:#891B13; // rgba(200, 0, 0, 0.5);
 }
+*/
 
 .captain-task {
     display:block;
@@ -263,22 +328,60 @@ h1 {
     /* color:white; */
 }
 
-.taskButton {
-    font-family: 'Pirata One', cursive;
-    color:#CCC;
-    border:none;
-    cursor:pointer;
-    width:100%;
-    padding:10px;
-    background-color:#431B13;
-    font-size:24px;
-    margin-top:5px;
+.captain-error {
+  display: block;
+  background-color: red;
+  padding: 10px;
+  margin-bottom: 5px;
+  box-shadow: 0px 0px 5px red;
+  position: relative; /* otherwise the "X" delete symbol thinks it needs to position absolutely to the window */
 }
 
-.taskButton:hover {
-    color:#FFF;
-    background-color:#891B13;
+.captain-error::after {
+  content: 'X';
+  position: absolute;
+  color: darkred;
+  right: 8px;
+  top: 6px;
+  font-size: 24px;
+  font-family: 'Pirata One', cursive;
 }
+
+
+.weaponeer-cannonLoad {
+  height:100%;
+  display:block;
+  background:
+  repeating-linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0) 2px,
+    #DDD 2px,
+    #DDD 10px
+  );
+}
+
+.weaponeer-cannonLoadBg {
+  width:100px;
+  height:50px;
+  min-width: 100px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background-color:#300;
+
+  box-shadow: inset 0 0 10px #000;
+
+  margin-left:40px;
+}
+
+.weaponeer-cannonNumber {
+  position: absolute;
+  font-size: 64px;
+  color: white;
+  z-index: -1;
+  background: none;
+}
+
 
 input[type="text"] {
     width:100%;
@@ -288,27 +391,16 @@ input[type="text"] {
     margin-top:5px;
 }
 
+/** 
 
- /* Pirate theme color palette 
+    Lots of stuff for styling range sliders
 
-#1c8bc1     (28,139,193)
-    #ddd417     (221,212,23)
-    #760a0a     (118,10,10)
-    #5e2a0e     (94,42,14)
-    #000000
+    Because browser developers are IDIOTS
+    We need to copy the code for each browser!
 
- */
+*/
 
- /* Pirate theme color palette 
-
-Dark brown: #3C2718;
-Light brown: #956F4E;
-Yellow-greenish: #D2CF55;
-More greenish: #BEA51A;
-
- */
-
-
+/* Remove the old appearance of the slider */
 input[type=range] {
   -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
   width: 100%; /* Specific width is required for Firefox. */
@@ -404,4 +496,86 @@ input[type=range]::-ms-fill-upper {
 }
 input[type=range]:focus::-ms-fill-upper {
   background: brown;
+}
+
+
+ /* Pirate theme color palette 
+
+#1c8bc1     (28,139,193)
+    #ddd417     (221,212,23)
+    #760a0a     (118,10,10)
+    #5e2a0e     (94,42,14)
+    #000000
+
+ */
+
+ /* Pirate theme color palette 
+
+Dark brown: #3C2718;
+Light brown: #956F4E;
+Yellow-greenish: #D2CF55;
+More greenish: #BEA51A;
+
+ */
+
+
+
+
+/***
+ * 
+ * Styles for the main screen (create/join/watch)
+ *
+ */
+
+#overlay {
+    position:absolute;
+    left:0;
+    right:0;
+    top:0;
+    bottom:0;
+}
+
+#main, #main-controller {
+    margin:0 auto;
+    width:100%;
+    max-width:375px;
+    box-sizing:border-box;
+}
+
+#main {
+    margin-top:20px;
+    padding:4px;
+}
+
+#main-controller {
+    position:relative;
+}
+
+#main input {
+    text-transform:uppercase;
+    font-size:22px;
+}
+
+#canvas-container {
+    margin:0 auto;
+    width:100%;
+    height:100%;
+}
+
+hr {
+    margin-top:20px;
+    margin-bottom:1px;
+    border:2px solid #FFFFFF;
+}
+
+#err-message {
+    color: red;
+}
+
+.titleSuggestion {
+    color: #457214;
+}
+
+canvas {
+    margin:0 auto;
 }

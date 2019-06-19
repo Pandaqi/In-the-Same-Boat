@@ -63,7 +63,7 @@
 		// load the role tabs
 		for(let i = 0; i < roles.length; i++) {
 			let roleNum = roles[i];
-			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" style="z-index:' + (5-i) + ';" onClick="loadTab(this.id)" id="label' + i + '"><img src="pirate_flag.jpg"/><span class="shipRoleTitle">' + roleDict[roleNum] + '</span></span>';
+			document.getElementById('shipRoles').innerHTML += '<span class="shipRoleGroup" style="z-index:' + (5-i) + ';" onClick="loadTab(this.id)" id="label' + i + '"><img src="roleIcon' + roleNum + '.png"/><span class="shipRoleTitle">' + roleDict[roleNum] + '</span></span>';
 		}
 
 		// load the current tab (usually the first?)

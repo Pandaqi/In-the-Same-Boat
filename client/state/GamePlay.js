@@ -18,6 +18,7 @@ class GamePlay extends Phaser.State {
   }
 
   preload () {
+    this.game.stage.backgroundColor = "#FFFFFF";
 
     /*
 
@@ -62,6 +63,7 @@ class GamePlay extends Phaser.State {
       this.game.load.image('aiShipNum0', serverInfo.backupShipDrawing);
       this.game.load.image('aiShipNum1', serverInfo.backupShipDrawing);
       this.game.load.image('aiShipNum2', serverInfo.backupShipDrawing);
+      this.game.load.image('aiShipNum3', serverInfo.backupShipDrawing);
     }
 
     // docks
@@ -77,18 +79,18 @@ class GamePlay extends Phaser.State {
     this.unitsOnMap = [];
 
     for(let i = 0; i < this.monsterSprites.length; i++) {
-      this.monsterSprites[i].x = serverInfo.monsters[i].x * tileSize;
-      this.monsterSprites[i].y = (serverInfo.monsters[i].y - 0.5) * tileSize;
+      this.monsterSprites[i].x = serverInfo.monsters[i].x * this.tileSize;
+      this.monsterSprites[i].y = (serverInfo.monsters[i].y - 0.5) * this.tileSize;
     }
 
     for(let i = 0; i < this.aiShipSprites.length; i++) {
-      this.aiShipSprites[i].x = serverInfo.aiShips[i].x * tileSize;
-      this.aiShipSprites[i].y = (serverInfo.aiShips[i].y - 0.5) * tileSize;
+      this.aiShipSprites[i].x = serverInfo.aiShips[i].x * this.tileSize;
+      this.aiShipSprites[i].y = (serverInfo.aiShips[i].y - 0.5) * this.tileSize;
     }
 
     for(let i = 0; i < this.playerShipSprites.length; i++) {
-      this.playerShipSprites[i].x = serverInfo.playerShips[i].x * tileSize;
-      this.playerShipSprites[i].y = (serverInfo.playerShips[i].y - 0.5) * tileSize;
+      this.playerShipSprites[i].x = serverInfo.playerShips[i].x * this.tileSize;
+      this.playerShipSprites[i].y = (serverInfo.playerShips[i].y - 0.5) * this.tileSize;
     }
   }
 
@@ -117,6 +119,7 @@ class GamePlay extends Phaser.State {
 
     var graphics = this.add.graphics(0, 0);
     let tileSize = Math.min(window.innerWidth / mapWidth, window.innerHeight / mapHeight);
+    this.tileSize = tileSize;
 
     // loop through all tiles, determine noise level, and save it
     for (let y = 0; y < mapHeight; y++) {
@@ -156,6 +159,9 @@ class GamePlay extends Phaser.State {
         }
 
         graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+
+        graphics.lineStyle(2, 0xF9E4B7, 1); // last parameter is transparency: might be too expensive for the computer to set this to something else than 0
+        graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
       }
     }
 
@@ -178,7 +184,7 @@ class GamePlay extends Phaser.State {
 
       let cacheLabel = 'dock';
 
-      let newSprite = gm.add.sprite(x*tileSize,(x-0.5)*tileSize, cacheLabel);
+      let newSprite = gm.add.sprite(x*tileSize,(y-0.5)*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       this.dockSprites.push(newSprite);
     }
@@ -225,6 +231,8 @@ class GamePlay extends Phaser.State {
       newSprite.width = newSprite.height = tileSize;
       this.playerShipSprites.push(newSprite);
     }
+
+    this.moveUnits();
 
     // Display the messages from the radio
 

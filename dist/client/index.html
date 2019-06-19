@@ -14,6 +14,15 @@
 
     <!-- Perlin noise library -->
     <script src="/assets/perlin.js"></script>
+
+    <!-- Prevent user from accidentally going back (when they touch the wrong thing, press backspace at the wrong time, etc.) -->
+    <script type="text/javascript">
+      history.pushState(null, document.title, location.href);
+      window.addEventListener('popstate', function (event)
+      {
+        history.pushState(null, document.title, location.href);
+      });
+    </script>
   </head>
   <body>
     <!-- <script src="../vendor/phaser.min.js"></script> -->

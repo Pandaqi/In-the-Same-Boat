@@ -56,6 +56,7 @@ class ControllerWaiting extends Phaser.State {
         this.game.load.image('aiShipNum0', serverInfo.backupShipDrawing);
         this.game.load.image('aiShipNum1', serverInfo.backupShipDrawing);
         this.game.load.image('aiShipNum2', serverInfo.backupShipDrawing);
+        this.game.load.image('aiShipNum3', serverInfo.backupShipDrawing);
       }
 
       // docks
@@ -71,7 +72,11 @@ class ControllerWaiting extends Phaser.State {
 
     let div = document.getElementById("main-controller")
 
-    /**** DO SOME EXTRA INITIALIZATION *****/
+    /**** 
+
+      DO SOME EXTRA INITIALIZATION 
+
+    *****/
     // TO DO: This could be much simpler. No need to go through all the roles; just initialize everything to zero.
     // loop through all the roles
     let roles = serverInfo.myRoles;
@@ -107,9 +112,12 @@ class ControllerWaiting extends Phaser.State {
           break;
 
         // First mate
-        // Set compass level to 0
+        // Set compass level to 0; set (and save) orientation
         case 1:
           serverInfo.roleStats[1].lvl = 0;
+
+          serverInfo.oldOrientation = 0;
+          serverInfo.orientation = 0;
 
           break;
 
@@ -141,7 +149,11 @@ class ControllerWaiting extends Phaser.State {
       }
     }
 
-    /**** DISPLAY INTERFACE *****/
+    /**** 
+
+      DISPLAY INTERFACE 
+
+    *****/
 
     // Add the health bar at the top
     let healthBar = document.createElement("div");
@@ -173,7 +185,7 @@ class ControllerWaiting extends Phaser.State {
       newTab.style.zIndex = (5-i);
 
       // add the ICON and the ROLE NAME within the tab
-      newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + ROLE_DICTIONARY[roleNum] + '</span>';
+      newTab.innerHTML = '<img src="assets/roleIcon' + roleNum + '.png"/><span class="shipRoleTitle">' + ROLE_DICTIONARY[roleNum] + '</span>';
 
       // when you click this tab, unload the previous tab, and load the new one!
       // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked
@@ -202,8 +214,15 @@ class ControllerWaiting extends Phaser.State {
 
     console.log("Controller Play state");
 
+    /**** 
+
+      LISTEN FOR "NEW TURN" SIGNALS
+
+    *****/
+
     // Function that is called whenever a new turn starts
     // Resets timer, cleans interface variables, reloads first tab
+    // This is called AFTER the pre-signal that sets all sorts of information
     let ths = this;
     socket.on('new-turn', data => {
       console.log("New turn => resetting timer to " + serverInfo.timer);
@@ -214,8 +233,12 @@ class ControllerWaiting extends Phaser.State {
       }
 
       // clean interface variables
+      // errorMessages are "cleaned" by the server sending a new array, which might be empty
       serverInfo.submittedUpgrade = {}
-      serverInfo.errorMessages = []
+      serverInfo.roleStats[4].cannonsLoaded = {};
+
+      // save orientation, so you can play with it without the ghost ship changing
+      serverInfo.oldOrientation = serverInfo.orientation
 
       // update ship health
       document.getElementById('healthBar').style.width = serverInfo.health + '%';

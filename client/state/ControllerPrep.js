@@ -52,7 +52,7 @@ class ControllerPrep extends Phaser.State {
       newTab.style.zIndex = (5-i);
 
       // add the ICON and the ROLE NAME within the tab
-      newTab.innerHTML = '<img src="assets/pirate_flag.jpg"/><span class="shipRoleTitle">' + ROLE_DICTIONARY[roleNum] + '</span>';
+      newTab.innerHTML = '<img src="assets/roleIcon' + roleNum + '.png"/><span class="shipRoleTitle">' + ROLE_DICTIONARY[roleNum] + '</span>';
 
       // when you click this tab, unload the previous tab, and load the new one!
       // REMEMBER: "this" is the object associated with the event listener, "ev.target" is the thing that was actually clicked

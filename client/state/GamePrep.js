@@ -14,7 +14,7 @@ class GamePrep extends Phaser.State {
   }
 
   preload () {
-
+    this.game.stage.backgroundColor = "#FFFFFF";
   }
 
   create () {
@@ -27,9 +27,9 @@ class GamePrep extends Phaser.State {
 
     // display a loading bar
     this.loadingSprite = gm.add.sprite(gm.width * 0.5, 400, 'nonexistent_index')
-    this.loadingSprite.anchor.setTo(0, 0.5);
+    this.loadingSprite.anchor.setTo(0.5, 0.5);
     this.loadingSprite.height = 50;
-    this.loadingSprite.width = 500;
+    this.loadingSprite.width = 0;
 
     // update loading bar during the state (when progress signals are received from the server)
     // @parameter data => percentage of preparation that has finished

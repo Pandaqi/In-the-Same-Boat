@@ -62,12 +62,8 @@ function compassMove(ev) {
 
     // get distance from current angle to current ship orientation
     // if this distance is above delta, you're too far
-    var angleDiff;
-    if(serverInfo.oldOrientation == undefined) {
-        angleDiff = ( angle - serverInfo.orientation + 180 ) % 360 - 180;
-    } else {
-        angleDiff = ( angle - serverInfo.oldOrientation + 180 ) % 360 - 180;
-    }
+    let getOldOrientation = serverInfo.oldOrientation * 45; // convert old orientation into degrees
+    var angleDiff = ( angle - getOldOrientation + 180 ) % 360 - 180;
 
     if(angleDiff < -180) {
         angleDiff += 360
@@ -77,13 +73,34 @@ function compassMove(ev) {
         return;
     } else {
         // Snap angle to fixed directions (8 dir, around center)
-        angle = Math.round(angle / 45) * 45;
+        // Make sure angle is within the [0,360] range with a modulo
+        angle = Math.round((angle % 360) / 45) * 45;
 
         // Update compass pointer
         document.getElementById('firstmate-compassPointer').style.transform = 'rotate(' + angle + 'deg)';
         document.getElementById('firstmate-compassPointer').setAttribute('data-angle', angle);
     }
     
+}
+
+/*
+    This function sends the value of the compass to the server, once you've released it
+
+    @socket => the current socket (used for sending the signal)
+    @curOrientation => the current arrow orientation on the client, which is exactly the info we need to send
+*/
+function sendCompassInformation(socket, curOrientation) {
+    // Send signal to the server (with the new orientation)
+    // (below, we check if the orientation actually changed, and only THEN send the signal)
+    let newOrient = Math.round(curOrientation / 45);
+
+    // if these two are equal, we didn't change course, so we wouldn't send a signal
+    if(newOrient != serverInfo.oldOrientation) {
+        socket.emit('compass-up', newOrient);
+    }
+
+    // Update our own orientation (to remember it when switching tabs)
+    serverInfo.orientation = newOrient;
 }
 
 function startCanvasDrag(ev) {
@@ -94,13 +111,17 @@ function startCanvasDrag(ev) {
     document.getElementById('canvas-container').oldMovePoint = { x: ev.pageX, y: ev.pageY};
 
     document.addEventListener('mousemove', mapMove);
+    document.addEventListener('touchmove', mapMove);
 }
 
 function stopCanvasDrag(ev) {
     document.removeEventListener('mousemove', mapMove);
+    document.removeEventListener('touchmove', mapMove);
 }
 
 function mapMove(ev) {
+    ev.preventDefault();
+
     let cv = document.getElementById('canvas-container')
 
     // get movement delta
@@ -352,11 +373,7 @@ export default function loadPlayInterface(num, cont) {
             bgOrient.style.position = 'absolute';
             bgOrient.style.opacity = 0.5;
 
-            if(serverInfo.oldOrientation == undefined) {
-                bgOrient.style.transform = 'rotate(' + serverInfo.orientation * 45 + 'deg)';
-            } else {
-                bgOrient.style.transform = 'rotate(' + serverInfo.oldOrientation * 45 + 'deg)';
-            }
+            bgOrient.style.transform = 'rotate(' + serverInfo.oldOrientation * 45 + 'deg)';
             
             cont.appendChild(bgOrient);
 
@@ -382,33 +399,29 @@ export default function loadPlayInterface(num, cont) {
             // when the mouse is down, start listening to mouse movements
             compassPointer.addEventListener('mousedown', function (ev) {
                 this.addEventListener('mousemove', compassMove);
+                compassMove(ev); // already register a mouse move
+            }, false);
 
-                // already register a mouse move
+            // do the same for touch events
+            compassPointer.addEventListener('touchstart', function (ev) {
+                ev.preventDefault();
+
+                this.addEventListener('touchmove', compassMove);
                 compassMove(ev);
             }, false);
 
             // when the mouse is released, stop moving the compass, send a signal with update (only if it actually changed), update my own info (for tab switching)
             compassPointer.addEventListener('mouseup', function (ev) {
                 this.removeEventListener('mousemove', compassMove);
+                sendCompassInformation(socket, compassPointer.getAttribute('data-angle'));
+            }, false);
 
-                // Send signal to the server (with the new orientation)
-                // (below, we check if the orientation actually changed, and only THEN send the signal)
-                let newOrient = Math.round(compassPointer.getAttribute('data-angle') / 45);
+            // do the same for touch events
+            compassPointer.addEventListener('touchend', function (ev) {
+                ev.preventDefault();
 
-                // Update serverInfo
-                // Save the current orientation of the ship on the map (so we know what a compass change means)
-                // (this is a trick to save the old orientation once, just before we change it, but not after that)
-                if((serverInfo.oldOrientation == undefined) || (serverInfo.oldOrientation == serverInfo.orientation)) {
-                    serverInfo.oldOrientation = serverInfo.orientation
-                }
-
-                // if these two are equal, we didn't change course, so we wouldn't send a signal
-                if(newOrient != serverInfo.oldOrientation) {
-                    socket.emit('compass-up', newOrient);
-                }
-
-                // Update our own orientation (to remember it when switching tabs)
-                serverInfo.orientation = newOrient;
+                this.removeEventListener('touchmove', compassMove);
+                sendCompassInformation(socket, compassPointer.getAttribute('data-angle'));
             }, false);
 
             break;
@@ -463,9 +476,6 @@ export default function loadPlayInterface(num, cont) {
                     mapSize = 9
                     break;
             }
-
-            // TO DO: Override for testing. Remove this in deployment
-            mapSize = 20;
 
             // TO DO
             // this is the total size of the map (displayed on monitor)
@@ -531,7 +541,6 @@ export default function loadPlayInterface(num, cont) {
             
             // This information should be sent at the start of each turn, saved, and then read from "serverInfo.mapUnits"
             // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
-            // serverInfo.mapUnits = [ { x: serverInfo.x, y: serverInfo.y, index: serverInfo.myShip } ];
 
             let u = serverInfo.mapUnits;
             for(let i = 0; i < u.length; i++) {
@@ -550,8 +559,6 @@ export default function loadPlayInterface(num, cont) {
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
                     label = 'dock';
-
-                    console.log(serverInfo.x + unit.x, serverInfo.y + unit.y);
                 }
 
                 let newSprite = canvas.myGame.add.sprite(unit.x*localTileSize, unit.y*localTileSize, label);
@@ -565,6 +572,10 @@ export default function loadPlayInterface(num, cont) {
             // Make it possible to slide across the map (by moving mouse/finger over it)
             canvas.addEventListener('mousedown', startCanvasDrag, false)
             canvas.addEventListener('mouseup', stopCanvasDrag, false)
+
+            // do the same for touch
+            canvas.addEventListener('touchstart', startCanvasDrag, false)
+            canvas.addEventListener('touchend', stopCanvasDrag, false)
 
             // Add circular vignet over the image, so it looks like we're watching through binoculars/a telescope
             // This is a png image, with absolute positioning over the canvas, BECAUSE PHASER WOULDN'T LET ME DO IT IN A NORMAL WAY AAAAAAH I HATE MAAAASKS
@@ -721,7 +732,7 @@ export default function loadPlayInterface(num, cont) {
 
             break;
 
-        // Weapon Specialist:
+        // Cannoneer:
         //  => display ship (top-view; shows where each cannon is)
         //  => display all cannons (bought or not, current load, loading button)
         case 4:
