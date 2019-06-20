@@ -81,6 +81,10 @@ class ControllerPrep extends Phaser.State {
     console.log("Controller Preparation state");
   }
 
+  shutdown () {
+    serverInfo.socket.off('pre-signal')
+  }
+
   update () {
     // This is where we listen for input (such as drawing)!
 

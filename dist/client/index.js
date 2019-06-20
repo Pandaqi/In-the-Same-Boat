@@ -76,7 +76,7 @@ Object.defineProperty(exports, "__esModule", {
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 var serverInfo = {
-  SERVER_IP: 'http://localhost:8000', /*'https://in-the-same-boat.herokuapp.com',*/
+  SERVER_IP: /*'http://localhost:8000',*/'https://in-the-same-boat.herokuapp.com',
   socket: null,
   server: null,
   roomCode: '',
@@ -84,6 +84,9 @@ var serverInfo = {
   playerCount: -1,
 
   timer: 0,
+
+  turnCount: 1,
+  dayTime: true,
 
   language: 'en',
 
@@ -490,10 +493,11 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
   // every key in the object is added to the serverInfo, along with its value
   // (this always happens before a state change, thus the name presignal)
   socket.on('pre-signal', function (data) {
+    console.log("Presignal", JSON.stringify(data));
     for (var key in data) {
-      // if it's a roleUpdate => permanently update our level!
-      if (key == 'roleUpdate') {
-        serverInfo.roleStats[serverInfo.myRole].lvl++;
+      // if it's a roleUpdate => permanently update our level! (which role should be updated, is saved in data[key])
+      if (key.substring(0, 10) == 'roleUpdate') {
+        serverInfo.roleStats[data[key]].lvl++;
       } else {
         // otherwise, just blindly set the key to this value
         serverInfo[key] = data[key];
@@ -652,6 +656,18 @@ exports.default = loadRejoinRoom;
 
 
 Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
 		value: true
 });
 var loadGUIOverlay = function loadGUIOverlay(gm, serverInfo, style1, style2) {
@@ -667,7 +683,7 @@ var loadGUIOverlay = function loadGUIOverlay(gm, serverInfo, style1, style2) {
 exports.default = loadGUIOverlay;
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -706,7 +722,7 @@ var controllerTimer = exports.controllerTimer = function controllerTimer(ths, se
 };
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -892,7 +908,7 @@ module.exports = {
 };
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -967,18 +983,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // I pass curTab as a function with a property 'num', so it is passed by REFERENCE
 // This way I can access the old tab, disable it, and then update to the new tab, without having to send the object back
 // Bad practice, works well though :p
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-var SHIP_COLORS = exports.SHIP_COLORS = ['#FFAAAA', '#AAFFAA', '#AAAAFF', '#FFAAFF', '#FFFFAA', '#AAFFFF'];
 
 /***/ }),
 /* 15 */
@@ -1223,7 +1227,7 @@ var Menu = function (_Phaser$State) {
       // load stuff here
       //game.load.baseURL = 'https://trampolinedraak.herokuapp.com/';
       this.game.load.crossOrigin = 'Anonymous';
-      this.game.stage.backgroundColor = "#000000";
+      this.game.stage.backgroundColor = "#FFFFFF";
 
       // We set this to true so our game won't pause if we focus
       // something else other than the browser
@@ -1575,7 +1579,7 @@ var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
 var _styles = __webpack_require__(5);
 
-var _loadGUIOverlay = __webpack_require__(10);
+var _loadGUIOverlay = __webpack_require__(11);
 
 var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
 
@@ -1686,15 +1690,17 @@ var _watchRoomModule2 = _interopRequireDefault(_watchRoomModule);
 
 var _styles = __webpack_require__(5);
 
-var _timers = __webpack_require__(11);
+var _timers = __webpack_require__(12);
 
-var _loadGUIOverlay = __webpack_require__(10);
+var _loadGUIOverlay = __webpack_require__(11);
 
 var _loadGUIOverlay2 = _interopRequireDefault(_loadGUIOverlay);
 
-var _perlinImproved = __webpack_require__(12);
+var _perlinImproved = __webpack_require__(13);
 
 var _perlinImproved2 = _interopRequireDefault(_perlinImproved);
+
+var _shipColors = __webpack_require__(10);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1765,30 +1771,6 @@ var GamePlay = function (_Phaser$State) {
             this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
         }
     }, {
-        key: 'moveUnits',
-        value: function moveUnits() {
-            // TO DO: units are placed just above their tile, so that it looks like they "stick out" of the map
-            // TO DO: Check if multiple units are on the same tile, and if so, scale them down and position them out of each other's way
-            //        => Use the old "circle" method. Place them in a circle with equal distance between them.
-            //        => But before we can do that, save the units in each tile SOMEWHERE, and use that
-            this.unitsOnMap = [];
-
-            for (var i = 0; i < this.monsterSprites.length; i++) {
-                this.monsterSprites[i].x = _serverInfo.serverInfo.monsters[i].x * this.tileSize;
-                this.monsterSprites[i].y = (_serverInfo.serverInfo.monsters[i].y - 0.5) * this.tileSize;
-            }
-
-            for (var _i3 = 0; _i3 < this.aiShipSprites.length; _i3++) {
-                this.aiShipSprites[_i3].x = _serverInfo.serverInfo.aiShips[_i3].x * this.tileSize;
-                this.aiShipSprites[_i3].y = (_serverInfo.serverInfo.aiShips[_i3].y - 0.5) * this.tileSize;
-            }
-
-            for (var _i4 = 0; _i4 < this.playerShipSprites.length; _i4++) {
-                this.playerShipSprites[_i4].x = _serverInfo.serverInfo.playerShips[_i4].x * this.tileSize;
-                this.playerShipSprites[_i4].y = (_serverInfo.serverInfo.playerShips[_i4].y - 0.5) * this.tileSize;
-            }
-        }
-    }, {
         key: 'create',
         value: function create() {
             var _this2 = this;
@@ -1814,11 +1796,16 @@ var GamePlay = function (_Phaser$State) {
             var mapWidth = 60,
                 mapHeight = 30;
 
+            this.mapWidth = mapWidth;
+            this.mapHeight = mapHeight;
+
             this.map = []; //initialize map variable
 
-            var graphics = this.add.graphics(0, 0);
+            //var graphics = this.add.graphics(0, 0);
             var tileSize = Math.min(window.innerWidth / mapWidth, window.innerHeight / mapHeight);
             this.tileSize = tileSize;
+
+            var baseMapGroup = gm.add.group();
 
             // loop through all tiles, determine noise level, and save it
             for (var y = 0; y < mapHeight; y++) {
@@ -1840,29 +1827,72 @@ var GamePlay = function (_Phaser$State) {
 
                     // save the noise value
                     var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
-                    this.map[y][x] = curVal;
+                    this.map[y][x] = { val: curVal, checked: false, fog: true };
 
                     // display the map
+                    var tileColor = void 0;
                     // DEEP OCEAN
                     if (curVal < -0.3) {
-                        graphics.beginFill(0x1036CC);
+                        tileColor = '#1036CC';
                         // SHALLOW OCEAN
                     } else if (curVal < 0.2) {
-                        graphics.beginFill(0x4169FF);
+                        tileColor = '#4169FF';
                         // BEACH
                     } else if (curVal < 0.25) {
-                        graphics.beginFill(0xEED6AF);
+                        tileColor = '#EED6AF';
                         // ISLAND
                     } else {
-                        graphics.beginFill(0x228B22);
+                        tileColor = '#228B22';
                     }
 
-                    graphics.drawRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                    // create square, color it, add it as a sprite, add it to group
+                    var tempTile = gm.add.bitmapData(this.tileSize, this.tileSize);
+                    tempTile.rect(0, 0, tileSize, tileSize, tileColor);
 
-                    graphics.lineStyle(2, 0xF9E4B7, 1); // last parameter is transparency: might be too expensive for the computer to set this to something else than 0
-                    graphics.drawRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                    var tempSprite = gm.add.sprite(x * this.tileSize, y * this.tileSize, tempTile);
+                    baseMapGroup.add(tempSprite);
+
+                    /*
+                    graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+                      graphics.lineStyle(1, 0xF9E4B7, 1); // last parameter is transparency: might be too expensive for the computer to set this to something else than 0
+                    graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+                    */
                 }
             }
+
+            // draw grid lines VERTICALLY
+            for (var _x = 0; _x < mapWidth; _x++) {
+                var _tempTile = gm.add.bitmapData(1, this.mapHeight * this.tileSize);
+                _tempTile.line(0, 0, 0, this.mapHeight * this.tileSize, '#CCCCCC', 1);
+
+                var _tempSprite = gm.add.sprite(_x * this.tileSize, 0, _tempTile);
+                baseMapGroup.add(_tempSprite);
+            }
+
+            // draw grid lines HORIZONTALLY
+            for (var _y = 0; _y < mapHeight; _y++) {
+                var _tempTile2 = gm.add.bitmapData(this.mapWidth * this.tileSize, 1);
+                _tempTile2.line(0, 0, this.mapWidth * this.tileSize, 0, '#CCCCCC', 1);
+
+                var _tempSprite2 = gm.add.sprite(0, _y * this.tileSize, _tempTile2);
+                baseMapGroup.add(_tempSprite2);
+            }
+
+            // put the complete base map into the cache
+            baseMapGroup.cacheAsBitmap = true;
+
+            /*
+                Discover islands (cheaper to do it locally than to get it from the server)
+              */
+            this.discoverIslands();
+
+            /*
+                Create texture that holds all the shadows
+              */
+            this.unitShadows = gm.add.bitmapData(gm.width, gm.height);
+            this.shadowSprite = gm.add.image(0, 0, this.unitShadows);
+            //this.shadowSprite.blendMode = Phaser.blendModes.MULTIPLY;
+            this.shadowSprite.alpha = 0.66;
 
             /*
                 Display all units
@@ -1872,32 +1902,50 @@ var GamePlay = function (_Phaser$State) {
                 Instead, load all baseURIs into cache at the start, then just create sprites from them.
               */
             // Display docks
+            var dotBmd = gm.add.bitmapData(tileSize, tileSize);
+            dotBmd.circle(0.5 * tileSize, 0.5 * tileSize, 0.5 * tileSize, '#000000');
+
             var docks = _serverInfo.serverInfo.docks;
             this.dockSprites = [];
             for (var i = 0; i < docks.length; i++) {
-                var _x = docks[i].x,
-                    _y = docks[i].y;
+                var _x2 = docks[i].x,
+                    _y2 = docks[i].y;
 
                 var cacheLabel = 'dock';
 
-                var newSprite = gm.add.sprite(_x * tileSize, (_y - 0.5) * tileSize, cacheLabel);
+                // create the sprite
+                var newSprite = gm.add.sprite(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
                 newSprite.width = newSprite.height = tileSize;
+                newSprite.visible = false;
                 this.dockSprites.push(newSprite);
+
+                // also create THE DOT!
+                var newDot = gm.add.sprite(_x2 * tileSize, _y2 * tileSize, dotBmd);
+                newDot.width = newDot.height = tileSize;
+
+                newSprite.myFogDot = newDot;
             }
 
             // Display monsters
             console.log(_serverInfo.serverInfo.monsters);
             var monsters = _serverInfo.serverInfo.monsters;
             this.monsterSprites = [];
-            for (var _i5 = 0; _i5 < monsters.length; _i5++) {
-                var _x2 = monsters[_i5].x,
-                    _y2 = monsters[_i5].y;
+            for (var _i3 = 0; _i3 < monsters.length; _i3++) {
+                var _x3 = monsters[_i3].x,
+                    _y3 = monsters[_i3].y;
 
-                var _cacheLabel = 'monsterNum' + monsters[_i5].myMonsterType;
+                var _cacheLabel = 'monsterNum' + monsters[_i3].myMonsterType;
 
                 var _newSprite = gm.add.sprite(0, 0, _cacheLabel);
                 _newSprite.width = _newSprite.height = tileSize;
+                _newSprite.visible = false;
                 this.monsterSprites.push(_newSprite);
+
+                // also create THE DOT!
+                var _newDot = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, dotBmd);
+                _newDot.width = _newDot.height = tileSize;
+
+                _newSprite.myFogDot = _newDot;
             }
 
             // Display AI Ships
@@ -1905,15 +1953,22 @@ var GamePlay = function (_Phaser$State) {
 
             var aiShips = _serverInfo.serverInfo.aiShips;
             this.aiShipSprites = [];
-            for (var _i6 = 0; _i6 < aiShips.length; _i6++) {
-                var _x3 = aiShips[_i6].x,
-                    _y3 = aiShips[_i6].y;
+            for (var _i4 = 0; _i4 < aiShips.length; _i4++) {
+                var _x4 = aiShips[_i4].x,
+                    _y4 = aiShips[_i4].y;
 
-                var _cacheLabel2 = 'aiShipNum' + aiShips[_i6].myShipType;
+                var _cacheLabel2 = 'aiShipNum' + aiShips[_i4].myShipType;
 
                 var _newSprite2 = gm.add.sprite(0, 0, _cacheLabel2);
                 _newSprite2.width = _newSprite2.height = tileSize;
+                _newSprite2.visible = false;
                 this.aiShipSprites.push(_newSprite2);
+
+                // also create THE DOT!
+                var _newDot2 = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, dotBmd);
+                _newDot2.width = _newDot2.height = tileSize;
+
+                _newSprite2.myFogDot = _newDot2;
             }
 
             // Display player Ships
@@ -1921,31 +1976,42 @@ var GamePlay = function (_Phaser$State) {
 
             var playerShips = _serverInfo.serverInfo.playerShips;
             this.playerShipSprites = [];
-            for (var _i7 = 0; _i7 < playerShips.length; _i7++) {
-                var _x4 = playerShips[_i7].x,
-                    _y4 = playerShips[_i7].y;
-                var _cacheLabel3 = 'shipNum' + playerShips[_i7].num;
+            for (var _i5 = 0; _i5 < playerShips.length; _i5++) {
+                var _x5 = playerShips[_i5].x,
+                    _y5 = playerShips[_i5].y;
+                var _cacheLabel3 = 'shipNum' + playerShips[_i5].num;
 
                 var _newSprite3 = gm.add.sprite(0, 0, _cacheLabel3);
                 _newSprite3.width = _newSprite3.height = tileSize;
+                _newSprite3.visible = false;
                 this.playerShipSprites.push(_newSprite3);
+
+                // also create THE DOT!
+                var _newDot3 = gm.add.sprite(_x5 * tileSize, _y5 * tileSize, dotBmd);
+                _newDot3.width = _newDot3.height = tileSize;
+
+                _newSprite3.myFogDot = _newDot3;
             }
 
             this.moveUnits();
 
+            // Display fog
+            this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
+            this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
+
+            var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
+
             // Display the messages from the radio
-
-            // Display all the players in the game and the color of their ship (and name/flag?)
-
-            // load timer; the first turn is always twice as long!
-            this.timerText = gm.add.text(gm.width * 0.5, 60, "", _styles.mainStyle.timerText());
-            this.timer = _serverInfo.serverInfo.timer * 2;
 
             // Display NIGHT OVERLAY (for nighttime)
             this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
             this.lightSprite = gm.add.image(0, 0, this.shadowTexture);
             this.lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
-            this.updateShadowTexture();
+            this.lightSprite.visible = false;
+
+            // load timer; the first turn is always twice as long!
+            this.timerText = gm.add.text(gm.width * 0.5, 60, "", _styles.mainStyle.timerText());
+            this.timer = _serverInfo.serverInfo.timer * 2;
 
             // load GUI overlay (displays room code and such)
             (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
@@ -1953,21 +2019,76 @@ var GamePlay = function (_Phaser$State) {
             (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
             (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
 
+            var ths = this;
+
+            // Function that is activated when a new island is discovered
+            socket.on('island-discovered', function (data) {
+                // get island with this index
+                var curIsland = _this2.islands[data.index];
+
+                // reveal all tiles associated with this island
+                var averageX = 0,
+                    averageY = 0;
+                for (var _i6 = 0; _i6 < curIsland.myTiles.length; _i6++) {
+                    var _x6 = curIsland.myTiles[_i6][0],
+                        _y6 = curIsland.myTiles[_i6][1];
+
+                    averageX += _x6;
+                    averageY += _y6;
+
+                    _this2.map[_y6][_x6].fog = false;
+                    ths.fogBmd.clear(_x6 * ths.tileSize, _y6 * ths.tileSize, ths.tileSize, ths.tileSize);
+                }
+
+                averageX /= curIsland.myTiles.length;
+                averageY /= curIsland.myTiles.length;
+
+                // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
+                gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.timerText());
+            });
+
             // Function that is called whenever a new turn starts
             // Resets timer, resets other stuff, displays new situation, etc.
-            var ths = this;
             socket.on('new-turn', function (data) {
                 console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
 
                 // reset the timer 
                 ths.timer = _serverInfo.serverInfo.timer;
 
+                // update fog
+                // go through all discoveredTiles, remove the fog on them
+                for (var _i7 = 0; _i7 < _serverInfo.serverInfo.discoveredTiles.length; _i7++) {
+                    // get tile (by coordinates [x,y])
+                    var _x7 = _serverInfo.serverInfo.discoveredTiles[_i7].x,
+                        _y7 = _serverInfo.serverInfo.discoveredTiles[_i7].y;
+
+                    // remove the fog, both behind the scenes, and visually
+                    _this2.map[_y7][_x7].fog = false;
+                    ths.fogBmd.clear(_x7 * ths.tileSize, _y7 * ths.tileSize, ths.tileSize, ths.tileSize);
+                }
+
                 // move all units to their new positions
                 ths.moveUnits();
 
-                // update NIGHT OVERLAY
-                // TO DO: Only if it's actually nighttime!
-                _this2.updateShadowTexture();
+                // switch to day/night if necessary
+                _serverInfo.serverInfo.turnCount++;
+                if (_serverInfo.serverInfo.turnCount % 10 == 0) {
+                    _serverInfo.serverInfo.dayTime = !_serverInfo.serverInfo.dayTime;
+
+                    // if night, the overlay is turned on
+                    // if day, the overlay is turned off
+                    if (!_serverInfo.serverInfo.dayTime) {
+                        _this2.lightSprite.visible = true;
+                        _this2.updateShadowTexture();
+                    } else {
+                        _this2.lightSprite.visible = false;
+                    }
+                }
+
+                if (!_serverInfo.serverInfo.dayTime) {
+                    // update NIGHT OVERLAY; Only if it's actually nighttime!
+                    _this2.updateShadowTexture();
+                }
             });
 
             console.log("Game Play state");
@@ -1977,6 +2098,106 @@ var GamePlay = function (_Phaser$State) {
         value: function update() {
             // Update timer
             (0, _timers.gameTimer)(this, _serverInfo.serverInfo);
+        }
+    }, {
+        key: 'moveUnits',
+        value: function moveUnits() {
+            this.unitsOnMap = [];
+
+            this.tempMap = [];
+            for (var y = 0; y < this.mapHeight; y++) {
+                this.tempMap[y] = [];
+                for (var x = 0; x < this.mapWidth; x++) {
+                    this.tempMap[y][x] = [0, 0]; // index 0 = number of units on tile, index 1 = current counter (when displaying)
+                }
+            }
+
+            // create ONE array that holds all sprites
+            // Simultaneously, check how many units are on a certain tile
+            for (var i = 0; i < this.monsterSprites.length; i++) {
+                this.monsterSprites[i].originalX = _serverInfo.serverInfo.monsters[i].x;
+                this.monsterSprites[i].originalY = _serverInfo.serverInfo.monsters[i].y;
+
+                this.unitsOnMap.push(this.monsterSprites[i]);
+                this.tempMap[_serverInfo.serverInfo.monsters[i].y][_serverInfo.serverInfo.monsters[i].x][0]++;
+            }
+
+            for (var _i8 = 0; _i8 < this.aiShipSprites.length; _i8++) {
+                this.aiShipSprites[_i8].originalX = _serverInfo.serverInfo.aiShips[_i8].x;
+                this.aiShipSprites[_i8].originalY = _serverInfo.serverInfo.aiShips[_i8].y;
+
+                this.unitsOnMap.push(this.aiShipSprites[_i8]);
+                this.tempMap[_serverInfo.serverInfo.aiShips[_i8].y][_serverInfo.serverInfo.aiShips[_i8].x][0]++;
+            }
+
+            for (var _i9 = 0; _i9 < this.playerShipSprites.length; _i9++) {
+                this.playerShipSprites[_i9].originalX = _serverInfo.serverInfo.playerShips[_i9].x;
+                this.playerShipSprites[_i9].originalY = _serverInfo.serverInfo.playerShips[_i9].y;
+
+                this.unitsOnMap.push(this.playerShipSprites[_i9]);
+                this.tempMap[_serverInfo.serverInfo.playerShips[_i9].y][_serverInfo.serverInfo.playerShips[_i9].x][0]++;
+            }
+
+            // reset the shadow canvas, set the fill style to transparent black
+            this.unitShadows.clear();
+            this.unitShadows.context.fillStyle = '#000000';
+
+            var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
+
+            // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
+            for (var _i10 = 0; _i10 < this.unitsOnMap.length; _i10++) {
+                // this code simply gets the current unit and checks if the tile is still in fog
+                var curUnit = this.unitsOnMap[_i10];
+                var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
+
+                // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
+                var getTile = this.tempMap[curUnit.originalY][curUnit.originalX];
+                var unitsOnTile = getTile[0];
+                var curCounter = getTile[1];
+
+                var tempPos = [curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize];
+
+                // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
+                var newWidth = this.tileSize / Math.sqrt(unitsOnTile);
+
+                // display as a column, with random horizontal placement
+                tempPos[1] += (curCounter + 0.5) / unitsOnTile * this.tileSize - newWidth;
+                tempPos[0] += this.tileSize - newWidth + (Math.random() * 0.2 - 0.4) * this.tileSize;
+
+                // increase counter
+                this.tempMap[this.unitsOnMap[_i10].originalY][this.unitsOnMap[_i10].originalX][1]++;
+
+                if (isInFog) {
+                    // only display the dot
+                    curUnit.myFogDot.visible = true;
+                    this.game.world.bringToTop(curUnit.myFogDot);
+
+                    // set it to the right position and scale
+                    curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
+                    curUnit.myFogDot.x = tempPos[0];
+                    curUnit.myFogDot.y = tempPos[1];
+                } else {
+                    curUnit.myFogDot.visible = false;
+
+                    // display the sprite + the shadow
+                    curUnit.visible = true;
+                    curUnit.width = curUnit.height = newWidth;
+
+                    // place the unit
+                    this.unitsOnMap[_i10].x = tempPos[0];
+                    this.unitsOnMap[_i10].y = tempPos[1];
+
+                    // change color for player ships
+                    // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+
+                    // draw the shadow
+                    this.unitShadows.context.beginPath();
+                    this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
+                    this.unitShadows.context.fill();
+                }
+            }
+
+            this.unitShadows.dirty = true;
         }
     }, {
         key: 'updateShadowTexture',
@@ -1989,11 +2210,11 @@ var GamePlay = function (_Phaser$State) {
             for (var i = 0; i < docks.length; i++) {
                 var x = docks[i].x + 0.5 * this.tileSize,
                     y = docks[i].y,
-                    radius = this.tileSize * 2;
+                    radius = this.tileSize * 2 + Math.random() * 0.2 * this.tileSize;
 
                 var gradient = this.shadowTexture.context.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, 'rgba(255, 0, 0, 1.0)');
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0.0)');
+                gradient.addColorStop(0, 'rgba(255, 150, 150, 1.0)');
+                gradient.addColorStop(1, 'rgba(255, 150, 150, 0.0)');
 
                 this.shadowTexture.context.beginPath();
                 this.shadowTexture.context.fillStyle = gradient;
@@ -2002,6 +2223,61 @@ var GamePlay = function (_Phaser$State) {
             }
 
             this.shadowTexture.dirty = true;
+        }
+    }, {
+        key: 'discoverIslands',
+        value: function discoverIslands() {
+            this.islands = []; // initialize islands variable
+
+            for (var y = 0; y < this.mapHeight; y++) {
+                for (var x = 0; x < this.mapWidth; x++) {
+                    var curTile = this.map[y][x];
+
+                    // if this tile is an island, but hasn't been checked yet, let's start a new island!
+                    if (curTile.val >= 0.2 && !curTile.checked) {
+
+                        // create new island (with unknown name, and no free spots/dock known)
+                        var islandIndex = this.islands.length;
+                        this.islands.push({ myTiles: [] });
+
+                        // explore this tile (which automatically leads to the whole island)
+                        this.exploreTile(curTile, x, y, islandIndex);
+                    }
+                }
+            }
+        }
+    }, {
+        key: 'exploreTile',
+        value: function exploreTile(tile, x, y, islandIndex) {
+            // also save the tile in the island object, for quick reference
+            this.islands[islandIndex].myTiles.push([x, y]);
+
+            // mark this tile as checked
+            tile.checked = true;
+
+            // check tiles left/right/top/bottom
+            var positions = [[-1, 0], [1, 0], [0, 1], [0, -1]];
+
+            for (var a = 0; a < 4; a++) {
+                var tempX = this.wrapCoords(x + positions[a][0], this.mapWidth);
+                var tempY = this.wrapCoords(y + positions[a][1], this.mapHeight);
+
+                var newTile = this.map[tempY][tempX];
+                // if tile is an island, and hasn't been checked, explore it!
+                if (newTile.val >= 0.2 && !newTile.checked) {
+                    this.exploreTile(newTile, tempX, tempY, islandIndex);
+                }
+            }
+        }
+    }, {
+        key: 'wrapCoords',
+        value: function wrapCoords(c, bound) {
+            if (c < 0) {
+                c += bound;
+            } else if (c >= bound) {
+                c -= bound;
+            }
+            return c;
         }
     }]);
 
@@ -2285,6 +2561,11 @@ var ControllerLobby = function (_Phaser$State) {
       console.log("Controller Lobby state");
     }
   }, {
+    key: 'shutdown',
+    value: function shutdown() {
+      _serverInfo.serverInfo.socket.off('pre-signal');
+    }
+  }, {
     key: 'update',
     value: function update() {
       // This is where we listen for input!
@@ -2348,7 +2629,7 @@ var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
 var _roleDictionary = __webpack_require__(7);
 
-var _loadTab = __webpack_require__(13);
+var _loadTab = __webpack_require__(14);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
@@ -2443,6 +2724,11 @@ var ControllerPrep = function (_Phaser$State) {
       console.log("Controller Preparation state");
     }
   }, {
+    key: 'shutdown',
+    value: function shutdown() {
+      _serverInfo.serverInfo.socket.off('pre-signal');
+    }
+  }, {
     key: 'update',
     value: function update() {
       // This is where we listen for input (such as drawing)!
@@ -2495,7 +2781,7 @@ exports.default = loadPrepInterface;
 
 var _serverInfo = __webpack_require__(0);
 
-var _shipColors = __webpack_require__(14);
+var _shipColors = __webpack_require__(10);
 
 /*
     This function loads the preparation interface for each role
@@ -2763,7 +3049,7 @@ exports.default = loadPlayInterface;
 
 var _serverInfo = __webpack_require__(0);
 
-var _shipColors = __webpack_require__(14);
+var _shipColors = __webpack_require__(10);
 
 var _upgradeDictionary = __webpack_require__(27);
 
@@ -2779,7 +3065,7 @@ var _dynamicLoadImage = __webpack_require__(2);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
-var _perlinImproved = __webpack_require__(12);
+var _perlinImproved = __webpack_require__(13);
 
 var _perlinImproved2 = _interopRequireDefault(_perlinImproved);
 
@@ -3710,11 +3996,11 @@ var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
 var _roleDictionary = __webpack_require__(7);
 
-var _loadTab = __webpack_require__(13);
+var _loadTab = __webpack_require__(14);
 
 var _loadTab2 = _interopRequireDefault(_loadTab);
 
-var _timers = __webpack_require__(11);
+var _timers = __webpack_require__(12);
 
 var _loadErrorMessage = __webpack_require__(15);
 
@@ -3963,6 +4249,15 @@ var ControllerWaiting = function (_Phaser$State) {
 
         // update ship health
         document.getElementById('healthBar').style.width = _serverInfo.serverInfo.health + '%';
+
+        // switch to day/night if necessary
+        _serverInfo.serverInfo.turnCount++;
+        if (_serverInfo.serverInfo.turnCount % 10 == 0) {
+          _serverInfo.serverInfo.dayTime = !_serverInfo.serverInfo.dayTime;
+
+          // TO DO
+          // Do something with the fact that it's now night?
+        }
 
         // reload first tab
         (0, _loadTab2.default)("label0", curTab, 1);

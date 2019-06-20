@@ -55,7 +55,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: true,
+      prepSkip: false,
 
       monsterDrawings: [],
       monsterTypes: [],
@@ -66,6 +66,8 @@ io.on('connection', socket => {
 
       turnCount: 0,
       dayTime: true,
+
+      markedFogTiles: [],
       
       signalHistory: [],
       peopleDisconnected: [],
@@ -538,12 +540,28 @@ io.on('connection', socket => {
   });
 
   socket.on('name-island', data => {
+    let curIsland = rooms[socket.mainRoom].islands[data.island];
     // data.name holds the desired name (a string)
     // data.island holds the index of the island to be named (an integer)
-    rooms[socket.mainRoom].islands[data.island].name = data.name;
-    rooms[socket.mainRoom].islands[data.island].discovered = true;
+    curIsland.name = data.name;
+    curIsland.discovered = true;
 
-    // TO DO: If island is discovered, inform everyone and display/reveal it on the monitor
+    // Set all the island's tiles to be fogless
+    for(let i = 0; i < curIsland.myTiles.length; i++) {
+      let x = curIsland.myTiles[i][0], y = curIsland.myTiles[i][1]
+      rooms[socket.mainRoom].map[y][x].fog = false;
+    }
+
+    // Set all the island's freeSpots (which we still remember from placing the docks) to be potential fog reveals
+    for(let i = 0; i < curIsland.freeSpots.length; i++) {
+      rooms[socket.mainRoom].markedFogTiles.push( curIsland.freeSpots[i] );
+    }
+
+    // delete this information (free spots around the island); we don't need it anymore
+    curIsland.freeSpots = [];
+
+    // send the index of the island to monitors; so they can reveal it
+    sendSignal(socket.mainRoom, true, 'island-discovered', { index: data.island, name: data.name }, false, false)
   });
 
   socket.on('dock-trade', dockIndex => {
@@ -554,8 +572,14 @@ io.on('connection', socket => {
 
     // check if we have the resources for this trade ("9" is the error message type in case it fails)
     if(resourceCheck(socket, 0, 0, costs, 9)) {
+      // TO DO: Put this into the resourceCheck function, extra parameter "profit", so it is send with the resource update to the captain
       // if yes, we receive the other type of resources from the trade!
-      curShip.resources[deal[1][0]] += deal[1][1];
+      socket.curShip.resources[ deal[1][0] ] += deal[1][1];
+
+      // if we're buying crew, also update the working crew
+      if(deal[1][0] == 1) {
+        socket.curShip.workingCrew += deal[1][1];
+      }
 
       // TO DO: Reveal dock if this is the first trade here (and the dock has thus been "discovered")
     }
@@ -812,14 +836,10 @@ function createPlayerShips(room) {
 
     // save this ship on the socket object (for easier/faster reference in later functions)
     io.sockets.connected[key].curShip = room.playerShips[curBoat];
-
-    console.log("Player " + key + " will be on ship number " + curBoat);
     
     // switch to the next boat
     curBoat = (curBoat + 1) % numberBoats;
   }
-
-  console.log("These players are on ship 0: " + room.playerShips[0].players);
 
   // now we distribute roles for each ship.
   // for each boat ...
@@ -834,9 +854,6 @@ function createPlayerShips(room) {
     while(fullRoleList.length > 0) {
       let tempKey = room.playerShips[i].players[curPlayer];
 
-      console.log("Going once; player " + tempKey);
-      console.log(fullRoleList);
-
       let roleToGive = fullRoleList.splice(0,1)[0];
       room.players[tempKey].myRoles.push(roleToGive);
 
@@ -850,7 +867,6 @@ function createPlayerShips(room) {
     }
   }
 
-  console.log(room.playerShips);
 }
 
 /*
@@ -918,7 +934,7 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
       let convKey = parseInt(key);
       curShip.resources[convKey] -= costs[key];
 
-      // if it's crew, but we're not ALLOCATING crew (but spending it) actually spend it
+      // if it's crew, but we're not ALLOCATING crew (but spending it), actually spend it
       if(convKey == 1 && actionType != 1) {
         curShip.workingCrew -= costs[key];
       }
@@ -962,7 +978,7 @@ function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
 
     // if the victim was a player ship, they receive an (error) message about the attack
     if(obj.myUnitType == 0) {
-      attacker.errorMessages.push([4,0]);
+      obj.errorMessages.push([4,0]);
     }
   }
 
@@ -1022,18 +1038,18 @@ function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
         }
 
         // Find a dock (WITH routes)
-        let dockIndex, dockRoutes;
+        let dockIndex, numDockRoutes;
         do {
           dockIndex = Math.floor(Math.random() * room.docks.length);
-          dockRoutes = room.docks[dockIndex].routes.length;
-        } while(dockRoutes < 1);
+          numDockRoutes = room.docks[dockIndex].routes.length;
+        } while(numDockRoutes < 1);
 
         // Pick a random route => get first position
-        let routeIndex = Math.floor(Math.random() * room.docks[dockIndex].routes.length);
-        let randRoute = room.docks[dockIndex].routes[routeIndex][0];
+        let routeIndex = Math.floor(Math.random() * numDockRoutes);
+        let randRouteStart = room.docks[dockIndex].routes[routeIndex].route[0];
 
         // Change to a new ship
-        room.aiShips[obj.index] = createAIShip([randRoute[0], randRoute[1]], routeIndex, room.averagePlayerLevel);
+        room.aiShips[obj.index] = createAIShip(randRouteStart, routeIndex, room.averagePlayerLevel);
 
         // Start at one of the routes (placeUnit)
         placeUnit(room, {x: obj.x, y: obj.y, index: obj.index}, randRoute[0], randRoute[1], 'aiShips');
@@ -1136,6 +1152,8 @@ function startTurn(room, gameStart = false) {
     mPack["monsters"] = curRoom.monsters;
     mPack["aiShips"] = curRoom.aiShips;
     mPack["playerShips"] = curRoom.playerShips;
+
+    mPack["discoveredTiles"] = curRoom.discoveredTiles;
   }
 
   // send the mPack to all monitors
@@ -1164,7 +1182,6 @@ function startTurn(room, gameStart = false) {
   //  => cartographer checks (enemies within range?)
   for(let i = 0; i < curRoom.playerShips.length; i++) {
     let curShip = curRoom.playerShips[i];
-    curShip.captainCanTrade = -1;
 
     // == ADJACENCY (CAPTAIN) STUFF ==
     // check the tiles left/right/top/bottom
@@ -1197,12 +1214,10 @@ function startTurn(room, gameStart = false) {
         const ind = curTile.dock;
 
         // get the deal
-        const deal = curRoom.docks[curTile.dock].deal
+        const deal = curRoom.docks[ind].deal
 
         // send the message type ("trade with dock"), the deal, and the dock index
         captainTasks.push([2, { deal: deal, index: ind }]);
-
-        curShip.captainCanTrade = ind;
       }
     }
 
@@ -1338,7 +1353,7 @@ function startTurn(room, gameStart = false) {
       }
     } else {
       // on every turn EXCEPT the first, all players receive ship health
-      pPack["shipHealth"] = curShip.health;
+      pPack["health"] = curShip.health;
     }
 
     // check this player's roles
@@ -1368,11 +1383,6 @@ function startTurn(room, gameStart = false) {
             // reduce function calculates the number of cannons (positive loads), multiplies by (half) the current weaponeer value
             let numCannons = curShip.cannons.reduce(function(tot, cur) { if(cur >= 0) { return tot + 1; } else { return tot; } }, 0)
             pPack["firingCosts"] = Math.round((curShip.roleStats[4].lvl + 1) / 2) * numCannons;
-          }
-
-          // if we can trade, send the dock deal
-          if(curShip.captainCanTrade > -1) {
-            pPack["dockDeal"] = curRoom.docks[curShip.captainCanTrade].deal;
           }
           
           break;
@@ -1422,21 +1432,20 @@ function startTurn(room, gameStart = false) {
       // If this role was upgraded last turn, solidify the upgrade (this is true for ALL roles)
       // Send the new level back to the role
       if(curShip.roleStats[role].lvlUp) {
-        pPack["roleUpdate"] = true;
+        pPack["roleUpdate" + role] = role;
         curShip.roleStats[role].lvlUp = false;
       }
     }
 
-    // send the whole package
+    // send the whole package (to this specific player)
     sendSignal(room, false, 'pre-signal', pPack, true, true, playerID);
+  }
 
-    // if it isn't the start of the game (which would INSTEAD mean a "state switch" to the Play state) ...
-    if(!gameStart) {
-      // ... tell everyone (both monitors and controllers) to start the new turn
-      sendSignal(room, false, 'new-turn', {}, false, false)
-      sendSignal(room, true, 'new-turn', {}, false, false)
-    }
-    
+  // if it isn't the start of the game (which would INSTEAD mean a "state switch" to the Play state) ...
+  if(!gameStart) {
+    // ... tell everyone (both monitors and controllers) to start the new turn
+    sendSignal(room, false, 'new-turn', {}, false, false)
+    sendSignal(room, true, 'new-turn', {}, false, false)
   }
 
 }
@@ -1477,6 +1486,47 @@ function finishTurn(room) {
   }
 
   curRoom.averagePlayerLevel = averagePlayerLevel;
+
+  /***
+
+    REVEAL SOME FOG
+
+  **/
+  // pick a few tiles from the marked tiles
+  // TO DO: Right now, the maximum is set to 3 - is this good??
+  let numMarkedTiles = curRoom.markedFogTiles.length;
+  let numReveals = Math.min(numMarkedTiles, 3);
+  let fogRevealTiles = [];
+
+  //console.log(JSON.stringify(curRoom.markedFogTiles), numReveals);
+
+  for(let i = 0; i < numReveals; i++) {
+    let randIndex = Math.floor(Math.random() * curRoom.markedFogTiles.length);
+    let getTile = curRoom.markedFogTiles.splice(randIndex, 1)[0]; // splice already removes it from the array
+
+    // set this tile to be fogless on the map
+    curRoom.map[ getTile.y ][ getTile.x ].fog = false;
+
+    // check for other tiles around it, which are still in fog
+    const positions = [[1,0],[-1,0],[0,1],[0,-1]]
+    for(let a = 0; a < 4; a++) {
+      let x = wrapCoords(getTile.x + positions[a][0], curRoom.mapWidth);
+      let y = wrapCoords(getTile.y + positions[a][1], curRoom.mapHeight);
+
+      // if so, add it to the possible reveals
+      // (this is mutating an array we're accessing, but I don't care, it's not bad if we randomly pick this newly added tile)
+      if( curRoom.map[y][x].fog ) {
+        curRoom.markedFogTiles.push({x: x, y: y});
+      }
+    }
+
+    // add the tile to the array (which we'll send to the monitors)
+    fogRevealTiles.push(getTile) 
+  }
+
+  // save it on the room
+  curRoom.discoveredTiles = fogRevealTiles;
+
 
   /*** 
 
@@ -1625,9 +1675,9 @@ function finishTurn(room) {
     // get ship
     let curShip = curRoom.playerShips[i];
 
-    // (update average resources)
+    // (update average resources; weighted by player count)
     for(let res = 0; res < 4; res++) {
-      averageResources += curShip.resources[res];
+      averageResources[res] += (1 / curRoom.playerShips.length) * curShip.resources[res];
     }
 
     // get vector from orientation
@@ -1637,14 +1687,15 @@ function finishTurn(room) {
     // this ONLY works because we're working with 8 angles; diagonal angles still get rounded (to 1 or -1, depending on the angle)
     let movementVector = [Math.round( Math.cos(angle) ), Math.round( Math.sin(angle) )];
 
-    let speed = curShip.roleStats[3].sailLvl + curShip.roleStats[3].peddleLvl*2;
+    // speed is sailing level + peddle level (previously peddles counted for two, but that's just too much)
+    let speed = curShip.roleStats[3].sailLvl + curShip.roleStats[3].peddleLvl;
     let oldObj = { x: curShip.x, y: curShip.y, index: i }
     let x = curShip.x, y = curShip.y;
 
     // move through it stepwise
     for(let a = 0; a < speed; a++) {
-      let tempX = x + movementVector[0];
-      let tempY = y + movementVector[1];
+      let tempX = wrapCoords(x + movementVector[0], curRoom.mapWidth);
+      let tempY = wrapCoords(y + movementVector[1], curRoom.mapHeight);
 
       let tile = curRoom.map[tempY][tempX];
 
@@ -1777,11 +1828,11 @@ function finishTurn(room) {
           // It always picks player ships first. Then docks (with a chance of failure). Then ai ships (with a chance of failure)
           if(curTile.hasUnits) {
             if(curTile.playerShips.length > 0) {
-              curMon.target = curTile.playerShips[ Math.floor(Math.random() * curTile.playerShips.length) ];
+              curMon.target = curRoom.playerShips[ curTile.playerShips[ Math.floor(Math.random() * curTile.playerShips.length) ] ];
             } else if(curTile.dock != null && Math.random() >= 0.5) {
-              curMon.target = curTile.dock
+              curMon.target = curRoom.docks[ curTile.dock ];
             } else if(curTile.aiShips.length > 0 && Math.random() >= 0.5) {
-              curMon.target = curTile.aiShips[ Math.floor(Math.random() * curTile.aiShips.length) ];
+              curMon.target = curRoom.aiShips[ curTile.aiShips[ Math.floor(Math.random() * curTile.aiShips.length) ] ];
             }
           }
 
@@ -1856,7 +1907,9 @@ function finishTurn(room) {
     CHANGE DOCK DEALS
 
   ***/
-  let changeDeals = (Math.random() <= 0.2); // on average, change deals every ~5 turns
+  // on average, change deals every ~5 turns
+  // deals are always updated after the first turn
+  let changeDeals = (Math.random() <= 0.2) || (curRoom.turnCount == 1); 
 
   // With X% probability, change the deals on the docks
   // Use the "averageResources" variable to get a random deal, then improve it (by lowering one and raising the other - no negative numbers)
@@ -1870,8 +1923,14 @@ function finishTurn(room) {
       if(good1 == 1) { good1 = 0; } // you cannot trade away your crew, instead it ensures more deals start with you spending gold
 
       let val1 = Math.max( averageResources[good1] - Math.random()*3, 0);
-      let val2 = averageResources[good2] + Math.random()*3
-      const maxVal = Math.max(val1, val2);
+      let val2 = (averageResources[good2] + Math.random()*3)
+      const maxVal = Math.max(val1, val2) + 0.01;
+
+      // If they are the same good, val2 surely must be larger than val1
+      // (Otherwise we get bad deals, like "1 Wood for 0 Wood in return!")
+      if(good1 == good2 && val2 <= val1) {
+        val2 = val1 + 1 + Math.random()*3;
+      }
 
       // this formula is similar to how we determine how many routes each dock gets
       // the larger the dock, the more I want to "compress" its size with a square root (or similar function)
@@ -1893,6 +1952,10 @@ function finishTurn(room) {
   startTurn(room)
 }
 
+function generateDockDeal() {
+
+}
+
 /* 
   This function creates a new SHIP (object)
 
@@ -1912,8 +1975,8 @@ function createShip(index) {
     num: index,
     myUnitType: 0, 
     players: [], 
-    resources: [10, 0, 10, 10], // [5,1,1,0], 
-    workingCrew: 10,
+    resources: [10, 0, 5, 5], // [5,1,1,0], 
+    workingCrew: 2,
     x: 0, 
     y: 0, 
     orientation: 0, 
@@ -2067,7 +2130,7 @@ function createBaseMap(room) {
       // Save the noise value in the (huge) 2D map array
       // Also initialize empty variables for possible units that might be on this tile later
       const value = noise.perlin4(nx, ny, nz, nw);
-      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [] };
+      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true };
 
       // if it's a (really) deep sea tile, save it as a possible spawn point
       if(value < -0.6) {
@@ -2129,7 +2192,7 @@ function discoverIslands(room) {
 
         // create new island (with unknown name, and no free spots/dock known)
         let islandIndex = room.islands.length;
-        room.islands.push( { name: 'Undiscovered Island', freeSpots: [], discovered: false } );
+        room.islands.push( { name: 'Undiscovered Island', freeSpots: [], discovered: false, myTiles: [] } );
 
         // explore this tile (which automatically leads to the whole island)
         exploreTile(room, curTile, x, y, islandIndex)
@@ -2140,8 +2203,7 @@ function discoverIslands(room) {
         let randDock = room.islands[islandIndex].freeSpots[ Math.floor(Math.random() * islandSize)]
 
         // create new DOCK OBJECT
-        // deals are random (there's no information about what might be useful)
-        // TO DO: Scale these and find SOME heuristic for generating nice dock deals at the start
+        // deals are random in the very first turn (there's no information about what might be useful); after turn 1 they are automatically created correctly
         let good1 = Math.floor(Math.random()*4), good2 = Math.floor(Math.random()*4), val1 = Math.round(Math.random()*5), val2 = Math.round(Math.random()*5);
 
         room.docks.push( { x: randDock.x, y: randDock.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
@@ -2168,6 +2230,9 @@ function isChecked(obj) {
 function exploreTile(room, tile, x, y, islandIndex) {
   // add this tile to the island
   tile.island = islandIndex;
+
+  // also save the tile in the island object, for quick reference
+  room.islands[islandIndex].myTiles.push([x,y]);
 
   // mark this tile as checked
   tile.checked = true;
@@ -2253,6 +2318,11 @@ function createDockRoutes(room) {
         // shave first and last bit from the route
         route.splice(0, 1);
         route.splice( (route.length-1) , 1);
+
+        // if we somehow get a route with zero length, don't use it
+        if(route.length < 1) {
+          continue;
+        }
 
         // save it on both docks (but in REVERSE on the second)
         room.docks[i].routes.push( { route: route, target: j } );

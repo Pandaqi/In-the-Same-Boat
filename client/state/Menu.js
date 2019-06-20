@@ -12,7 +12,7 @@ class Menu extends Phaser.State {
     // load stuff here
     //game.load.baseURL = 'https://trampolinedraak.herokuapp.com/';
     this.game.load.crossOrigin = 'Anonymous'
-    this.game.stage.backgroundColor = "#000000";
+    this.game.stage.backgroundColor = "#FFFFFF";
 
     // We set this to true so our game won't pause if we focus
     // something else other than the browser

@@ -103,6 +103,10 @@ class ControllerLobby extends Phaser.State {
     console.log("Controller Lobby state");
   }
 
+  shutdown () {
+    serverInfo.socket.off('pre-signal')
+  }
+
   update () {
     // This is where we listen for input!
 

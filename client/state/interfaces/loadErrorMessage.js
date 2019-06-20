@@ -48,7 +48,7 @@ export default function loadErrorMessage(msg, i) {
             break;
 
         case 9:
-            finalMsg = 'Trade with dock failed!'
+            finalMsg = 'Trade with dock failed!';
             break;
     }
 
