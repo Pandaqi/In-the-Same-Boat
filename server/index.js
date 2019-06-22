@@ -935,7 +935,9 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
       curShip.resources[convKey] -= costs[key];
 
       // if it's crew, but we're not ALLOCATING crew (but spending it), actually spend it
-      if(convKey == 1 && actionType != 1) {
+      let allocationActions = [1,3]
+      let allocatingCrew = allocationActions.includes(actionType);
+      if(convKey == 1 && !allocatingCrew) {
         curShip.workingCrew -= costs[key];
       }
     }

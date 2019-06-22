@@ -224,7 +224,11 @@ class GamePlay extends Phaser.State {
       // create the sprite
       let newSprite = gm.add.sprite(x*tileSize, (y-0.5)*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
+      
       newSprite.visible = false;
+      newSprite.originalX = x;
+      newSprite.originalY = y;
+
       this.dockSprites.push(newSprite);
 
       // also create THE DOT!
@@ -416,6 +420,10 @@ class GamePlay extends Phaser.State {
 
     // create ONE array that holds all sprites
     // Simultaneously, check how many units are on a certain tile
+    for(let i = 0; i < this.dockSprites.length; i++) {
+      this.unitsOnMap.push(this.dockSprites[i]);
+    }
+
     for(let i = 0; i < this.monsterSprites.length; i++) {
       this.monsterSprites[i].originalX = serverInfo.monsters[i].x;
       this.monsterSprites[i].originalY = serverInfo.monsters[i].y;
@@ -472,6 +480,7 @@ class GamePlay extends Phaser.State {
 
       if(isInFog) {
         // only display the dot
+        curUnit.visible = false;
         curUnit.myFogDot.visible = true;
         this.game.world.bringToTop(curUnit.myFogDot);
 

@@ -76,7 +76,7 @@ Object.defineProperty(exports, "__esModule", {
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 var serverInfo = {
-  SERVER_IP: /*'http://localhost:8000',*/'https://in-the-same-boat.herokuapp.com',
+  SERVER_IP: 'http://localhost:8000', /* 'https://in-the-same-boat.herokuapp.com', */
   socket: null,
   server: null,
   roomCode: '',
@@ -1916,7 +1916,11 @@ var GamePlay = function (_Phaser$State) {
                 // create the sprite
                 var newSprite = gm.add.sprite(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
                 newSprite.width = newSprite.height = tileSize;
+
                 newSprite.visible = false;
+                newSprite.originalX = _x2;
+                newSprite.originalY = _y2;
+
                 this.dockSprites.push(newSprite);
 
                 // also create THE DOT!
@@ -2114,28 +2118,32 @@ var GamePlay = function (_Phaser$State) {
 
             // create ONE array that holds all sprites
             // Simultaneously, check how many units are on a certain tile
-            for (var i = 0; i < this.monsterSprites.length; i++) {
-                this.monsterSprites[i].originalX = _serverInfo.serverInfo.monsters[i].x;
-                this.monsterSprites[i].originalY = _serverInfo.serverInfo.monsters[i].y;
-
-                this.unitsOnMap.push(this.monsterSprites[i]);
-                this.tempMap[_serverInfo.serverInfo.monsters[i].y][_serverInfo.serverInfo.monsters[i].x][0]++;
+            for (var i = 0; i < this.dockSprites.length; i++) {
+                this.unitsOnMap.push(this.dockSprites[i]);
             }
 
-            for (var _i8 = 0; _i8 < this.aiShipSprites.length; _i8++) {
-                this.aiShipSprites[_i8].originalX = _serverInfo.serverInfo.aiShips[_i8].x;
-                this.aiShipSprites[_i8].originalY = _serverInfo.serverInfo.aiShips[_i8].y;
+            for (var _i8 = 0; _i8 < this.monsterSprites.length; _i8++) {
+                this.monsterSprites[_i8].originalX = _serverInfo.serverInfo.monsters[_i8].x;
+                this.monsterSprites[_i8].originalY = _serverInfo.serverInfo.monsters[_i8].y;
 
-                this.unitsOnMap.push(this.aiShipSprites[_i8]);
-                this.tempMap[_serverInfo.serverInfo.aiShips[_i8].y][_serverInfo.serverInfo.aiShips[_i8].x][0]++;
+                this.unitsOnMap.push(this.monsterSprites[_i8]);
+                this.tempMap[_serverInfo.serverInfo.monsters[_i8].y][_serverInfo.serverInfo.monsters[_i8].x][0]++;
             }
 
-            for (var _i9 = 0; _i9 < this.playerShipSprites.length; _i9++) {
-                this.playerShipSprites[_i9].originalX = _serverInfo.serverInfo.playerShips[_i9].x;
-                this.playerShipSprites[_i9].originalY = _serverInfo.serverInfo.playerShips[_i9].y;
+            for (var _i9 = 0; _i9 < this.aiShipSprites.length; _i9++) {
+                this.aiShipSprites[_i9].originalX = _serverInfo.serverInfo.aiShips[_i9].x;
+                this.aiShipSprites[_i9].originalY = _serverInfo.serverInfo.aiShips[_i9].y;
 
-                this.unitsOnMap.push(this.playerShipSprites[_i9]);
-                this.tempMap[_serverInfo.serverInfo.playerShips[_i9].y][_serverInfo.serverInfo.playerShips[_i9].x][0]++;
+                this.unitsOnMap.push(this.aiShipSprites[_i9]);
+                this.tempMap[_serverInfo.serverInfo.aiShips[_i9].y][_serverInfo.serverInfo.aiShips[_i9].x][0]++;
+            }
+
+            for (var _i10 = 0; _i10 < this.playerShipSprites.length; _i10++) {
+                this.playerShipSprites[_i10].originalX = _serverInfo.serverInfo.playerShips[_i10].x;
+                this.playerShipSprites[_i10].originalY = _serverInfo.serverInfo.playerShips[_i10].y;
+
+                this.unitsOnMap.push(this.playerShipSprites[_i10]);
+                this.tempMap[_serverInfo.serverInfo.playerShips[_i10].y][_serverInfo.serverInfo.playerShips[_i10].x][0]++;
             }
 
             // reset the shadow canvas, set the fill style to transparent black
@@ -2145,9 +2153,9 @@ var GamePlay = function (_Phaser$State) {
             var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
 
             // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
-            for (var _i10 = 0; _i10 < this.unitsOnMap.length; _i10++) {
+            for (var _i11 = 0; _i11 < this.unitsOnMap.length; _i11++) {
                 // this code simply gets the current unit and checks if the tile is still in fog
-                var curUnit = this.unitsOnMap[_i10];
+                var curUnit = this.unitsOnMap[_i11];
                 var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
 
                 // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
@@ -2165,10 +2173,11 @@ var GamePlay = function (_Phaser$State) {
                 tempPos[0] += this.tileSize - newWidth + (Math.random() * 0.2 - 0.4) * this.tileSize;
 
                 // increase counter
-                this.tempMap[this.unitsOnMap[_i10].originalY][this.unitsOnMap[_i10].originalX][1]++;
+                this.tempMap[this.unitsOnMap[_i11].originalY][this.unitsOnMap[_i11].originalX][1]++;
 
                 if (isInFog) {
                     // only display the dot
+                    curUnit.visible = false;
                     curUnit.myFogDot.visible = true;
                     this.game.world.bringToTop(curUnit.myFogDot);
 
@@ -2184,8 +2193,8 @@ var GamePlay = function (_Phaser$State) {
                     curUnit.width = curUnit.height = newWidth;
 
                     // place the unit
-                    this.unitsOnMap[_i10].x = tempPos[0];
-                    this.unitsOnMap[_i10].y = tempPos[1];
+                    this.unitsOnMap[_i11].x = tempPos[0];
+                    this.unitsOnMap[_i11].y = tempPos[1];
 
                     // change color for player ships
                     // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
@@ -3088,15 +3097,16 @@ function compassMove(ev) {
     // find center of compass
     var image1 = document.getElementById('firstmate-compassPointer');
     var rect1 = image1.getBoundingClientRect();
-    var cx = rect1.left + rect1.width * 0.5;
-    var cy = rect1.top + rect1.height * 0.5;
+    var centerCoords = { x: rect1.left + rect1.width * 0.5, y: rect1.top + rect1.height * 0.5 };
 
-    // find mouse position
-    var px = ev.pageX;
-    var py = ev.pageY;
+    // get click position (mouse is default; otherwise use touch)
+    var coords = { x: ev.pageX, y: ev.pageY };
+    if (ev.type == 'touchmove') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY };
+    }
 
     // calculate difference vector, determine angle from that
-    var vec = [px - cx, py - cy];
+    var vec = [coords.x - centerCoords.x, coords.y - centerCoords.y];
     var angle = Math.atan2(vec[1], vec[0]) * 180 / Math.PI;
     if (angle < 0) {
         angle += 360;
@@ -3169,8 +3179,14 @@ function startCanvasDrag(ev) {
     // prevent actually dragging the image (which is default behaviour for most browsers in this situation)
     ev.preventDefault();
 
+    // get coordinates (default is mouse; otherwise get touch)
+    var coords = { x: ev.pageX, y: ev.pageY };
+    if (ev.type == 'touchstart') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY };
+    }
+
     // save the first point (on the canvas)
-    document.getElementById('canvas-container').oldMovePoint = { x: ev.pageX, y: ev.pageY };
+    document.getElementById('canvas-container').oldMovePoint = coords;
 
     document.addEventListener('mousemove', mapMove);
     document.addEventListener('touchmove', mapMove);
@@ -3186,16 +3202,22 @@ function mapMove(ev) {
 
     var cv = document.getElementById('canvas-container');
 
+    // get coordinates (default is mouse; otherwise touch)
+    var coords = { x: ev.pageX, y: ev.pageY };
+    if (ev.type == 'touchmove') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY };
+    }
+
     // get movement delta
-    var dx = ev.pageX - cv.oldMovePoint.x;
-    var dy = ev.pageY - cv.oldMovePoint.y;
+    var dx = coords.x - cv.oldMovePoint.x;
+    var dy = coords.y - cv.oldMovePoint.y;
 
     // move camera according to delta
     cv.myGame.camera.x += dx;
     cv.myGame.camera.y += dy;
 
     // update oldMovePoint
-    cv.oldMovePoint = { x: ev.pageX, y: ev.pageY };
+    cv.oldMovePoint = coords;
 }
 
 /*

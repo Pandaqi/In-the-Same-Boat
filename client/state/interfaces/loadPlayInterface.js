@@ -25,15 +25,16 @@ function compassMove(ev) {
     // find center of compass
     var image1 = document.getElementById('firstmate-compassPointer');
     var rect1 = image1.getBoundingClientRect();
-    var cx = rect1.left + rect1.width * 0.5;    
-    var cy = rect1.top + rect1.height * 0.5;
+    var centerCoords = { x: rect1.left + rect1.width * 0.5, y: rect1.top + rect1.height * 0.5 };
 
-    // find mouse position
-    var px = ev.pageX;
-    var py = ev.pageY;
+    // get click position (mouse is default; otherwise use touch)
+    let coords = { x: ev.pageX, y: ev.pageY }
+    if(ev.type == 'touchmove') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY }
+    }
 
     // calculate difference vector, determine angle from that
-    var vec = [px - cx, py - cy];
+    var vec = [coords.x - centerCoords.x, coords.y - centerCoords.y];
     var angle = Math.atan2(vec[1], vec[0]) * 180 / Math.PI;
     if(angle < 0) {
         angle += 360;
@@ -107,8 +108,14 @@ function startCanvasDrag(ev) {
     // prevent actually dragging the image (which is default behaviour for most browsers in this situation)
     ev.preventDefault();
 
+    // get coordinates (default is mouse; otherwise get touch)
+    let coords = { x: ev.pageX, y: ev.pageY }
+    if(ev.type == 'touchstart') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY }
+    }
+
     // save the first point (on the canvas)
-    document.getElementById('canvas-container').oldMovePoint = { x: ev.pageX, y: ev.pageY};
+    document.getElementById('canvas-container').oldMovePoint = coords;
 
     document.addEventListener('mousemove', mapMove);
     document.addEventListener('touchmove', mapMove);
@@ -124,16 +131,22 @@ function mapMove(ev) {
 
     let cv = document.getElementById('canvas-container')
 
+    // get coordinates (default is mouse; otherwise touch)
+    let coords = { x: ev.pageX, y: ev.pageY }
+    if(ev.type == 'touchmove') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY }
+    }
+
     // get movement delta
-    var dx = ev.pageX - cv.oldMovePoint.x;
-    var dy = ev.pageY - cv.oldMovePoint.y
+    var dx = coords.x - cv.oldMovePoint.x;
+    var dy = coords.y - cv.oldMovePoint.y
 
     // move camera according to delta
     cv.myGame.camera.x += dx;
     cv.myGame.camera.y += dy;
 
     // update oldMovePoint
-    cv.oldMovePoint = { x: ev.pageX, y: ev.pageY };
+    cv.oldMovePoint = coords;
 }
 
 /*
