@@ -225,6 +225,19 @@ h1 {
     height:100%;
 }
 
+.levelStats {
+  width:75%;
+  text-align:center;
+  padding-top:5px;
+  padding-bottom:5px;
+  background-color:rgba(0,0,0,0.5);
+  margin:auto;
+}
+
+.levelStats span {
+  margin-right:10px;
+}
+
 /*** 
  * 
  * General interface rules (buttons, sliders, etc.)

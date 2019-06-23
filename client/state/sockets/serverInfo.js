@@ -1,7 +1,7 @@
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 const serverInfo = {
-  SERVER_IP: /*'http://localhost:8000', */  'https://in-the-same-boat.herokuapp.com', 
+  SERVER_IP: 'http://localhost:8000', /* 'https://in-the-same-boat.herokuapp.com', */
   socket: null,
   server: null,
   roomCode: '',

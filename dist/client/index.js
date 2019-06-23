@@ -275,40 +275,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _loadImageComplete = __webpack_require__(18);
-
-var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var dynamicLoadImage = function dynamicLoadImage(gm, pos, dims, name, dataURI) {
-  var doesKeyExist = gm.cache.checkKey(Phaser.Cache.IMAGE, name);
-  if (!doesKeyExist) {
-    // load the image; display once loaded
-    var loader = new Phaser.Loader(gm);
-    loader.image(name, dataURI + '');
-    loader.onLoadComplete.addOnce(_loadImageComplete2.default, undefined, 0, gm, pos, dims, name);
-    loader.start();
-  } else {
-    // if image was already in cache, just add the sprite (but don't load it again)
-    (0, _loadImageComplete2.default)(gm, pos, dims, name);
-  }
-};
-
-exports.default = dynamicLoadImage;
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _loadPlayerVisuals = __webpack_require__(4);
+var _loadPlayerVisuals = __webpack_require__(3);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
@@ -392,7 +359,7 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
 exports.default = loadMainSockets;
 
 /***/ }),
-/* 4 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -402,7 +369,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _dynamicLoadImage = __webpack_require__(2);
+var _dynamicLoadImage = __webpack_require__(4);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
@@ -423,6 +390,39 @@ var loadPlayerVisuals = function loadPlayerVisuals(gm, x, y, color, data) {
 };
 
 exports.default = loadPlayerVisuals;
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _loadImageComplete = __webpack_require__(18);
+
+var _loadImageComplete2 = _interopRequireDefault(_loadImageComplete);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var dynamicLoadImage = function dynamicLoadImage(gm, pos, dims, name, dataURI) {
+  var doesKeyExist = gm.cache.checkKey(Phaser.Cache.IMAGE, name);
+  if (!doesKeyExist) {
+    // load the image; display once loaded
+    var loader = new Phaser.Loader(gm);
+    loader.image(name, dataURI + '');
+    loader.onLoadComplete.addOnce(_loadImageComplete2.default, undefined, 0, gm, pos, dims, name);
+    loader.start();
+  } else {
+    // if image was already in cache, just add the sprite (but don't load it again)
+    (0, _loadImageComplete2.default)(gm, pos, dims, name);
+  }
+};
+
+exports.default = dynamicLoadImage;
 
 /***/ }),
 /* 5 */
@@ -1110,11 +1110,11 @@ var _ControllerPrep = __webpack_require__(24);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(28);
+var _ControllerPlay = __webpack_require__(29);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(29);
+var _ControllerOver = __webpack_require__(30);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -1195,7 +1195,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _mainSocketsGame = __webpack_require__(3);
+var _mainSocketsGame = __webpack_require__(2);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
@@ -1425,17 +1425,17 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(2);
+var _dynamicLoadImage = __webpack_require__(4);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(4);
+var _loadPlayerVisuals = __webpack_require__(3);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(3);
+var _mainSocketsGame = __webpack_require__(2);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
@@ -1559,17 +1559,17 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(2);
+var _dynamicLoadImage = __webpack_require__(4);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(4);
+var _loadPlayerVisuals = __webpack_require__(3);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(3);
+var _mainSocketsGame = __webpack_require__(2);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
@@ -1670,17 +1670,17 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(2);
+var _dynamicLoadImage = __webpack_require__(4);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(4);
+var _loadPlayerVisuals = __webpack_require__(3);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(3);
+var _mainSocketsGame = __webpack_require__(2);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
@@ -2310,17 +2310,17 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _serverInfo = __webpack_require__(0);
 
-var _dynamicLoadImage = __webpack_require__(2);
+var _dynamicLoadImage = __webpack_require__(4);
 
 var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _colors = __webpack_require__(1);
 
-var _loadPlayerVisuals = __webpack_require__(4);
+var _loadPlayerVisuals = __webpack_require__(3);
 
 var _loadPlayerVisuals2 = _interopRequireDefault(_loadPlayerVisuals);
 
-var _mainSocketsGame = __webpack_require__(3);
+var _mainSocketsGame = __webpack_require__(2);
 
 var _mainSocketsGame2 = _interopRequireDefault(_mainSocketsGame);
 
@@ -3064,15 +3064,15 @@ var _upgradeDictionary = __webpack_require__(27);
 
 var _upgradeDictionary2 = _interopRequireDefault(_upgradeDictionary);
 
+var _upgradeEffectsDictionary = __webpack_require__(28);
+
+var _upgradeEffectsDictionary2 = _interopRequireDefault(_upgradeEffectsDictionary);
+
 var _roleDictionary = __webpack_require__(7);
 
 var _loadErrorMessage = __webpack_require__(15);
 
 var _loadErrorMessage2 = _interopRequireDefault(_loadErrorMessage);
-
-var _dynamicLoadImage = __webpack_require__(2);
-
-var _dynamicLoadImage2 = _interopRequireDefault(_dynamicLoadImage);
 
 var _perlinImproved = __webpack_require__(13);
 
@@ -3114,24 +3114,7 @@ function compassMove(ev) {
 
     // Lock angle to compass level 
     // Determine the maximum rotation per turn (based on compass level)
-    var deltaAngle = 180;
-    switch (_serverInfo.serverInfo.roleStats[1].lvl) {
-        case 0:
-            deltaAngle = 45;
-            break;
-        case 1:
-            deltaAngle = 90;
-            break;
-        case 2:
-            deltaAngle = 90;
-            break;
-        case 3:
-            deltaAngle = 135;
-            break;
-        case 4:
-            deltaAngle = 135;
-            break;
-    }
+    var deltaAngle = _upgradeEffectsDictionary2.default[1][_serverInfo.serverInfo.roleStats[1].lvl].angle;
 
     // get distance from current angle to current ship orientation
     // if this distance is above delta, you're too far
@@ -3293,6 +3276,38 @@ function loadDeal(deal) {
     var good2 = '<img src="assets/resourceIcon' + deal[1][0] + '.png" />' + '<strong> x ' + deal[1][1] + '</strong>';
 
     return '<p class="captain-dockDeal">' + good1 + ' ==> ' + good2 + '</p>';
+}
+
+function displayUpgradeStats(role, level) {
+    var curStats = _upgradeEffectsDictionary2.default[role][level];
+
+    // TO DO: On max level, don't get next stats, and don't display stuff about it
+    // Right now, it would throw an error trying to get level 7 (index 6) from the array
+    var nextStats = _upgradeEffectsDictionary2.default[role][level + 1];
+
+    var curString = '';
+
+    for (var key in curStats) {
+        var curLevel = curStats[key];
+        var nextLevel = nextStats[key];
+
+        // display which property is being upgraded (get it directly from the object)
+        curString += key + ': ';
+
+        // display the current level of this property
+        curString += curStats[key];
+
+        // display next level (if you were to upgrade)
+        if (nextLevel > curLevel) {
+            curString += ' <span style="color:lightgreen;">(&uarr;' + nextLevel + ')</span>';
+        } else if (nextLevel == curLevel) {
+            curString += ' <span>(&rarr;' + nextLevel + ')</span>';
+        } else if (nextLevel < curLevel) {
+            curString += ' <span style="color:red;">(&darr;' + nextLevel + ')</span>';
+        }
+    }
+
+    return curString;
 }
 
 /*
@@ -3549,33 +3564,12 @@ function loadPlayInterface(num, cont) {
             // Create graphics object
             var graphics = canvas.myGame.add.graphics(0, 0);
 
-            var mapSize = 3;
-            // Determine map size based on instrument level
-            switch (_serverInfo.serverInfo.roleStats[2].lvl) {
-                case 0:
-                    mapSize = 3;
-                    break;
+            // Get map size from the upgrade effect dictionary. 
+            // This size is a "radius", so transform it into the actual region of tiles around the ship
+            var mapSize = _upgradeEffectsDictionary2.default[2][_serverInfo.serverInfo.roleStats[2].lvl].range * 2 + 1;
 
-                case 1:
-                    mapSize = 5;
-                    break;
-
-                case 2:
-                    mapSize = 5;
-                    break;
-
-                case 3:
-                    mapSize = 7;
-                    break;
-
-                case 4:
-                    mapSize = 7;
-                    break;
-
-                case 5:
-                    mapSize = 9;
-                    break;
-            }
+            // TO DO: Not used at the moment (might only be needed at the server)
+            var detailSize = _upgradeEffectsDictionary2.default[2][_serverInfo.serverInfo.roleStats[2].lvl].detail * 2 + 1;
 
             // TO DO
             // this is the total size of the map (displayed on monitor)
@@ -3965,7 +3959,16 @@ function loadPlayInterface(num, cont) {
             _serverInfo.serverInfo.submittedUpgrade[num] = true;
         });
 
+        // add button to container
         cont.appendChild(upgradeBtn);
+
+        // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
+        var divLevelStats = document.createElement("div");
+        divLevelStats.classList.add("levelStats");
+
+        divLevelStats.innerHTML = displayUpgradeStats(num, _serverInfo.serverInfo.roleStats[num].lvl);
+
+        cont.appendChild(divLevelStats);
     }
 };
 
@@ -3993,6 +3996,28 @@ module.exports = UPGRADE_DICT;
 
 /***/ }),
 /* 28 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+// The upgrade effects dictionary contains the BENEFIT (or EFFECT/RESULT) of each upgrade
+// The structure is as follows:
+//  - Top level = array, index represents role
+//     - 2nd level = array, index represents level (you're upgrading TO)
+//        - 3rd level = object, key is the variable/thing being updated, value is to WHAT it's updated
+
+var UPGRADE_EFFECT_DICT = [[], // captain (has no upgrades)
+[{ angle: 0 }, { angle: 45 }, { angle: 45 }, { angle: 90 }, { angle: 90 }, { angle: 135 }], // first mate
+[{ range: 1, detail: 0 }, { range: 2, detail: 0 }, { range: 3, detail: 0 }, { range: 3, detail: 1 }, { range: 4, detail: 1 }, { range: 5, detail: 2 }], // cartographer
+[{ maxSpeed: 1, maxChange: 1 }, { maxSpeed: 2, maxChange: 1 }, { maxSpeed: 3, maxChange: 1 }, { maxSpeed: 3, maxChange: 2 }, { maxSpeed: 4, maxChange: 2 }, { maxSpeed: 5, maxChange: 3 }], // sailor
+[{ range: 1, spread: 0 }, { range: 2, spread: 0 }, { range: 2, spread: 1 }, { range: 3, spread: 1 }, { range: 3, spread: 2 }, { range: 4, spread: 2 }] // weapon specialist
+];
+
+module.exports = UPGRADE_EFFECT_DICT;
+
+/***/ }),
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4299,7 +4324,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

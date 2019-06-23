@@ -11,6 +11,7 @@ Server.listen(PORT, () => console.log('Game server running on:', PORT))
 const rooms = {}
 
 const UPGRADE_DICT = require('../vendor/upgradeDictionary.js')
+const UPGRADE_EFFECT_DICT = require('../vendor/upgradeEffectsDictionary.js')
 const noise = require('../vendor/perlinImproved.js');
 
 io.on('connection', socket => {
@@ -55,7 +56,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: false,
+      prepSkip: true,
 
       monsterDrawings: [],
       monsterTypes: [],
@@ -440,11 +441,14 @@ io.on('connection', socket => {
 
   // When someone submits a drawing ...
   socket.on('submit-profile-pic', state => {
-    let room = socket.mainRoom
-    let curRoom = rooms[room]
-    let curPlayer = curRoom.players[socket.id]
+    let curRoom = rooms[socket.mainRoom]
 
-    console.log('Received profile pic in room ' + room);
+    // if the room doesn't exist or has no players, don't do anything
+    if(curRoom == null || curRoom.players == null) {
+      return;
+    }
+
+    let curPlayer = curRoom.players[socket.id]
 
     // save the drawing as profile picture (for this player)
     curPlayer.profile = state.dataURI
@@ -844,7 +848,7 @@ function createPlayerShips(room) {
   // now we distribute roles for each ship.
   // for each boat ...
   for(let i = 0; i < numberBoats; i++) {
-    let fullRoleList = [0,1,2,3,4];
+    let fullRoleList = [0,1,2,3];
     let playersOnShip = room.playerShips[i].players.length;
 
     let curPlayer = 0;
@@ -1225,40 +1229,9 @@ function startTurn(room, gameStart = false) {
 
     // == CARTOGRAPHER STUFF ==
     // Get the map range AND what units are visible
-    let mapSize = 3, sightLvl = 0;
-
-    // Determine map size and visible units based on instrument level
-    switch(curShip.roleStats[2].lvl) {
-        case 0:
-            mapSize = 3;
-            sightLvl = 0;
-            break;
-
-        case 1:
-            mapSize = 5
-            sightLvl = 0
-            break;
-
-        case 2:
-            mapSize = 5
-            sightLvl = 1
-            break;
-
-        case 3:
-            mapSize = 7
-            sightLvl = 1
-            break;
-
-        case 4:
-            mapSize = 7
-            sightLvl = 2
-            break;
-
-        case 5:
-            mapSize = 9
-            sightLvl = 2
-            break;
-    }
+    const tempUpgradeEffects = UPGRADE_EFFECT_DICT[2][curShip.roleStats[2].lvl];
+    let mapSize = tempUpgradeEffects.range * 2 + 1;
+    let detailLvl = tempUpgradeEffects.detail;
 
     // Loop through these tiles to find all units within them
     // Generate a 2D array with a "personalized" view of all the units
@@ -1278,40 +1251,41 @@ function startTurn(room, gameStart = false) {
 
         let mapTile = curRoom.map[yTile][xTile];
 
-        // if our sight is at least level 1, we can see docks and AI ships
-        if(sightLvl >= 1) {
-          // if this tile has a dock, add it
-          if(mapTile.dock != null) {
-            curShip.personalUnits.push({ myType: 3, index: 0, x: x, y: y });
-          }
+        // if this tile has no units (which we keep track of), immediately continue
+        if(!mapTile.hasUnits) {
+          continue;
+        }
 
-          // if this tile has ai ships, add them
-          if(mapTile.aiShips.length > 0) {
-            // send the type of this object AND the drawing index (or "AI type")
-            for(let aa = 0; aa < mapTile.aiShips.length; aa++) {
-              const myIndex = mapTile.aiShips[aa];
-              curShip.personalUnits.push({ myType: 2, index: curRoom.aiShips[myIndex].myShipType, x: x, y: y });
-            }
+        // TO DO: Based on "detailLvl", send more or less info about a particular object (like orientation, last known speed, etc.)
+
+        // if this tile has a dock, add it
+        if(mapTile.dock != null) {
+          curShip.personalUnits.push({ myType: 3, index: 0, x: x, y: y });
+        }
+
+        // if this tile has ai ships, add them
+        if(mapTile.aiShips.length > 0) {
+          // send the type of this object AND the drawing index (or "AI type")
+          for(let aa = 0; aa < mapTile.aiShips.length; aa++) {
+            const myIndex = mapTile.aiShips[aa];
+            curShip.personalUnits.push({ myType: 2, index: curRoom.aiShips[myIndex].myShipType, x: x, y: y });
           }
         }
 
-        // if our sight is at least level 2, we can see monsters and player ships as well!
-        if(sightLvl >= 2) {
-          // if this tile has monsters, add them
-          if(mapTile.monsters.length > 0) {
-            for(let aa = 0; aa < mapTile.monsters.length; aa++) {
-              const myIndex = mapTile.monsters[aa];
-              curShip.personalUnits.push({ myType: 1, index: curRoom.monsters[myIndex].myMonsterType, x: x, y: y });
-            }
+        // if this tile has monsters, add them
+        if(mapTile.monsters.length > 0) {
+          for(let aa = 0; aa < mapTile.monsters.length; aa++) {
+            const myIndex = mapTile.monsters[aa];
+            curShip.personalUnits.push({ myType: 1, index: curRoom.monsters[myIndex].myMonsterType, x: x, y: y });
           }
+        }
 
-          // if this tile has player ships, add them
-          if(mapTile.playerShips.length > 0) {
-            for(let aa = 0; aa < mapTile.playerShips.length; aa++) {
-              const myIndex = mapTile.playerShips[aa];
-              if(myIndex == curShip.num) { continue; } // if this is our own ship, ignore it
-              curShip.personalUnits.push({ myType: 0, index: curRoom.playerShips[myIndex].num, x: x, y: y });
-            }
+        // if this tile has player ships, add them
+        if(mapTile.playerShips.length > 0) {
+          for(let aa = 0; aa < mapTile.playerShips.length; aa++) {
+            const myIndex = mapTile.playerShips[aa];
+            if(myIndex == curShip.num) { continue; } // if this is our own ship, ignore it
+            curShip.personalUnits.push({ myType: 0, index: curRoom.playerShips[myIndex].num, x: x, y: y });
           }
         }
       }
@@ -1475,8 +1449,11 @@ function finishTurn(room) {
     // clear error messages
     curShip.errorMessages = [];
 
+    // stop firing!
+    curShip.willFire = false;
+
     // count the average for this ship
-    // IGNORE the captain
+    // NOTE: "role = 1", because we IGNORE the captain
     let tempAverage = 0;
     for(let role = 1; role < curShip.roleStats.length; role++) {
       tempAverage += curShip.roleStats[role].lvl;
@@ -1495,9 +1472,10 @@ function finishTurn(room) {
 
   **/
   // pick a few tiles from the marked tiles
-  // TO DO: Right now, the maximum is set to 3 - is this good??
+  // TO DO: Right now, the maximum is set to 10 - is this good??
   let numMarkedTiles = curRoom.markedFogTiles.length;
-  let numReveals = Math.min(numMarkedTiles, 3);
+  const maxReveals = 10;
+  let numReveals = Math.min(numMarkedTiles, maxReveals);
   let fogRevealTiles = [];
 
   //console.log(JSON.stringify(curRoom.markedFogTiles), numReveals);
@@ -1554,33 +1532,15 @@ function finishTurn(room) {
 
     // Set range based on level
     let weaponLvl = curShip.roleStats[4].lvl;
-    let range = 4, spread = 3;
-    switch(weaponLvl) {
-      case 0:
-        range = 1;
-        spread = 0;
-        break
+    let tempUpgradeEffects = UPGRADE_EFFECT_DICT[4][weaponLvl];
+    let range = tempUpgradeEffects.range;
+    let spread = tempUpgradeEffects.spread;
 
-      case 1:
-        range = 2
-        spread = 0
-        break
-
-      case 2:
-        range = 2
-        spread = 1
-        break
-
-      case 3:
-        range = 3
-        spread = 1
-        break
-
-      case 4:
-        range = 3
-        spread = 2
-        break
-
+    // if we're playing the beginner variant, set fixed cannon stats
+    // TO DO: Do an actual check
+    let cannoneerInGame = false;
+    if(!cannoneerInGame) {
+      ammo = [0,3,0,3];
     }
 
     // establish the ship angle
@@ -1954,10 +1914,6 @@ function finishTurn(room) {
   startTurn(room)
 }
 
-function generateDockDeal() {
-
-}
-
 /* 
   This function creates a new SHIP (object)
 
@@ -1972,6 +1928,13 @@ function generateDockDeal() {
   => cannons (the load of cannons; negative indicates the cannon hasn't been bought yet)
  */
 function createShip(index) {
+
+  // if the cannoneer isn't in the game, set it to a fixed (near maximum) level
+  let cannons = [2, -1, -1, -1], cannoneerLvl = 0;
+  if(!cannoneerInGame) {
+    cannons = [0, 3, 0, 3]
+    cannoneerLvl = 3;
+  }
 
   return {
     num: index,
@@ -1988,8 +1951,8 @@ function createShip(index) {
       { lvl: 0, lvlUp: false }, 
       { lvl: 0, lvlUp: false }, 
       { lvl: 0, lvlUp: false, sailLvl: 0, peddleLvl: 0 }, 
-      { lvl: 0, lvlUp: false } ], 
-    cannons: [2, -1, -1, -1],
+      { lvl: cannoneerLvl, lvlUp: false } ], 
+    cannons: cannons,
     errorMessages: [],
   }
 

@@ -1,10 +1,11 @@
 import { serverInfo } from '../sockets/serverInfo'
 import { SHIP_COLORS } from '../utils/shipColors'
+
 import UPGRADE_DICT from '../../../vendor/upgradeDictionary'
+import UPGRADE_EFFECT_DICT from '../../../vendor/upgradeEffectsDictionary'
+
 import { ROLE_DICTIONARY } from '../utils/roleDictionary'
 import LOAD_ERROR_MESSAGE from './loadErrorMessage'
-
-import dynamicLoadImage from '../drawing/dynamicLoadImage'
 
 import noise from '../../../vendor/perlinImproved'
 
@@ -42,24 +43,7 @@ function compassMove(ev) {
 
     // Lock angle to compass level 
     // Determine the maximum rotation per turn (based on compass level)
-    var deltaAngle = 180;
-    switch(serverInfo.roleStats[1].lvl) {
-        case 0:
-            deltaAngle = 45;
-            break;
-        case 1:
-            deltaAngle = 90;
-            break;
-        case 2:
-            deltaAngle = 90;
-            break;
-        case 3:
-            deltaAngle = 135;
-            break;
-        case 4:
-            deltaAngle = 135;
-            break;
-    }
+    var deltaAngle = UPGRADE_EFFECT_DICT[1][serverInfo.roleStats[1].lvl].angle;
 
     // get distance from current angle to current ship orientation
     // if this distance is above delta, you're too far
@@ -221,6 +205,38 @@ function loadDeal(deal) {
     const good2 = '<img src="assets/resourceIcon' + deal[1][0] + '.png" />' + '<strong> x ' + deal[1][1] + '</strong>'
 
     return '<p class="captain-dockDeal">' + good1 + ' ==> ' + good2 + '</p>';
+}
+
+function displayUpgradeStats(role, level) {
+    let curStats = UPGRADE_EFFECT_DICT[role][level]
+
+    // TO DO: On max level, don't get next stats, and don't display stuff about it
+    // Right now, it would throw an error trying to get level 7 (index 6) from the array
+    let nextStats = UPGRADE_EFFECT_DICT[role][(level+1)]
+
+    let curString = '';
+
+    for(let key in curStats) {
+        let curLevel = curStats[key];
+        let nextLevel = nextStats[key]
+
+        // display which property is being upgraded (get it directly from the object)
+        curString += key + ': ';
+
+        // display the current level of this property
+        curString += curLevel;
+
+        // display next level (if you were to upgrade)
+        if(nextLevel > curLevel) {
+            curString += ' <span style="color:lightgreen;">(&uarr;' + nextLevel + ')</span>'
+        } else if(nextLevel == curLevel) {
+            curString += ' <span>(&middot;' + nextLevel + ')</span>'
+        } else if(nextLevel < curLevel) {
+            curString += ' <span style="color:red;">(&darr;' + nextLevel + ')</span>'
+        }
+    }
+
+    return curString;
 }
 
 /*
@@ -471,33 +487,12 @@ export default function loadPlayInterface(num, cont) {
             // Create graphics object
             var graphics = canvas.myGame.add.graphics(0, 0);
 
-            let mapSize = 3;
-            // Determine map size based on instrument level
-            switch(serverInfo.roleStats[2].lvl) {
-                case 0:
-                    mapSize = 3;
-                    break;
+            // Get map size from the upgrade effect dictionary. 
+            // This size is a "radius", so transform it into the actual region of tiles around the ship
+            let mapSize = UPGRADE_EFFECT_DICT[2][serverInfo.roleStats[2].lvl].range * 2 + 1;
 
-                case 1:
-                    mapSize = 5
-                    break;
-
-                case 2:
-                    mapSize = 5
-                    break;
-
-                case 3:
-                    mapSize = 7
-                    break;
-
-                case 4:
-                    mapSize = 7
-                    break;
-
-                case 5:
-                    mapSize = 9
-                    break;
-            }
+            // TO DO: Not used at the moment (might only be needed at the server)
+            let detailSize = UPGRADE_EFFECT_DICT[2][serverInfo.roleStats[2].lvl].detail * 2 + 1;
 
             // TO DO
             // this is the total size of the map (displayed on monitor)
@@ -857,13 +852,15 @@ export default function loadPlayInterface(num, cont) {
     }
 
     // if no upgrade has been submitted yet, display the upgrade button
-    // also, the captain (role 0) is the ONLY role without an upgrade button
-    if(!serverInfo.submittedUpgrade[num] && num != 0) {
+    // NOTE: the captain (role 0) is the ONLY role without an upgrade button
+    // NOTE: All instruments go from level 0 to 5 - never higher, so don't display an upgrade button then
+    let nextLevel = (serverInfo.roleStats[num].lvl + 1);
+    if(!serverInfo.submittedUpgrade[num] && num != 0 && nextLevel <= 5) {
         let upgradeBtn = document.createElement("button");
         upgradeBtn.classList.add("upgradeButton");
 
         // load the required resources for the NEXT level of this role 
-        upgradeBtn.innerHTML = loadUpgradeButton(num, (serverInfo.roleStats[num].lvl + 1) );
+        upgradeBtn.innerHTML = loadUpgradeButton(num,  );
 
         // on click, send upgrade signal, remove this button, remember we've already upgraded
         upgradeBtn.addEventListener('click', function() {
@@ -873,7 +870,16 @@ export default function loadPlayInterface(num, cont) {
             serverInfo.submittedUpgrade[num] = true;
         })
 
+        // add button to container
         cont.appendChild(upgradeBtn);
+
+        // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
+        let divLevelStats = document.createElement("div");
+        divLevelStats.classList.add("levelStats")
+
+        divLevelStats.innerHTML = displayUpgradeStats(num, serverInfo.roleStats[num].lvl)
+
+        cont.appendChild(divLevelStats)
     }
 
 };
