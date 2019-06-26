@@ -4,6 +4,7 @@ import loadMainSockets from './sockets/mainSocketsController'
 import loadRejoinRoom from './sockets/rejoinRoomModule'
 
 import { ROLE_DICTIONARY } from './utils/roleDictionary'
+import { ROLE_HELP_TEXT } from './utils/roleHelpText'
 import LOAD_TAB from './utils/loadTab'
 
 import { controllerTimer } from './utils/timers'
@@ -63,7 +64,7 @@ class ControllerWaiting extends Phaser.State {
       this.game.load.image('dock', serverInfo.dockDrawing);
     }
   }
-
+  
   create () {    
     let gm = this.game
     let socket = serverInfo.socket
@@ -71,6 +72,7 @@ class ControllerWaiting extends Phaser.State {
     let curTab = { num: 0 }
 
     let div = document.getElementById("main-controller")
+    let ths = this; // for referencing the original "this" object within eventListeners
 
     /**** 
 
@@ -155,6 +157,16 @@ class ControllerWaiting extends Phaser.State {
 
     *****/
 
+    // Add the "help" overlay (and event listener to close it)
+    let helpOverlay = document.createElement("div")
+    helpOverlay.classList.add("helpOverlay")
+
+    helpOverlay.addEventListener('click', function(ev) {
+      helpOverlay.style.display = 'none';
+    }, false)
+
+    div.appendChild(helpOverlay);
+
     // Add the health bar at the top
     let healthBar = document.createElement("div");
     healthBar.id = "healthBar";
@@ -167,6 +179,24 @@ class ControllerWaiting extends Phaser.State {
     shipInfo.innerHTML = '<img src="' + serverInfo.shipFlag + '" />' + serverInfo.shipTitle;
     shipInfo.classList.add('shipColor' + serverInfo.myShip); // set font to the right color
     div.appendChild(shipInfo);
+
+    // Add the help button (which will trigger the helpOverlay)
+    let helpButton = document.createElement("div");
+    helpButton.innerHTML = '?'
+    helpButton.classList.add('helpButton');
+
+    // On clicking the help button, an overlay appears with help text
+    helpButton.addEventListener('click', function() {
+      // make overlay visible
+      helpOverlay.style.display = 'block'
+
+      // fill it with the right text (based on current role tab)
+      helpOverlay.innerHTML = ROLE_HELP_TEXT[curTab.num]
+
+      // the overlay itself has an event listener for closing it
+    }, false);
+
+    div.appendChild(helpButton)
 
     // Add the tabs for switching roles
     // first create the container
@@ -225,7 +255,6 @@ class ControllerWaiting extends Phaser.State {
     // Function that is called whenever a new turn starts
     // Resets timer, cleans interface variables, reloads first tab
     // This is called AFTER the pre-signal that sets all sorts of information
-    let ths = this;
     socket.on('new-turn', data => {
       console.log("New turn => resetting timer to " + serverInfo.timer);
 

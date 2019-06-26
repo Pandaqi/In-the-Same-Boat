@@ -928,31 +928,55 @@ export default function loadPlayInterface(num, cont) {
     // NOTE: the captain (role 0) is the ONLY role without an upgrade button
     // NOTE: All instruments go from level 0 to 5 - never higher, so don't display an upgrade button then
     let nextLevel = (serverInfo.roleStats[num].lvl + 1);
-    if(!serverInfo.submittedUpgrade[num] && num != 0 && nextLevel <= 5) {
-        let upgradeBtn = document.createElement("button");
-        upgradeBtn.classList.add("upgradeButton");
+    if(num != 0) {
+        // If no upgrade submitted...
+        if(!serverInfo.submittedUpgrade[num]) {
+            // If we can still upgrade, display the upgrade button
+            if(nextLevel <= 5) {
+                let upgradeBtn = document.createElement("button");
+                upgradeBtn.classList.add("upgradeButton");
 
-        // load the required resources for the NEXT level of this role 
-        upgradeBtn.innerHTML = loadUpgradeButton(num, nextLevel);
+                // load the required resources for the NEXT level of this role 
+                upgradeBtn.innerHTML = loadUpgradeButton(num, nextLevel);
 
-        // on click, send upgrade signal, remove this button, remember we've already upgraded
-        upgradeBtn.addEventListener('click', function() {
-            socket.emit('upgrade', num);
+                // on click, send upgrade signal, remove this button, display feedback text, remember we've already upgraded
+                upgradeBtn.addEventListener('click', function() {
+                    socket.emit('upgrade', num);
 
-            this.remove();
-            serverInfo.submittedUpgrade[num] = true;
-        })
+                    this.remove();
+                    document.getElementById('currentLevelStats').remove();
+                    serverInfo.submittedUpgrade[num] = true;
 
-        // add button to container
-        cont.appendChild(upgradeBtn);
+                    let p2 = document.createElement("p");
+                    p2.innerHTML = "Upgrade requested. It takes a turn before it's done."
 
-        // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
-        let divLevelStats = document.createElement("div");
-        divLevelStats.classList.add("levelStats")
+                    cont.appendChild(p2)
+                })
 
-        divLevelStats.innerHTML = displayUpgradeStats(num, serverInfo.roleStats[num].lvl)
+                // add button to container
+                cont.appendChild(upgradeBtn);
 
-        cont.appendChild(divLevelStats)
+                // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
+                let divLevelStats = document.createElement("div");
+                divLevelStats.classList.add("levelStats")
+                divLevelStats.id = 'currentLevelStats'
+
+                divLevelStats.innerHTML = displayUpgradeStats(num, serverInfo.roleStats[num].lvl)
+
+                cont.appendChild(divLevelStats)
+            } else {
+                // Otherwise, tell the player he's maxed out
+                let p0 = document.createElement("p");
+                p0.innerHTML = 'You are at maximum level!'
+
+                cont.appendChild(p0)
+            }
+        } else {
+            let p1 = document.createElement("p");
+            p1.innerHTML = "Upgrade requested. It takes a turn before it's done."
+
+            cont.appendChild(p1)
+        }
     }
 
 };

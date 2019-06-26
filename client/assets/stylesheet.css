@@ -238,6 +238,45 @@ h1 {
   margin-right:10px;
 }
 
+.helpButton {
+  position: absolute;
+  z-index: 50;
+  top: 10px;
+  right: 10px;
+  font-family: 'Pirata One', cursive;
+  background-color: rgba(0,0,0,0.75);
+  border-radius: 50%;
+
+  padding: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+
+  line-height: 20px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.helpOverlay {
+  position: fixed;
+  background-color: rgba(0,0,0,0.9);
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  padding: 20px;
+  display: none;
+  overflow: scroll;
+}
+
+.helpOverlay p {
+  margin: 10px;
+}
+
+.helpOverlay p strong {
+  color: green;
+}
+
 /*** 
  * 
  * General interface rules (buttons, sliders, etc.)

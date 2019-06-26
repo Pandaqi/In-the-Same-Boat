@@ -1114,7 +1114,7 @@ var _ControllerPlay = __webpack_require__(29);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(30);
+var _ControllerOver = __webpack_require__(31);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -4020,31 +4020,53 @@ function loadPlayInterface(num, cont) {
     // NOTE: the captain (role 0) is the ONLY role without an upgrade button
     // NOTE: All instruments go from level 0 to 5 - never higher, so don't display an upgrade button then
     var nextLevel = _serverInfo.serverInfo.roleStats[num].lvl + 1;
-    if (!_serverInfo.serverInfo.submittedUpgrade[num] && num != 0 && nextLevel <= 5) {
-        var upgradeBtn = document.createElement("button");
-        upgradeBtn.classList.add("upgradeButton");
+    if (num != 0) {
+        // If no upgrade submitted...
+        if (!_serverInfo.serverInfo.submittedUpgrade[num]) {
+            // If we can still upgrade, display the upgrade button
+            if (nextLevel <= 5) {
+                var upgradeBtn = document.createElement("button");
+                upgradeBtn.classList.add("upgradeButton");
 
-        // load the required resources for the NEXT level of this role 
-        upgradeBtn.innerHTML = loadUpgradeButton(num, nextLevel);
+                // load the required resources for the NEXT level of this role 
+                upgradeBtn.innerHTML = loadUpgradeButton(num, nextLevel);
 
-        // on click, send upgrade signal, remove this button, remember we've already upgraded
-        upgradeBtn.addEventListener('click', function () {
-            socket.emit('upgrade', num);
+                // on click, send upgrade signal, remove this button, display feedback text, remember we've already upgraded
+                upgradeBtn.addEventListener('click', function () {
+                    socket.emit('upgrade', num);
 
-            this.remove();
-            _serverInfo.serverInfo.submittedUpgrade[num] = true;
-        });
+                    this.remove();
+                    _serverInfo.serverInfo.submittedUpgrade[num] = true;
 
-        // add button to container
-        cont.appendChild(upgradeBtn);
+                    var p2 = document.createElement("p");
+                    p2.innerHTML = "Upgrade requested. It takes a turn before it's done.";
 
-        // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
-        var divLevelStats = document.createElement("div");
-        divLevelStats.classList.add("levelStats");
+                    cont.appendChild(p2);
+                });
 
-        divLevelStats.innerHTML = displayUpgradeStats(num, _serverInfo.serverInfo.roleStats[num].lvl);
+                // add button to container
+                cont.appendChild(upgradeBtn);
 
-        cont.appendChild(divLevelStats);
+                // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
+                var divLevelStats = document.createElement("div");
+                divLevelStats.classList.add("levelStats");
+
+                divLevelStats.innerHTML = displayUpgradeStats(num, _serverInfo.serverInfo.roleStats[num].lvl);
+
+                cont.appendChild(divLevelStats);
+            } else {
+                // Otherwise, tell the player he's maxed out
+                var p0 = document.createElement("p");
+                p0.innerHTML = 'You are at maximum level!';
+
+                cont.appendChild(p0);
+            }
+        } else {
+            var p1 = document.createElement("p");
+            p1.innerHTML = "Upgrade requested. It takes a turn before it's done.";
+
+            cont.appendChild(p1);
+        }
     }
 };
 
@@ -4118,6 +4140,8 @@ var _rejoinRoomModule = __webpack_require__(9);
 var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
 var _roleDictionary = __webpack_require__(7);
+
+var _roleHelpText = __webpack_require__(30);
 
 var _loadTab = __webpack_require__(14);
 
@@ -4205,6 +4229,7 @@ var ControllerWaiting = function (_Phaser$State) {
       var curTab = { num: 0 };
 
       var div = document.getElementById("main-controller");
+      var ths = this; // for referencing the original "this" object within eventListeners
 
       /**** 
           DO SOME EXTRA INITIALIZATION 
@@ -4285,6 +4310,16 @@ var ControllerWaiting = function (_Phaser$State) {
           DISPLAY INTERFACE 
         *****/
 
+      // Add the "help" overlay (and event listener to close it)
+      var helpOverlay = document.createElement("div");
+      helpOverlay.classList.add("helpOverlay");
+
+      helpOverlay.addEventListener('click', function (ev) {
+        helpOverlay.style.display = 'none';
+      }, false);
+
+      div.appendChild(helpOverlay);
+
       // Add the health bar at the top
       var healthBar = document.createElement("div");
       healthBar.id = "healthBar";
@@ -4297,6 +4332,24 @@ var ControllerWaiting = function (_Phaser$State) {
       shipInfo.innerHTML = '<img src="' + _serverInfo.serverInfo.shipFlag + '" />' + _serverInfo.serverInfo.shipTitle;
       shipInfo.classList.add('shipColor' + _serverInfo.serverInfo.myShip); // set font to the right color
       div.appendChild(shipInfo);
+
+      // Add the help button (which will trigger the helpOverlay)
+      var helpButton = document.createElement("div");
+      helpButton.innerHTML = '?';
+      helpButton.classList.add('helpButton');
+
+      // On clicking the help button, an overlay appears with help text
+      helpButton.addEventListener('click', function () {
+        // make overlay visible
+        helpOverlay.style.display = 'block';
+
+        // fill it with the right text (based on current role tab)
+        helpOverlay.innerHTML = _roleHelpText.ROLE_HELP_TEXT[curTab.num];
+
+        // the overlay itself has an event listener for closing it
+      }, false);
+
+      div.appendChild(helpButton);
 
       // Add the tabs for switching roles
       // first create the container
@@ -4353,7 +4406,6 @@ var ControllerWaiting = function (_Phaser$State) {
       // Function that is called whenever a new turn starts
       // Resets timer, cleans interface variables, reloads first tab
       // This is called AFTER the pre-signal that sets all sorts of information
-      var ths = this;
       socket.on('new-turn', function (data) {
         console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
 
@@ -4401,6 +4453,39 @@ exports.default = ControllerWaiting;
 
 /***/ }),
 /* 30 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+var ROLE_HELP_TEXT = exports.ROLE_HELP_TEXT = [
+// Captain
+"<p>The <strong>Captain</strong> makes the most important decisions on the ship. He's also the only one who can see the 4 basic resources: crew, gold, wood, treasure.</p>\
+    <p>His most important decision is whether to fight ( = fire all the cannons). He can also discover new islands, trade resources with a dock, and more.</p>\
+    <p>The captain is the only role that can't be upgraded</p>",
+
+// First Mate
+"<p>The <strong>First Mate</strong> steers the ship by rotating the compass towards the desired direction.</p>\
+    <p>The ship in the background reminds you of last turn's orientation.</p>\
+    <p>At the start, you can't rotate the compass. By upgrading, you get more freedom of movement. The red circle indicates angles you can NOT choose.</p>",
+
+// Cartographer
+"<p>The <strong>Cartographer</strong> is the only one who can read the map (and has to find out where the ship is)</p>\
+	<p>By sliding/dragging your finger, you can move around the map.</p>\
+	<p>At the start, you can only see a small area around you. By upgrading, your sight improves: you can see further and get more details about surrounding units.</p>\
+	<p>TIP: Constantly tell the others what's happening. The First Mate and Sailor cannot sail blind - they depend on you!</p>",
+
+// Sailor
+"<p>The <strong>Sailor</strong> determines the speed of the ship. He can adjust the sails or make crew row the boat.</p>\
+	<p>Adjusting the sails is a one-time action: you spend X crew to quickly change the sail.</p>\
+	<p>Rowing is continuous: once you spend X crew on rowing, they will keep rowing until you tell them to stop.</p>\
+	<p>At the start, the ship has a small maximum speed and maximum change (acceleration/deceleration). By upgrading, you can raise this ceiling.</p>"];
+
+/***/ }),
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
