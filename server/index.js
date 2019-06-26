@@ -1930,7 +1930,7 @@ function finishTurn(room) {
 function createShip(index) {
 
   // if the cannoneer isn't in the game, set it to a fixed (near maximum) level
-  let cannons = [2, -1, -1, -1], cannoneerLvl = 0;
+  let cannons = [2, -1, -1, -1], cannoneerLvl = 0, cannoneerInGame = false;
   if(!cannoneerInGame) {
     cannons = [0, 3, 0, 3]
     cannoneerLvl = 3;

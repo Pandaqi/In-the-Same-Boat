@@ -3207,7 +3207,7 @@ function mapMove(ev) {
 
     @parameter role => the role that wants an upgrade (every role only has one upgrade)
     @parameter level => the level we're upgrading TOWARDS
-    @parameter serverInfo => global variable, in case we need it (for certain (cumulative) upgrades)
+    @parameter targetLevel => level we're building towards (for certain (cumulative) upgrades)
 */
 function loadUpgradeButton(role, level) {
     var targetLevel = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
@@ -3295,13 +3295,13 @@ function displayUpgradeStats(role, level) {
         curString += key + ': ';
 
         // display the current level of this property
-        curString += curStats[key];
+        curString += curLevel;
 
         // display next level (if you were to upgrade)
         if (nextLevel > curLevel) {
             curString += ' <span style="color:lightgreen;">(&uarr;' + nextLevel + ')</span>';
         } else if (nextLevel == curLevel) {
-            curString += ' <span>(&rarr;' + nextLevel + ')</span>';
+            curString += ' <span>(&middot;' + nextLevel + ')</span>';
         } else if (nextLevel < curLevel) {
             curString += ' <span style="color:red;">(&darr;' + nextLevel + ')</span>';
         }
@@ -3499,6 +3499,80 @@ function loadPlayInterface(num, cont) {
             bgCompass.style.position = 'absolute';
 
             cont.appendChild(bgCompass);
+
+            // Show which part of the compas is disabled/"forbidden"
+            /***
+                 CREATING SVG ARC
+             ***/
+            var svg1 = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+            // set width and height
+            svg1.setAttribute("width", "100%");
+            svg1.setAttribute("viewBox", "0 0 100 100");
+            svg1.style.position = "absolute";
+
+            // get maximum steering angle + current orientation
+            var deltaAngle = _upgradeEffectsDictionary2.default[1][_serverInfo.serverInfo.roleStats[1].lvl].angle;;
+            var oldOrientation = _serverInfo.serverInfo.oldOrientation;
+
+            // Don't display anything if we have full steering range
+            if (deltaAngle < 180) {
+                // get how large the gap should be
+                var targetAngle = (0 + deltaAngle * 2) * 180 / Math.PI;
+
+                // if we have no range, we need to make a "dot" at our current rotation, and make the rest a circle 
+                if (targetAngle == 0) {
+                    targetAngle = 0.1;
+                }
+
+                // set circle parameters
+                var cx = 50,
+                    cy = 50,
+                    rx = 45,
+                    ry = 45;
+                var lineSize = 3;
+
+                // determine start and end position
+                var startPos = { x: cx + rx, y: cy };
+                var endPos = { x: cx + Math.cos(targetAngle) * rx, y: cy + Math.sin(targetAngle) * ry
+
+                    // determine large and sweep flags 
+                    // (to ensure the arc always follows a circle)
+                };var largeArc = 1;
+                if (deltaAngle >= 90) {
+                    largeArc = 0;
+                }
+
+                var sweepFlag = 1;
+                if (deltaAngle == 0) {
+                    sweepFlag = 0;
+                }
+
+                // move to start point, draw arc towards end point, make it a large arc.
+                var tempPath = 'M ' + startPos.x + ' ' + startPos.y + ' ';
+                tempPath += 'A ' + rx + ' ' + ry + ' 0 ' + largeArc + ' ' + sweepFlag + ' ' + endPos.x + ' ' + endPos.y;
+
+                // create path (according to tempPath template)
+                var newpath = document.createElementNS('http://www.w3.org/2000/svg', "path");
+                newpath.setAttributeNS(null, "d", tempPath);
+                newpath.setAttributeNS(null, "stroke", "red");
+                newpath.setAttributeNS(null, "stroke-width", lineSize);
+                newpath.setAttributeNS(null, "fill", "none");
+                newpath.setAttributeNS(null, "stroke-linecap", "round");
+
+                // add this path (which is an arc with a gap) to the SVG element
+                svg1.appendChild(newpath);
+            }
+
+            // add complete SVG element to the container
+            cont.appendChild(svg1);
+
+            // rotate the SVG to match current ship rotation
+            svg1.style.transform = 'rotate(' + (oldOrientation * 45 + deltaAngle) + 'deg)';
+
+            /***
+                 END OF SVG ARC CODE
+             ***/
 
             // Now add the compass POINTER
             var compassPointer = document.createElement("img");
@@ -3943,13 +4017,15 @@ function loadPlayInterface(num, cont) {
     }
 
     // if no upgrade has been submitted yet, display the upgrade button
-    // also, the captain (role 0) is the ONLY role without an upgrade button
-    if (!_serverInfo.serverInfo.submittedUpgrade[num] && num != 0) {
+    // NOTE: the captain (role 0) is the ONLY role without an upgrade button
+    // NOTE: All instruments go from level 0 to 5 - never higher, so don't display an upgrade button then
+    var nextLevel = _serverInfo.serverInfo.roleStats[num].lvl + 1;
+    if (!_serverInfo.serverInfo.submittedUpgrade[num] && num != 0 && nextLevel <= 5) {
         var upgradeBtn = document.createElement("button");
         upgradeBtn.classList.add("upgradeButton");
 
         // load the required resources for the NEXT level of this role 
-        upgradeBtn.innerHTML = loadUpgradeButton(num, _serverInfo.serverInfo.roleStats[num].lvl + 1);
+        upgradeBtn.innerHTML = loadUpgradeButton(num, nextLevel);
 
         // on click, send upgrade signal, remove this button, remember we've already upgraded
         upgradeBtn.addEventListener('click', function () {
