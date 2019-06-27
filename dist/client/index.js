@@ -3088,6 +3088,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
     The cartographer needs to move the map around
 
+    The sailor needs to calculate which sail/peddle levels it may set (mostly based on max speed and max change)
+
 */
 function compassMove(ev) {
     ev.preventDefault();
@@ -3201,6 +3203,85 @@ function mapMove(ev) {
 
     // update oldMovePoint
     cv.oldMovePoint = coords;
+}
+
+function disableForbiddenMoves() {
+    /* There are four reasons a move might be forbidden:
+        => It changes the ship speed to a negative number
+        => It changes the ship speed to a number ABOVE max speed
+        => It changes the ship speed by TOO MUCH in a single turn 
+        => It changes sail/peddles to a negative number (we can't have -1 crew rowing the boat")
+        This function goes through all the moves and marks the forbidden ones.
+        Then, we make sure to display these options as "forbidden", AND disallow pulling the slider towards it
+    */
+
+    // get old speed
+    var oldSpeed = _serverInfo.serverInfo.oldSpeed;
+
+    // get old sail/peddle level
+    var oldSail = _serverInfo.serverInfo.roleStats[3].oldSailLvl;
+    var oldPeddle = _serverInfo.serverInfo.roleStats[3].oldPeddleLvl;
+
+    // get new/current sail/peddle level
+    var curSail = _serverInfo.serverInfo.roleStats[3].sailLvl;
+    var curPeddle = _serverInfo.serverInfo.roleStats[3].peddleLvl;
+
+    // get speed stats
+    var speedStats = _upgradeEffectsDictionary2.default[3][_serverInfo.serverInfo.roleStats[3].lvl];
+    var maxSpeed = speedStats.speed;
+    var maxChange = speedStats.change;
+
+    // range for saving forbidden moves: lowest number allowed, highest number allowed
+    // this will be set once we start marking forbidden options
+    var allowedSailRange = [0, 0];
+    var allowedPeddleRange = [0, 0];
+
+    // check sail levels
+    // TO DO: Make proper range (not just [-1,1])
+    for (var i = -1; i <= 1; i++) {
+        var newSpeed = oldSpeed + (curPeddle - oldPeddle) + i;
+
+        if (oldSail + i < 0 || newSpeed < 0 || newSpeed > maxSpeed || Math.abs(newSpeed - oldSpeed) > maxChange) {
+            document.getElementById('sailor-sail' + i).classList.add('sailor-forbidden');
+            document.getElementById('sailor-sailCost' + i).classList.add('sailor-forbidden');
+        } else {
+            document.getElementById('sailor-sail' + i).classList.remove('sailor-forbidden');
+            document.getElementById('sailor-sailCost' + i).classList.remove('sailor-forbidden');
+
+            // Mark as ALLOWED
+            // => check if the number is outside the current range; if so, update the range (to be bigger)!
+            if (i < allowedSailRange[0]) {
+                allowedSailRange[0] = i;
+            } else if (i > allowedSailRange[1]) {
+                allowedSailRange[1] = i;
+            }
+        }
+    }
+
+    // check peddle levels
+    // TO DO: Make proper range (not just [-1,1])
+    for (var _i = -1; _i <= 1; _i++) {
+        var _newSpeed = oldSpeed + (curSail - oldSail) + _i;
+
+        if (oldPeddle + _i < 0 || _newSpeed < 0 || _newSpeed > maxSpeed || Math.abs(_newSpeed - oldSpeed) > maxChange) {
+            document.getElementById('sailor-peddle' + _i).classList.add('sailor-forbidden');
+            document.getElementById('sailor-peddleCost' + _i).classList.add('sailor-forbidden');
+        } else {
+            document.getElementById('sailor-peddle' + _i).classList.remove('sailor-forbidden');
+            document.getElementById('sailor-peddleCost' + _i).classList.remove('sailor-forbidden');
+
+            // Mark as ALLOWED
+            // => check if the number is outside the current range; if so, update the range (to be bigger)!
+            if (_i < allowedPeddleRange[0]) {
+                allowedPeddleRange[0] = _i;
+            } else if (_i > allowedPeddleRange[1]) {
+                allowedPeddleRange[1] = _i;
+            }
+        }
+    }
+
+    _serverInfo.serverInfo.roleStats[3].allowedSailRange = allowedSailRange;
+    _serverInfo.serverInfo.roleStats[3].allowedPeddleRange = allowedPeddleRange;
 }
 
 /*
@@ -3342,13 +3423,13 @@ function loadPlayInterface(num, cont) {
             // Loop through all tasks
             var tasks = _serverInfo.serverInfo.taskList;
 
-            var _loop = function _loop(_i) {
-                if (tasks[_i] == null) {
+            var _loop = function _loop(_i2) {
+                if (tasks[_i2] == null) {
                     return 'continue';
                 }
 
-                var taskType = tasks[_i][0];
-                var param = tasks[_i][1];
+                var taskType = tasks[_i2][0];
+                var param = tasks[_i2][1];
 
                 switch (taskType) {
                     // Battle => enemies are nearby
@@ -3359,7 +3440,7 @@ function loadPlayInterface(num, cont) {
                         span0.innerHTML = "<p>One or more enemies are nearby. Attack?</p>";
 
                         var btn0 = document.createElement("button");
-                        btn0.setAttribute('data-taskid', _i);
+                        btn0.setAttribute('data-taskid', _i2);
                         btn0.classList.add('upgradeButton');
                         btn0.innerHTML = loadFireButton();
                         span0.appendChild(btn0);
@@ -3393,7 +3474,7 @@ function loadPlayInterface(num, cont) {
                         span1.appendChild(inp1);
 
                         var btn1 = document.createElement("button");
-                        btn1.setAttribute('data-taskid', _i);
+                        btn1.setAttribute('data-taskid', _i2);
                         btn1.innerHTML = 'Submit name';
                         span1.appendChild(btn1);
 
@@ -3430,7 +3511,7 @@ function loadPlayInterface(num, cont) {
                         span2.innerHTML = loadDeal(param.deal);
 
                         var btn2 = document.createElement("button");
-                        btn2.setAttribute('data-taskid', _i);
+                        btn2.setAttribute('data-taskid', _i2);
                         btn2.innerHTML = 'Perform trade';
                         span2.appendChild(btn2);
 
@@ -3452,8 +3533,8 @@ function loadPlayInterface(num, cont) {
                 }
             };
 
-            for (var _i = 0; _i < tasks.length; _i++) {
-                var _ret = _loop(_i);
+            for (var _i2 = 0; _i2 < tasks.length; _i2++) {
+                var _ret = _loop(_i2);
 
                 if (_ret === 'continue') continue;
             }
@@ -3466,10 +3547,10 @@ function loadPlayInterface(num, cont) {
             var resDiv = document.createElement("div");
             resDiv.id = 'shipResources';
 
-            for (var _i2 = 0; _i2 < 4; _i2++) {
-                var curResVal = _serverInfo.serverInfo.resources[_i2];
+            for (var _i3 = 0; _i3 < 4; _i3++) {
+                var curResVal = _serverInfo.serverInfo.resources[_i3];
 
-                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/resourceIcon' + _i2 + '.png"><span id="shipResource' + _i2 + '">' + curResVal + '</span></span>';
+                resDiv.innerHTML += '<span class="shipResourceGroup"><img src="assets/resourceIcon' + _i3 + '.png"><span id="shipResource' + _i3 + '">' + curResVal + '</span></span>';
             }
 
             cont.appendChild(resDiv);
@@ -3722,8 +3803,8 @@ function loadPlayInterface(num, cont) {
             // NOTE: The server determines what we can see. We don't need to check this. We just display everything that's been given to us.
 
             var u = _serverInfo.serverInfo.mapUnits;
-            for (var _i3 = 0; _i3 < u.length; _i3++) {
-                var unit = u[_i3];
+            for (var _i4 = 0; _i4 < u.length; _i4++) {
+                var unit = u[_i4];
 
                 // coordinates do NOT need to be recalculated, as the server already did that for us
 
@@ -3783,58 +3864,73 @@ function loadPlayInterface(num, cont) {
             bgShipSide.style.opacity = 0.5;
             bgShipSide.style.zIndex = -1;
 
-            cont.appendChild(bgShipSide);
+            // TO DO: Do we still want the ghost ship in the background??
+            //cont.appendChild(bgShipSide);
 
-            // Determine max slider value (based on instrument level)
-            var insLvl = [0, 0];
-            switch (_serverInfo.serverInfo.roleStats[3].lvl) {
-                case 0:
-                    insLvl = [1, 1];
-                    break;
-
-                case 1:
-                    insLvl = [2, 1];
-                    break;
-
-                case 2:
-                    insLvl = [2, 2];
-                    break;
-
-                case 3:
-                    insLvl = [3, 2];
-                    break;
-
-                case 4:
-                    insLvl = [3, 3];
-                    break;
-
-                case 5:
-                    insLvl = [4, 3];
-                    break;
-            }
+            // create CONTAINER for all the sailor stuff
+            // we need it, because we're doing complex CSS shit
+            var sailorContainer = document.createElement("div");
+            sailorContainer.id = 'sailor-container';
 
             // Vertical slider for sails
-            // Display numbers next to slider
-            var rangeHint = document.createElement("span");
-            rangeHint.style.position = 'absolute';
-            for (var _i4 = 4; _i4 >= 0; _i4--) {
-                var tempDiv = document.createElement("div");
-                tempDiv.style.marginBottom = '15px';
-                tempDiv.innerHTML = _i4;
-                rangeHint.appendChild(tempDiv);
-            }
-            cont.appendChild(rangeHint);
-
             // Create the actual slider
             var vSlider = document.createElement("input");
             vSlider.type = 'range';
-            vSlider.min = 0;
-            vSlider.max = 4;
-            vSlider.value = _serverInfo.serverInfo.roleStats[3].sailLvl;
+            vSlider.min = -1;
+            vSlider.max = 1;
+            vSlider.value = 0;
+            vSlider.id = "sailor-sailInput";
 
-            vSlider.style.transform = 'rotate(-90deg)';
-            vSlider.style.marginTop = '70px';
-            vSlider.style.width = 'auto';
+            sailorContainer.appendChild(vSlider);
+
+            // Display numbers next to slider
+            var rangeHint00 = document.createElement("div");
+            rangeHint00.classList.add("sailor-rangeHintsVertical");
+            for (var _i5 = 1; _i5 >= -1; _i5--) {
+                var tempSpan = document.createElement("span");
+
+                if (_i5 == 0) {
+                    tempSpan.innerHTML = '';
+                } else {
+                    var numSails = _serverInfo.serverInfo.roleStats[3].sailLvl + _i5;
+                    var tempString = '';
+                    for (var a = 0; a < numSails; a++) {
+                        tempString += '<img src="assets/sailorIconSails.png" style="margin-left:-30px;" />';
+                    }
+                    tempSpan.innerHTML = tempString;
+                }
+
+                tempSpan.id = 'sailor-sail' + _i5;
+
+                rangeHint00.appendChild(tempSpan);
+            }
+            sailorContainer.appendChild(rangeHint00);
+
+            // Display crew cost next to slider (move it more to the right of the slider)
+            var rangeHint01 = document.createElement("div");
+            rangeHint01.classList.add("sailor-rangeHintsVertical");
+            rangeHint01.style.left = '55%';
+
+            for (var _i6 = 1; _i6 >= -1; _i6--) {
+                var _tempSpan = document.createElement("span");
+
+                // determine cost; show it via color (red/green)
+                var tempCost = -1;
+                if (tempCost > 0) {
+                    _tempSpan.style.color = 'lightgreen';
+                    tempCost = '+' + tempCost;
+                }
+
+                // show cost (number + icon), if not behind speed circle
+                if (_i6 != 0) {
+                    _tempSpan.innerHTML = tempCost + '<img src="assets/resourceIcon1.png" />';
+                }
+
+                _tempSpan.id = 'sailor-sailCost' + _i6;
+
+                rangeHint01.appendChild(_tempSpan);
+            }
+            sailorContainer.appendChild(rangeHint01);
 
             // If the slider was changed ...
             // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus
@@ -3842,9 +3938,14 @@ function loadPlayInterface(num, cont) {
             vSlider.addEventListener('change', function () {
                 var v = parseInt(this.value);
 
+                var sailRange = _serverInfo.serverInfo.roleStats[3].allowedSailRange;
+
                 // if we go beyond our maximum input, snap back immediately
-                if (v > insLvl[0]) {
-                    v = insLvl[0];
+                if (v < sailRange[0]) {
+                    v = sailRange[0];
+                    this.value = v;
+                } else if (v > sailRange[1]) {
+                    v = sailRange[1];
                     this.value = v;
                 }
 
@@ -3858,42 +3959,90 @@ function loadPlayInterface(num, cont) {
 
                 // update personal stats
                 _serverInfo.serverInfo.roleStats[3].sailLvl = v;
-            });
 
-            cont.appendChild(vSlider);
+                // update speed circle (old speed + change in SAILS + change in PEDDLES)
+                document.getElementById('sailor-speedCircle').innerHTML = _serverInfo.serverInfo.oldSpeed + (v - _serverInfo.serverInfo.roleStats[3].oldSailLvl) + (_serverInfo.serverInfo.roleStats[3].peddleLvl - _serverInfo.serverInfo.roleStats[3].oldPeddleLvl);
+
+                // update forbidden moves
+                disableForbiddenMoves();
+            });
 
             // Horizontal slider for paddles
             // Display the actual slider
             var hSlider = document.createElement("input");
             hSlider.type = 'range';
-            hSlider.min = 0;
-            hSlider.max = 4;
-            hSlider.value = _serverInfo.serverInfo.roleStats[3].peddleLvl;
+            hSlider.min = -1;
+            hSlider.max = 1;
+            hSlider.value = 0;
+            hSlider.id = 'sailor-peddleInput';
 
-            hSlider.style.width = '100%';
-            hSlider.style.marginTop = '140px';
-            hSlider.style.marginBottom = '10px';
-
-            cont.appendChild(hSlider);
+            sailorContainer.appendChild(hSlider);
 
             // Display numbers underneath slider
-            var rangeHint2 = document.createElement("span");
-            rangeHint2.style.display = 'flex';
-            rangeHint2.style.justifyContent = 'space-between';
-            for (var _i5 = 0; _i5 < 5; _i5++) {
-                var _tempDiv = document.createElement("div");
-                _tempDiv.innerHTML = _i5;
-                rangeHint2.appendChild(_tempDiv);
+            var rangeHint10 = document.createElement("div");
+            rangeHint10.classList.add('sailor-rangeHintsHorizontal');
+            for (var _i7 = -1; _i7 <= 1; _i7++) {
+                var _tempSpan2 = document.createElement("span");
+
+                if (_i7 == 0) {
+                    _tempSpan2.innerHTML = '';
+                } else {
+                    var numPeddles = _serverInfo.serverInfo.roleStats[3].peddleLvl + _i7;
+                    var _tempString = '';
+                    for (var _a = 0; _a < numPeddles; _a++) {
+                        if (_a == 0) {
+                            // the first one needs no left margin decrease; otherwise it goes out of frame (and generally looks weird)
+                            _tempString += '<img src="assets/sailorIconPeddles.png" />';
+                        } else {
+                            _tempString += '<img src="assets/sailorIconPeddles.png" style="margin-left:-30px;" />';
+                        }
+                    }
+                    _tempSpan2.innerHTML = _tempString;
+                }
+
+                _tempSpan2.id = 'sailor-peddle' + _i7;
+
+                rangeHint10.appendChild(_tempSpan2);
             }
-            cont.appendChild(rangeHint2);
+            sailorContainer.appendChild(rangeHint10);
+
+            // Display crew cost above slider (and thus change the "top" attribute)
+            var rangeHint11 = document.createElement("div");
+            rangeHint11.classList.add('sailor-rangeHintsHorizontal');
+            rangeHint11.style.top = '32%';
+            for (var _i8 = -1; _i8 <= 1; _i8++) {
+                var _tempSpan3 = document.createElement("span");
+
+                // calculate cost; show it via color (red/green)
+                var _tempCost = -2 * _i8;
+                if (_tempCost > 0) {
+                    _tempSpan3.style.color = 'lightgreen';
+                    _tempCost = '+' + _tempCost;
+                }
+
+                // display the cost (number + icon), if it's not behind the speed circle
+                if (_i8 != 0) {
+                    _tempSpan3.innerHTML = _tempCost + '<img src="assets/resourceIcon1.png" />';
+                }
+
+                _tempSpan3.id = 'sailor-peddleCost' + _i8;
+
+                rangeHint11.appendChild(_tempSpan3);
+            }
+            sailorContainer.appendChild(rangeHint11);
 
             // If the slider has changed ...
             hSlider.addEventListener('change', function () {
                 var v = parseInt(this.value);
 
+                var peddleRange = _serverInfo.serverInfo.roleStats[3].allowedPeddleRange;
+
                 // if we go beyond our maximum input, snap back immediately
-                if (v > insLvl[1]) {
-                    v = insLvl[1];
+                if (v < peddleRange[0]) {
+                    v = peddleRange[0];
+                    this.value = v;
+                } else if (v > peddleRange[1]) {
+                    v = peddleRange[1];
                     this.value = v;
                 }
 
@@ -3907,7 +4056,33 @@ function loadPlayInterface(num, cont) {
 
                 // update personal stats
                 _serverInfo.serverInfo.roleStats[3].peddleLvl = v;
+
+                // update speed circle (old speed + change in SAILS + change in PEDDLES)
+                document.getElementById('sailor-speedCircle').innerHTML = _serverInfo.serverInfo.oldSpeed + (v - _serverInfo.serverInfo.roleStats[3].oldPeddleLvl) + (_serverInfo.serverInfo.roleStats[3].sailLvl - _serverInfo.serverInfo.roleStats[3].oldSailLvl);
+
+                // update forbidden moves
+                disableForbiddenMoves();
             });
+
+            // Display the large "speed circle" in the center
+            var speedCircle = document.createElement("div");
+            speedCircle.id = 'sailor-speedCircle';
+
+            // Display the current ship speed
+            speedCircle.innerHTML = _serverInfo.serverInfo.speed;
+
+            sailorContainer.appendChild(speedCircle);
+
+            // make the SAILOR container a box that perfectly fits the WIDTH of the screen
+            sailorContainer.style.width = cont.offsetWidth + "px";
+            sailorContainer.style.height = cont.offsetWidth + "px";
+
+            // add SAILOR container to the overall INTERFACE container (this is getting complex)
+            cont.appendChild(sailorContainer);
+
+            // disable all forbidden moves
+            // this function is also called every time someone updates the sliders
+            disableForbiddenMoves();
 
             break;
 
@@ -3925,7 +4100,7 @@ function loadPlayInterface(num, cont) {
             // Display cannons
             var c = _serverInfo.serverInfo.shipCannons;
 
-            var _loop2 = function _loop2(_i6) {
+            var _loop2 = function _loop2(_i9) {
                 // Create new div
                 var cannonDiv = document.createElement("div");
                 cannonDiv.classList.add("captain-crewMember");
@@ -3933,11 +4108,11 @@ function loadPlayInterface(num, cont) {
                 // Show cannon number
                 var span = document.createElement("span");
                 span.classList.add("weaponeer-cannonNumber");
-                span.innerHTML = _i6 + 1;
+                span.innerHTML = _i9 + 1;
                 cannonDiv.appendChild(span);
 
                 // If the current load is negative, this cannon hasn't been bought yet
-                var curLoad = c[_i6];
+                var curLoad = c[_i9];
                 if (curLoad < 0) {
                     // Show "buy" button
                     var buyBtn = document.createElement("button");
@@ -3952,10 +4127,10 @@ function loadPlayInterface(num, cont) {
                     // When the button is clicked ...
                     buyBtn.addEventListener('click', function () {
                         // send signal
-                        socket.emit('buy-cannon', _i6);
+                        socket.emit('buy-cannon', _i9);
 
                         // set load to 0 (if its positive, the cannon has been bought)
-                        _serverInfo.serverInfo.shipCannons[_i6] = 0;
+                        _serverInfo.serverInfo.shipCannons[_i9] = 0;
 
                         // display a message (to fill space AND to notify the user that he/she did something)
                         var tempParagraph = document.createElement('p');
@@ -3966,7 +4141,7 @@ function loadPlayInterface(num, cont) {
                         this.remove();
 
                         // don't allow it to load (this turn)
-                        _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i6] = true;
+                        _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i9] = true;
                     });
                 } else {
                     // Show the current load ...
@@ -3982,7 +4157,7 @@ function loadPlayInterface(num, cont) {
                     divLoad.appendChild(spanLoad);
 
                     // If the cannon hasn't been loaded yet, this turn, display the button
-                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i6]) {
+                    if (!_serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i9]) {
                         // Show "Load cannon" button
                         var loadBtn = document.createElement("button");
                         loadBtn.innerHTML = 'Load';
@@ -3992,16 +4167,16 @@ function loadPlayInterface(num, cont) {
                         // When the button is clicked ...
                         loadBtn.addEventListener("click", function () {
                             // send signal
-                            socket.emit('load-up', _i6);
+                            socket.emit('load-up', _i9);
 
                             // update our own load
-                            _serverInfo.serverInfo.shipCannons[_i6]++;
+                            _serverInfo.serverInfo.shipCannons[_i9]++;
 
                             // remove this button
                             this.remove();
 
                             // don't allow it to load again (this turn)
-                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i6] = true;
+                            _serverInfo.serverInfo.roleStats[4].cannonsLoaded[_i9] = true;
                         });
                     }
                 }
@@ -4009,8 +4184,8 @@ function loadPlayInterface(num, cont) {
                 cont.appendChild(cannonDiv);
             };
 
-            for (var _i6 = 0; _i6 < c.length; _i6++) {
-                _loop2(_i6);
+            for (var _i9 = 0; _i9 < c.length; _i9++) {
+                _loop2(_i9);
             }
 
             break;
@@ -4036,6 +4211,7 @@ function loadPlayInterface(num, cont) {
                     socket.emit('upgrade', num);
 
                     this.remove();
+                    document.getElementById('currentLevelStats').remove();
                     _serverInfo.serverInfo.submittedUpgrade[num] = true;
 
                     var p2 = document.createElement("p");
@@ -4050,6 +4226,7 @@ function loadPlayInterface(num, cont) {
                 // underneath the button, display the stats of the current level, and the level we'd be upgrading towards
                 var divLevelStats = document.createElement("div");
                 divLevelStats.classList.add("levelStats");
+                divLevelStats.id = 'currentLevelStats';
 
                 divLevelStats.innerHTML = displayUpgradeStats(num, _serverInfo.serverInfo.roleStats[num].lvl);
 
@@ -4108,7 +4285,7 @@ module.exports = UPGRADE_DICT;
 var UPGRADE_EFFECT_DICT = [[], // captain (has no upgrades)
 [{ angle: 0 }, { angle: 45 }, { angle: 45 }, { angle: 90 }, { angle: 90 }, { angle: 135 }], // first mate
 [{ range: 1, detail: 0 }, { range: 2, detail: 0 }, { range: 3, detail: 0 }, { range: 3, detail: 1 }, { range: 4, detail: 1 }, { range: 5, detail: 2 }], // cartographer
-[{ maxSpeed: 1, maxChange: 1 }, { maxSpeed: 2, maxChange: 1 }, { maxSpeed: 3, maxChange: 1 }, { maxSpeed: 3, maxChange: 2 }, { maxSpeed: 4, maxChange: 2 }, { maxSpeed: 5, maxChange: 3 }], // sailor
+[{ speed: 1, change: 1 }, { speed: 2, change: 1 }, { speed: 3, change: 1 }, { speed: 3, change: 2 }, { speed: 4, change: 2 }, { speed: 5, change: 3 }], // sailor
 [{ range: 1, spread: 0 }, { range: 2, spread: 0 }, { range: 2, spread: 1 }, { range: 3, spread: 1 }, { range: 3, spread: 2 }, { range: 4, spread: 2 }] // weapon specialist
 ];
 
@@ -4292,9 +4469,15 @@ var ControllerWaiting = function (_Phaser$State) {
             _serverInfo.serverInfo.roleStats[3].sailLvl = 0;
             _serverInfo.serverInfo.roleStats[3].peddleLvl = 0;
 
+            _serverInfo.serverInfo.roleStats[3].oldSailLvl = 0;
+            _serverInfo.serverInfo.roleStats[3].oldPeddleLvl = 0;
+
+            _serverInfo.serverInfo.speed = 0;
+            _serverInfo.serverInfo.oldSpeed = 0;
+
             break;
 
-          // Weapon Specialist
+          // Cannoneer
           // Set cannon level to 0
           case 4:
             _serverInfo.serverInfo.roleStats[4].lvl = 0;
@@ -4421,6 +4604,10 @@ var ControllerWaiting = function (_Phaser$State) {
 
         // save orientation, so you can play with it without the ghost ship changing
         _serverInfo.serverInfo.oldOrientation = _serverInfo.serverInfo.orientation;
+
+        _serverInfo.serverInfo.oldSpeed = _serverInfo.serverInfo.speed;
+        _serverInfo.serverInfo.oldSailLvl = _serverInfo.serverInfo.roleStats[3].sailLvl;
+        _serverInfo.serverInfo.oldPeddleLvl = _serverInfo.serverInfo.roleStats[3].peddleLvl;
 
         // update ship health
         document.getElementById('healthBar').style.width = _serverInfo.serverInfo.health + '%';

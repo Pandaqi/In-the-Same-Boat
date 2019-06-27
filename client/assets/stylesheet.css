@@ -422,6 +422,103 @@ p.captain-dockDeal img {
 }
 
 
+/*** 
+ * 
+ * Rules for the SAILOR interface
+ *
+ ***/
+
+#sailor-sailInput {
+  transform: rotate(-90deg);
+  position: absolute;
+  display: block;
+  width: 100%;
+  top: calc(50% - 10px);
+  left: -2px;
+}
+
+#sailor-peddleInput {
+  display: block;
+  position: absolute;
+  top: calc(50% - 10px);
+  left: 0;
+  width: 100%;
+}
+
+#sailor-speedCircle {
+  border-radius: 50%;
+  background-color: #333333;
+  width: 100px;
+  height: 100px;
+  top: calc(50% - 50px);
+  left: calc(50% - 50px);
+  text-align: center;
+  color: white;
+  font-size: 60px;
+  position: absolute;
+  box-sizing: border-box;
+  line-height: 100px;
+  pointer-events: none;
+}
+
+#sailor-speedCircle::after {
+  content: 'speed';
+  display: block;
+  font-size: 16px;
+  margin-top: -70px;
+  opacity: 0.5;
+  font-variant: small-caps;
+}
+
+.sailor-rangeHintsVertical {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  left: 40%;
+  height: 100%;
+  top: 0;
+  align-items: center;
+  pointer-events: none;
+}
+
+.sailor-rangeHintsHorizontal img, .sailor-rangeHintsVertical img {
+  max-width: 40px;
+  margin-left: 5px;
+}
+
+.sailor-rangeHintsHorizontal span, .sailor-rangeHintsVertical span  {
+  display: flex;
+  align-items: center;
+  color: darkred;
+}
+
+.sailor-rangeHintsHorizontal {
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  top: 55%;
+  width: 100%;
+  pointer-events: none;
+}
+
+#sailor-container {
+  position: relative;
+  max-width: 100%;
+  font-family: 'Pirata One', cursive;
+}
+
+.sailor-forbidden {
+  opacity: 0.3;
+}
+
+/*** 
+ * 
+ * Rules for the CANNONEER interface
+ *
+ ***/
+
 .weaponeer-cannonLoad {
   height:100%;
   display:block;

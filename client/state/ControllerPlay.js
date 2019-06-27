@@ -137,9 +137,15 @@ class ControllerWaiting extends Phaser.State {
           serverInfo.roleStats[3].sailLvl = 0;
           serverInfo.roleStats[3].peddleLvl = 0;
 
+          serverInfo.roleStats[3].oldSailLvl = 0;
+          serverInfo.roleStats[3].oldPeddleLvl = 0;
+
+          serverInfo.speed = 0;
+          serverInfo.oldSpeed = 0;
+
           break;
 
-        // Weapon Specialist
+        // Cannoneer
         // Set cannon level to 0
         case 4:
           serverInfo.roleStats[4].lvl = 0;
@@ -270,6 +276,10 @@ class ControllerWaiting extends Phaser.State {
 
       // save orientation, so you can play with it without the ghost ship changing
       serverInfo.oldOrientation = serverInfo.orientation
+
+      serverInfo.oldSpeed = serverInfo.speed
+      serverInfo.oldSailLvl = serverInfo.roleStats[3].sailLvl;
+      serverInfo.oldPeddleLvl = serverInfo.roleStats[3].peddleLvl;
 
       // update ship health
       document.getElementById('healthBar').style.width = serverInfo.health + '%';

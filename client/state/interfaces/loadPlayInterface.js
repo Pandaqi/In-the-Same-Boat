@@ -17,6 +17,8 @@ import noise from '../../../vendor/perlinImproved'
 
     The cartographer needs to move the map around
 
+    The sailor needs to calculate which sail/peddle levels it may set (mostly based on max speed and max change)
+
 */
 function compassMove(ev) {
     ev.preventDefault();
@@ -131,6 +133,89 @@ function mapMove(ev) {
 
     // update oldMovePoint
     cv.oldMovePoint = coords;
+}
+
+function disableForbiddenMoves() {
+    /* There are four reasons a move might be forbidden:
+        => It changes the ship speed to a negative number
+        => It changes the ship speed to a number ABOVE max speed
+        => It changes the ship speed by TOO MUCH in a single turn 
+        => It changes sail/peddles to a negative number (we can't have -1 crew rowing the boat")
+
+       This function goes through all the moves and marks the forbidden ones.
+
+       Then, we make sure to display these options as "forbidden", AND disallow pulling the slider towards it
+    */
+
+    // get old speed
+    let oldSpeed = serverInfo.oldSpeed;
+
+    // get old sail/peddle level
+    let oldSail = serverInfo.roleStats[3].oldSailLvl;
+    let oldPeddle = serverInfo.roleStats[3].oldPeddleLvl;
+
+    // get new/current sail/peddle level
+    let curSail = serverInfo.roleStats[3].sailLvl;
+    let curPeddle = serverInfo.roleStats[3].peddleLvl;
+
+    // get speed stats
+    const speedStats = UPGRADE_EFFECT_DICT[3][serverInfo.roleStats[3].lvl];
+    let maxSpeed = speedStats.speed;
+    let maxChange = speedStats.change;
+
+    // range for saving forbidden moves: lowest number allowed, highest number allowed
+    // this will be set once we start marking forbidden options
+    let allowedSailRange = [0,0];
+    let allowedPeddleRange = [0,0];
+
+    // check sail levels
+    // TO DO: Make proper range (not just [-1,1])
+    for(let i = -1; i <= 1; i++) {
+        let newSpeed = oldSpeed + (curPeddle - oldPeddle) + i;
+
+        if((oldSail + i) < 0 || newSpeed < 0 || newSpeed > maxSpeed || Math.abs(newSpeed - oldSpeed) > maxChange) {
+            document.getElementById('sailor-sail' + i).classList.add('sailor-forbidden');
+            document.getElementById('sailor-sailCost' + i).classList.add('sailor-forbidden');
+        } else {
+            document.getElementById('sailor-sail' + i).classList.remove('sailor-forbidden');
+            document.getElementById('sailor-sailCost' + i).classList.remove('sailor-forbidden');
+
+            // Mark as ALLOWED
+            // => check if the number is outside the current range; if so, update the range (to be bigger)!
+            if(i < allowedSailRange[0]) {
+                allowedSailRange[0] = i;
+            } else if(i > allowedSailRange[1]) {
+                allowedSailRange[1] = i;
+            }
+
+        }
+    }
+
+    // check peddle levels
+    // TO DO: Make proper range (not just [-1,1])
+    for(let i = -1; i <= 1; i++) {
+        let newSpeed = oldSpeed + (curSail - oldSail) + i;
+
+        if((oldPeddle + i) < 0 || newSpeed < 0 || newSpeed > maxSpeed || Math.abs(newSpeed - oldSpeed) > maxChange) {
+            document.getElementById('sailor-peddle' + i).classList.add('sailor-forbidden');
+            document.getElementById('sailor-peddleCost' + i).classList.add('sailor-forbidden');
+        } else {
+            document.getElementById('sailor-peddle' + i).classList.remove('sailor-forbidden');
+            document.getElementById('sailor-peddleCost' + i).classList.remove('sailor-forbidden');
+
+            // Mark as ALLOWED
+            // => check if the number is outside the current range; if so, update the range (to be bigger)!
+            if(i < allowedPeddleRange[0]) {
+                allowedPeddleRange[0] = i;
+            } else if(i > allowedPeddleRange[1]) {
+                allowedPeddleRange[1] = i;
+            }
+        }
+    }
+
+    serverInfo.roleStats[3].allowedSailRange = allowedSailRange;
+    serverInfo.roleStats[3].allowedPeddleRange = allowedPeddleRange;
+
 }
 
 /*
@@ -694,58 +779,73 @@ export default function loadPlayInterface(num, cont) {
             bgShipSide.style.opacity = 0.5;
             bgShipSide.style.zIndex = -1;
 
-            cont.appendChild(bgShipSide);
+            // TO DO: Do we still want the ghost ship in the background??
+            //cont.appendChild(bgShipSide);
 
-            // Determine max slider value (based on instrument level)
-            let insLvl = [0,0];
-            switch(serverInfo.roleStats[3].lvl) {
-                case 0:
-                    insLvl = [1,1];
-                    break;
-
-                case 1:
-                    insLvl = [2,1]
-                    break;
-
-                case 2:
-                    insLvl = [2,2]
-                    break;
-
-                case 3:
-                    insLvl = [3,2]
-                    break;
-
-                case 4:
-                    insLvl = [3, 3]
-                    break;
-
-                case 5:
-                    insLvl = [4, 3]
-                    break;
-            }
+            // create CONTAINER for all the sailor stuff
+            // we need it, because we're doing complex CSS shit
+            let sailorContainer = document.createElement("div");
+            sailorContainer.id = 'sailor-container'
 
             // Vertical slider for sails
-            // Display numbers next to slider
-            let rangeHint = document.createElement("span");
-            rangeHint.style.position = 'absolute';
-            for(let i = 4; i >= 0; i--) {
-                let tempDiv = document.createElement("div");
-                tempDiv.style.marginBottom = '15px';
-                tempDiv.innerHTML = i;
-                rangeHint.appendChild(tempDiv);
-            }
-            cont.appendChild(rangeHint);
-
             // Create the actual slider
             let vSlider = document.createElement("input");
             vSlider.type = 'range'
-            vSlider.min = 0
-            vSlider.max = 4
-            vSlider.value = serverInfo.roleStats[3].sailLvl;
+            vSlider.min = -1
+            vSlider.max = 1
+            vSlider.value = 0;
+            vSlider.id = "sailor-sailInput"
 
-            vSlider.style.transform = 'rotate(-90deg)';
-            vSlider.style.marginTop = '70px';
-            vSlider.style.width = 'auto';
+            sailorContainer.appendChild(vSlider);
+
+            // Display numbers next to slider
+            let rangeHint00 = document.createElement("div");
+            rangeHint00.classList.add("sailor-rangeHintsVertical");
+            for(let i = 1; i >= -1; i--) {
+                let tempSpan = document.createElement("span");
+
+                if(i == 0) {
+                    tempSpan.innerHTML = '';                    
+                } else {
+                    let numSails = (serverInfo.roleStats[3].sailLvl + i);
+                    let tempString = '';
+                    for(let a = 0; a < numSails; a++) {
+                        tempString += '<img src="assets/sailorIconSails.png" style="margin-left:-30px;" />';
+                    }
+                    tempSpan.innerHTML = tempString;
+                }
+
+                tempSpan.id = 'sailor-sail' + i;
+
+                rangeHint00.appendChild(tempSpan);
+            }
+            sailorContainer.appendChild(rangeHint00);
+
+            // Display crew cost next to slider (move it more to the right of the slider)
+            let rangeHint01 = document.createElement("div");
+            rangeHint01.classList.add("sailor-rangeHintsVertical");
+            rangeHint01.style.left = '55%';
+
+            for(let i = 1; i >= -1; i--) {
+                let tempSpan = document.createElement("span");
+
+                // determine cost; show it via color (red/green)
+                let tempCost = -1;
+                if(tempCost > 0) {
+                    tempSpan.style.color = 'lightgreen';
+                    tempCost = '+' + tempCost;
+                }
+
+                // show cost (number + icon), if not behind speed circle
+                if(i != 0) {
+                    tempSpan.innerHTML = tempCost + '<img src="assets/resourceIcon1.png" />';                    
+                }
+
+                tempSpan.id = 'sailor-sailCost' + i;
+
+                rangeHint01.appendChild(tempSpan);
+            }
+            sailorContainer.appendChild(rangeHint01);
 
             // If the slider was changed ...
             // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus
@@ -753,9 +853,14 @@ export default function loadPlayInterface(num, cont) {
             vSlider.addEventListener('change', function() {
                 let v = parseInt(this.value);
 
+                let sailRange = serverInfo.roleStats[3].allowedSailRange;
+
                 // if we go beyond our maximum input, snap back immediately
-                if(v > insLvl[0]) {
-                    v = insLvl[0];
+                if(v < sailRange[0]) {
+                    v = sailRange[0];
+                    this.value = v;
+                } else if(v > sailRange[1]) {
+                    v = sailRange[1]
                     this.value = v;
                 }
 
@@ -769,42 +874,90 @@ export default function loadPlayInterface(num, cont) {
 
                 // update personal stats
                 serverInfo.roleStats[3].sailLvl = v;
-            })
 
-            cont.appendChild(vSlider);
+                // update speed circle (old speed + change in SAILS + change in PEDDLES)
+                document.getElementById('sailor-speedCircle').innerHTML = serverInfo.oldSpeed + (v - serverInfo.roleStats[3].oldSailLvl) + (serverInfo.roleStats[3].peddleLvl - serverInfo.roleStats[3].oldPeddleLvl);
+                
+                // update forbidden moves
+                disableForbiddenMoves();
+            })
 
             // Horizontal slider for paddles
             // Display the actual slider
             let hSlider = document.createElement("input")
             hSlider.type = 'range'
-            hSlider.min = 0
-            hSlider.max = 4
-            hSlider.value = serverInfo.roleStats[3].peddleLvl;
-            
-            hSlider.style.width = '100%';
-            hSlider.style.marginTop = '140px';
-            hSlider.style.marginBottom = '10px';
+            hSlider.min = -1
+            hSlider.max = 1
+            hSlider.value = 0;
+            hSlider.id = 'sailor-peddleInput';
 
-            cont.appendChild(hSlider);
+            sailorContainer.appendChild(hSlider);
 
             // Display numbers underneath slider
-            let rangeHint2 = document.createElement("span");
-            rangeHint2.style.display = 'flex';
-            rangeHint2.style.justifyContent = 'space-between';
-            for(let i = 0; i < 5; i++) {
-                let tempDiv = document.createElement("div");
-                tempDiv.innerHTML = i;
-                rangeHint2.appendChild(tempDiv);
+            let rangeHint10 = document.createElement("div");
+            rangeHint10.classList.add('sailor-rangeHintsHorizontal');
+            for(let i = -1; i <= 1; i++) {
+                let tempSpan = document.createElement("span");
+
+                if(i == 0) {
+                    tempSpan.innerHTML = '';                    
+                } else {
+                    let numPeddles = (serverInfo.roleStats[3].peddleLvl + i);
+                    let tempString = '';
+                    for(let a = 0; a < numPeddles; a++) {
+                        if(a == 0) {
+                            // the first one needs no left margin decrease; otherwise it goes out of frame (and generally looks weird)
+                            tempString += '<img src="assets/sailorIconPeddles.png" />';                            
+                        } else {
+                            tempString += '<img src="assets/sailorIconPeddles.png" style="margin-left:-30px;" />';
+                        }
+                    }
+                    tempSpan.innerHTML = tempString;
+                }
+
+                tempSpan.id = 'sailor-peddle' + i;
+
+                rangeHint10.appendChild(tempSpan);
             }
-            cont.appendChild(rangeHint2);
+            sailorContainer.appendChild(rangeHint10);
+
+            // Display crew cost above slider (and thus change the "top" attribute)
+            let rangeHint11 = document.createElement("div");
+            rangeHint11.classList.add('sailor-rangeHintsHorizontal');
+            rangeHint11.style.top = '32%';
+            for(let i = -1; i <= 1; i++) {
+                let tempSpan = document.createElement("span");
+
+                // calculate cost; show it via color (red/green)
+                let tempCost = (-2 * i);
+                if(tempCost > 0) {
+                    tempSpan.style.color = 'lightgreen';
+                    tempCost = '+' + tempCost;
+                }
+
+                // display the cost (number + icon), if it's not behind the speed circle
+                if(i != 0) {
+                    tempSpan.innerHTML = tempCost + '<img src="assets/resourceIcon1.png" />';                    
+                }
+
+                tempSpan.id = 'sailor-peddleCost' + i;
+
+                rangeHint11.appendChild(tempSpan);
+            }
+            sailorContainer.appendChild(rangeHint11);
 
             // If the slider has changed ...
             hSlider.addEventListener('change', function() {
                 let v = parseInt(this.value);
 
+                let peddleRange = serverInfo.roleStats[3].allowedPeddleRange;
+
                 // if we go beyond our maximum input, snap back immediately
-                if(v > insLvl[1]) {
-                    v = insLvl[1];
+                if(v < peddleRange[0]) {
+                    v = peddleRange[0];
+                    this.value = v;
+                } else if(v > peddleRange[1]) {
+                    v = peddleRange[1]
                     this.value = v;
                 }
 
@@ -818,7 +971,33 @@ export default function loadPlayInterface(num, cont) {
 
                 // update personal stats
                 serverInfo.roleStats[3].peddleLvl = v;
+
+                // update speed circle (old speed + change in SAILS + change in PEDDLES)
+                document.getElementById('sailor-speedCircle').innerHTML = serverInfo.oldSpeed + (v - serverInfo.roleStats[3].oldPeddleLvl) + (serverInfo.roleStats[3].sailLvl - serverInfo.roleStats[3].oldSailLvl);
+            
+                // update forbidden moves
+                disableForbiddenMoves();
             })
+
+            // Display the large "speed circle" in the center
+            let speedCircle = document.createElement("div");
+            speedCircle.id = 'sailor-speedCircle';
+
+            // Display the current ship speed
+            speedCircle.innerHTML = serverInfo.speed; 
+
+            sailorContainer.appendChild(speedCircle);
+
+            // make the SAILOR container a box that perfectly fits the WIDTH of the screen
+            sailorContainer.style.width = cont.offsetWidth + "px";
+            sailorContainer.style.height = cont.offsetWidth + "px";
+
+            // add SAILOR container to the overall INTERFACE container (this is getting complex)
+            cont.appendChild(sailorContainer)
+
+            // disable all forbidden moves
+            // this function is also called every time someone updates the sliders
+            disableForbiddenMoves();
 
             break;
 

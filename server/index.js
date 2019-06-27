@@ -720,7 +720,8 @@ io.on('connection', socket => {
         startTurn(room, true);
         
         // set turn timer
-        timer = 20;
+        // TO DO timer = 20;
+        timer = 600;
         break;
 
       // If the next state is the game over state ...
