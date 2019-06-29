@@ -32,6 +32,9 @@ const loadMainSockets = (socket, gm, serverInfo) => {
       // if it's a roleUpdate => permanently update our level! (which role should be updated, is saved in data[key])
       if(key.substring(0, 10) == 'roleUpdate') {
         serverInfo.roleStats[ data[key] ].lvl++;
+      } else if(key.substring(0, 9) == 'roleStats') {
+        // if it's a role stat, get the role number, and which stat to change, and set it to the new value
+        serverInfo.roleStats[ data[key][0] ][ data[key][1] ] = data[key][2]
       } else {
         // otherwise, just blindly set the key to this value
         serverInfo[key] = data[key];

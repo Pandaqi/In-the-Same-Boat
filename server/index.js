@@ -590,6 +590,18 @@ io.on('connection', socket => {
     sendSignal(socket.mainRoom, true, 'island-discovered', { index: data.island, name: data.name }, false, false)
   });
 
+  socket.on('name-dock', data => {
+    let curDock = rooms[socket.mainRoom].docks[data.dock];
+
+    // data.name holds the desired name (a string)
+    // data.dock holds the index of the dock to be named (an integer)
+    curDock.name = data.name;
+    curDock.discovered = true;
+
+    // send the index of the island to monitors; so they can reveal it
+    sendSignal(socket.mainRoom, true, 'dock-discovered', { index: data.dock, name: data.name }, false, false)
+  });
+
   socket.on('dock-trade', dockIndex => {
     // get the deal, create an object that holds the cost (not the reward)
     let deal = rooms[socket.mainRoom].docks[dockIndex].deal;
@@ -1238,14 +1250,21 @@ function startTurn(room, gameStart = false) {
 
       // dock trade
       if(hasDock(curTile)) {
-        // send the deal to the captain
         const ind = curTile.dock;
 
-        // get the deal
-        const deal = curRoom.docks[ind].deal
+        // if the dock hasn't been discovered yet, discover it!
+        if(!curRoom.docks[ind].discovered) {
+          // send index to captain, including task type ("3")
+          captainTasks.push([3, ind]);
+        } else {
+          // send the deal to the captain
+          // get the deal
+          const deal = curRoom.docks[ind].deal
 
-        // send the message type ("trade with dock"), the deal, and the dock index
-        captainTasks.push([2, { deal: deal, index: ind }]);
+          // send the message type ("trade with dock"), the deal, and the dock index
+          captainTasks.push([2, { deal: deal, index: ind }]);
+        }
+        
       }
     }
 
@@ -1428,8 +1447,10 @@ function startTurn(room, gameStart = false) {
         // Sailor
         case 3:
           // The sailor DOES need to know the peddle/sail setting => there might have been a crew deficit
-          // TO DO: Find a way to update the sailLvl and peddleLvl (via pPack on server <===> pre-signal on client)
+          // The client checks if a property starts with "roleStats". If so, it gets the corresponding array => [roleNum, property, newValue]
           pPack["speed"] = curShip.speed;
+          pPack["roleStatsSail"] = [3, 'sailLvl', curShip.roleStats[3].sailLvl];
+          pPack["roleStatsPeddle"] = [3, 'peddleLvl', curShip.roleStats[3].peddleLvl];
           break;
 
         // Cannoneer
@@ -2135,7 +2156,7 @@ function createBaseMap(room) {
       // Save the noise value in the (huge) 2D map array
       // Also initialize empty variables for possible units that might be on this tile later
       const value = noise.perlin4(nx, ny, nz, nw);
-      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true };
+      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true, dock: null };
 
       // if it's a (really) deep sea tile, save it as a possible spawn point
       if(value < -0.6) {
@@ -2211,7 +2232,7 @@ function discoverIslands(room) {
         // deals are random in the very first turn (there's no information about what might be useful); after turn 1 they are automatically created correctly
         let good1 = Math.floor(Math.random()*4), good2 = Math.floor(Math.random()*4), val1 = Math.round(Math.random()*5), val2 = Math.round(Math.random()*5);
 
-        room.docks.push( { x: randDock.x, y: randDock.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
+        room.docks.push( { name: 'Undiscovered Dock', discovered: false, x: randDock.x, y: randDock.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
 
         // add this object into the map (only by index)
         room.map[randDock.y][randDock.x].dock = (room.docks.length - 1);

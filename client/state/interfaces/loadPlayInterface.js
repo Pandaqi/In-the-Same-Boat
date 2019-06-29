@@ -469,6 +469,44 @@ export default function loadPlayInterface(num, cont) {
                         cont.appendChild(span2)
 
                         break;
+
+                    // Discovery => a dock has been discovered, and you may give it a name
+                    // @parameter index of the dock
+                    case 3:
+                        let span3 = document.createElement("span")
+                        span3.classList.add("captain-task")
+                        span3.innerHTML = "<p>You have found a new dock! What will you name it?</p>"
+
+                        let inp3 = document.createElement("input")
+                        inp3.type = "text"
+                        inp3.placeholder = "Diddly Dock";
+                        span3.appendChild(inp3)
+
+                        let btn3 = document.createElement("button")
+                        btn3.setAttribute('data-taskid', i);
+                        btn3.innerHTML = 'Submit name'
+                        span3.appendChild(btn3)
+
+                        btn3.addEventListener('click', function() {
+                            // prevent submitting an empty name
+                            if(inp3.value.length < 1) {
+                                return;
+                            }
+
+                            // send signal to server
+                            socket.emit('name-dock', { name: inp3.value, dock: param } );
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span3.remove();
+                        })
+
+                        cont.appendChild(span3)
+
+                        break;
                 }
             }
 

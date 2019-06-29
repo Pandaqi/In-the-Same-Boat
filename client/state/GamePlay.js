@@ -304,15 +304,17 @@ class GamePlay extends Phaser.State {
       newSprite.myFogDot = newDot;
     }
 
-    this.moveUnits();
-
     // Display fog
     this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
     this.fogBmd.rect(0,0,gm.width,gm.height, '#CCCCCC');
 
     let fogSprite = gm.add.sprite(0,0, this.fogBmd);
 
+    // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
+    this.moveUnits();
+
     // Display the messages from the radio
+    // TO DO
 
     // Display NIGHT OVERLAY (for nighttime)
     this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
@@ -353,7 +355,16 @@ class GamePlay extends Phaser.State {
       averageY /= curIsland.myTiles.length;
 
       // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
+      // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
       gm.add.text(averageX*ths.tileSize, averageY*ths.tileSize, data.name, mainStyle.timerText())
+    })
+
+    // Function that is activated when a dock is discovered
+    socket.on('dock-discovered', data => {
+      // TO DO
+      // Get dock
+      // Reveal tile (remove fog; also a bit around it?)
+      // Always display dock trade from now on
     })
 
     // Function that is called whenever a new turn starts
