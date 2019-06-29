@@ -1,9 +1,9 @@
 import { serverInfo } from '../sockets/serverInfo'
 import { ROLE_DICTIONARY } from '../utils/roleDictionary'
 
-export default function loadErrorMessage(msg, i) { 
-    let msgType = msg[i][0];
-    let msgRole = ROLE_DICTIONARY[ msg[i][1] ];
+export default function loadErrorMessage(i) { 
+    let msgType = serverInfo.errorMessages[i][0];
+    let msgRole = ROLE_DICTIONARY[ serverInfo.errorMessages[i][1] ];
 
     let finalMsg = '';
     let msgVisualType = 0; // 0 = error message, 1 = reward/feedback message

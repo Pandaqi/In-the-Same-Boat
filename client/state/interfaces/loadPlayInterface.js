@@ -168,9 +168,11 @@ function disableForbiddenMoves() {
     let allowedSailRange = [0,0];
     let allowedPeddleRange = [0,0];
 
-    // check sail levels
-    // TO DO: Make proper range (not just [-1,1])
-    for(let i = -1; i <= 1; i++) {
+    // determine range of change
+    const changeRange = Math.ceil( (serverInfo.roleStats[3].lvl + 1) / 4);
+
+    // check sail levels (assuming current peddle stays constant)
+    for(let i = -changeRange; i <= changeRange; i++) {
         let newSpeed = oldSpeed + (curPeddle - oldPeddle) + i;
 
         if((oldSail + i) < 0 || newSpeed < 0 || newSpeed > maxSpeed || Math.abs(newSpeed - oldSpeed) > maxChange) {
@@ -191,9 +193,8 @@ function disableForbiddenMoves() {
         }
     }
 
-    // check peddle levels
-    // TO DO: Make proper range (not just [-1,1])
-    for(let i = -1; i <= 1; i++) {
+    // check peddle levels (assuming current peddle stays constant)
+    for(let i = -changeRange; i <= changeRange; i++) {
         let newSpeed = oldSpeed + (curSail - oldSail) + i;
 
         if((oldPeddle + i) < 0 || newSpeed < 0 || newSpeed > maxSpeed || Math.abs(newSpeed - oldSpeed) > maxChange) {
@@ -344,14 +345,19 @@ export default function loadPlayInterface(num, cont) {
         case 0:
             // Display error messages
             // The loop is DESCENDING (rather than ASCENDING), because newer error messages should be displayed first
+            let errorMsgContainer = document.createElement("span");
+            errorMsgContainer.id = 'captain-errorMessageContainer'
+
             let msg = serverInfo.errorMessages;
             for(let i = (msg.length - 1); i >= 0; i--) {
                 if(msg[i] == null) {
                     continue;
                 }
 
-                cont.appendChild( LOAD_ERROR_MESSAGE(msg, i) );
+                errorMsgContainer.appendChild( LOAD_ERROR_MESSAGE(i) );
             }
+
+            cont.appendChild(errorMsgContainer);
 
             // Loop through all tasks
             let tasks = serverInfo.taskList;
@@ -787,13 +793,17 @@ export default function loadPlayInterface(num, cont) {
             let sailorContainer = document.createElement("div");
             sailorContainer.id = 'sailor-container'
 
+            // Determine the change range, based on instrument level
+            // Once maxChange becomes 3, we allow it to change 2 per instrument. (Otherwise, we'll never be able to change 3 in one turn.)
+            const changeRange = Math.ceil( (serverInfo.roleStats[3].lvl + 1) / 4);
+
             // Vertical slider for sails
             // Create the actual slider
             let vSlider = document.createElement("input");
             vSlider.type = 'range'
-            vSlider.min = -1
-            vSlider.max = 1
-            vSlider.value = 0;
+            vSlider.min = -changeRange
+            vSlider.max = changeRange
+            vSlider.value = (serverInfo.roleStats[3].sailLvl - serverInfo.roleStats[3].oldSailLvl);
             vSlider.id = "sailor-sailInput"
 
             sailorContainer.appendChild(vSlider);
@@ -801,13 +811,13 @@ export default function loadPlayInterface(num, cont) {
             // Display numbers next to slider
             let rangeHint00 = document.createElement("div");
             rangeHint00.classList.add("sailor-rangeHintsVertical");
-            for(let i = 1; i >= -1; i--) {
+            for(let i = changeRange; i >= -changeRange; i--) {
                 let tempSpan = document.createElement("span");
 
                 if(i == 0) {
                     tempSpan.innerHTML = '';                    
                 } else {
-                    let numSails = (serverInfo.roleStats[3].sailLvl + i);
+                    let numSails = (serverInfo.roleStats[3].oldSailLvl + i);
                     let tempString = '';
                     for(let a = 0; a < numSails; a++) {
                         tempString += '<img src="assets/sailorIconSails.png" style="margin-left:-30px;" />';
@@ -826,7 +836,7 @@ export default function loadPlayInterface(num, cont) {
             rangeHint01.classList.add("sailor-rangeHintsVertical");
             rangeHint01.style.left = '55%';
 
-            for(let i = 1; i >= -1; i--) {
+            for(let i = changeRange; i >= -changeRange; i--) {
                 let tempSpan = document.createElement("span");
 
                 // determine cost; show it via color (red/green)
@@ -864,19 +874,23 @@ export default function loadPlayInterface(num, cont) {
                     this.value = v;
                 }
 
+                // get new sail value: it's based on change, so the slider only knows the CHANGE in level, and we need to add the current value
+                let newSailValue = serverInfo.roleStats[3].oldSailLvl + v;
+
                 // if it's the same as our current value, don't do anything
-                if(serverInfo.roleStats[3].sailLvl == v) {
+                if(serverInfo.roleStats[3].sailLvl == newSailValue) {
                     return;
                 }
 
                 // ... send the new signal (a sail update)
-                socket.emit('sail-up', v);
+                socket.emit('sail-up', newSailValue);
 
                 // update personal stats
-                serverInfo.roleStats[3].sailLvl = v;
+                serverInfo.roleStats[3].sailLvl = newSailValue;
 
                 // update speed circle (old speed + change in SAILS + change in PEDDLES)
-                document.getElementById('sailor-speedCircle').innerHTML = serverInfo.oldSpeed + (v - serverInfo.roleStats[3].oldSailLvl) + (serverInfo.roleStats[3].peddleLvl - serverInfo.roleStats[3].oldPeddleLvl);
+                serverInfo.speed = serverInfo.oldSpeed + (newSailValue - serverInfo.roleStats[3].oldSailLvl) + (serverInfo.roleStats[3].peddleLvl - serverInfo.roleStats[3].oldPeddleLvl);
+                document.getElementById('sailor-speedCircle').innerHTML = serverInfo.speed;
                 
                 // update forbidden moves
                 disableForbiddenMoves();
@@ -886,9 +900,9 @@ export default function loadPlayInterface(num, cont) {
             // Display the actual slider
             let hSlider = document.createElement("input")
             hSlider.type = 'range'
-            hSlider.min = -1
-            hSlider.max = 1
-            hSlider.value = 0;
+            hSlider.min = -changeRange
+            hSlider.max = changeRange
+            hSlider.value = (serverInfo.roleStats[3].peddleLvl - serverInfo.roleStats[3].oldPeddleLvl);
             hSlider.id = 'sailor-peddleInput';
 
             sailorContainer.appendChild(hSlider);
@@ -896,13 +910,13 @@ export default function loadPlayInterface(num, cont) {
             // Display numbers underneath slider
             let rangeHint10 = document.createElement("div");
             rangeHint10.classList.add('sailor-rangeHintsHorizontal');
-            for(let i = -1; i <= 1; i++) {
+            for(let i = -changeRange; i <= changeRange; i++) {
                 let tempSpan = document.createElement("span");
 
                 if(i == 0) {
                     tempSpan.innerHTML = '';                    
                 } else {
-                    let numPeddles = (serverInfo.roleStats[3].peddleLvl + i);
+                    let numPeddles = (serverInfo.roleStats[3].oldPeddleLvl + i);
                     let tempString = '';
                     for(let a = 0; a < numPeddles; a++) {
                         if(a == 0) {
@@ -925,7 +939,7 @@ export default function loadPlayInterface(num, cont) {
             let rangeHint11 = document.createElement("div");
             rangeHint11.classList.add('sailor-rangeHintsHorizontal');
             rangeHint11.style.top = '32%';
-            for(let i = -1; i <= 1; i++) {
+            for(let i = -changeRange; i <= changeRange; i++) {
                 let tempSpan = document.createElement("span");
 
                 // calculate cost; show it via color (red/green)
@@ -961,19 +975,23 @@ export default function loadPlayInterface(num, cont) {
                     this.value = v;
                 }
 
+                // get new peddle value
+                let newPeddleValue = serverInfo.roleStats[3].oldPeddleLvl + v;
+
                 // if it's the same as our current value, don't do anything
-                if(serverInfo.roleStats[3].peddleLvl == v) {
+                if(serverInfo.roleStats[3].peddleLvl == newPeddleValue) {
                     return;
                 }
 
                 // ... send the new signal (a peddle update)
-                socket.emit('peddle-up', v);
+                socket.emit('peddle-up', newPeddleValue);
 
                 // update personal stats
-                serverInfo.roleStats[3].peddleLvl = v;
+                serverInfo.roleStats[3].peddleLvl = newPeddleValue;
 
                 // update speed circle (old speed + change in SAILS + change in PEDDLES)
-                document.getElementById('sailor-speedCircle').innerHTML = serverInfo.oldSpeed + (v - serverInfo.roleStats[3].oldPeddleLvl) + (serverInfo.roleStats[3].sailLvl - serverInfo.roleStats[3].oldSailLvl);
+                serverInfo.speed = serverInfo.oldSpeed + (newPeddleValue - serverInfo.roleStats[3].oldPeddleLvl) + (serverInfo.roleStats[3].sailLvl - serverInfo.roleStats[3].oldSailLvl);
+                document.getElementById('sailor-speedCircle').innerHTML = serverInfo.speed;
             
                 // update forbidden moves
                 disableForbiddenMoves();

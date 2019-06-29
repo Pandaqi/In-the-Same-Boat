@@ -107,7 +107,7 @@ class ControllerWaiting extends Phaser.State {
 
             // if the captain tab is currently displaying, update it with the new error
             if(curTab.num == 0) {
-              document.getElementById('tab0').appendChild( LOAD_ERROR_MESSAGE(msg, (serverInfo.errorMessages.length - 1)) );
+              document.getElementById('captain-errorMessageContainer').appendChild( LOAD_ERROR_MESSAGE(serverInfo.errorMessages.length - 1) );
             }
           })
 
@@ -277,9 +277,11 @@ class ControllerWaiting extends Phaser.State {
       // save orientation, so you can play with it without the ghost ship changing
       serverInfo.oldOrientation = serverInfo.orientation
 
+      // save old speed, sail and peddle level
+      // so we can change it during the turn without lasting effects
       serverInfo.oldSpeed = serverInfo.speed
-      serverInfo.oldSailLvl = serverInfo.roleStats[3].sailLvl;
-      serverInfo.oldPeddleLvl = serverInfo.roleStats[3].peddleLvl;
+      serverInfo.roleStats[3].oldSailLvl = serverInfo.roleStats[3].sailLvl;
+      serverInfo.roleStats[3].oldPeddleLvl = serverInfo.roleStats[3].peddleLvl;
 
       // update ship health
       document.getElementById('healthBar').style.width = serverInfo.health + '%';

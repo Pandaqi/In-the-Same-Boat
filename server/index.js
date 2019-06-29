@@ -475,7 +475,14 @@ io.on('connection', socket => {
   // @parameter lvl = desired sail level/height for the ship
   socket.on('sail-up', lvl => {
     // get difference in crew that needs to work the sails (based on previous amount)
-    let deltaCrew = (lvl - socket.curShip.roleStats[3].sailLvl);
+    // let deltaCrew = (lvl - socket.curShip.roleStats[3].sailLvl);
+
+    // NEW SYSTEM: It always COSTS crew to change the sails;
+    let deltaCrew = Math.abs(lvl - socket.curShip.roleStats[3].sailLvl);
+    let deltaSpeed = lvl - socket.curShip.roleStats[3].sailLvl
+
+    // this also indicates the difference in SPEED
+    socket.curShip.speed += deltaSpeed;
 
     // check if we can "spend" the extra crew
     // (this should automatically work for a negative delta, in which case resources will just be added)
@@ -491,7 +498,11 @@ io.on('connection', socket => {
   socket.on('peddle-up', lvl => {
     // get difference in crew that needs to work the peddles (based on previous amount)
     // Remember: peddle crew costs twice as much (per level) => 2 CREW = 1 PEDDLE EXTRA
-    let deltaCrew = (lvl*2 - socket.curShip.roleStats[3].peddleLvl*2);
+    let deltaSpeed = (lvl - socket.curShip.roleStats[3].peddleLvl);
+    let deltaCrew = 2 * deltaSpeed;
+
+    // this also indicates the difference in SPEED, but halved (because each change costs 2 crew)
+    socket.curShip.speed += deltaSpeed;
 
     // check if we can "spend" the extra crew
     if( resourceCheck(socket, 3, -1, { 1: deltaCrew }, 1) ) {
@@ -524,21 +535,32 @@ io.on('connection', socket => {
   // When someone orders their ship to fire
   // This signal is dataless, that's why it has a function without parameters
   socket.on('fire', function() {
-    // calculate required resources
-    let cannonLevel = socket.curShip.roleStats[4].lvl;
-    let numberOfCannons = 0;
-    for(let i = 0; i < 4; i++) {
-        if(socket.curShip.cannons[i] >= 0) {
-            numberOfCannons++;
-        }
+    let curShip = socket.curShip;
+
+    // if no cannoneer in game, just get average instrument level
+    cannoneerInGame = false;
+    let firingCosts = Math.ceil( Math.ceil( (curShip.roleStats[1].lvl + curShip.roleStats[2].lvl + curShip.roleStats[3].lvl + 1) / 3 ) );
+
+    // if cannoneer is in game, calculate cost of firing (based on cannoneer level and number of cannons and all)
+    if(cannoneerInGame) {
+      // calculate required resources
+      let cannonLevel = curShip.roleStats[4].lvl;
+      let numberOfCannons = 0;
+      for(let i = 0; i < 4; i++) {
+          if(curShip.cannons[i] >= 0) {
+              numberOfCannons++;
+          }
+      }
+
+      firingCosts = Math.round((cannonLevel + 1) / 2) * numberOfCannons;
     }
 
-    let costs = { 1: Math.round((cannonLevel + 1) / 2) * numberOfCannons }
+    let costs = { 1: firingCosts}
 
     // Check if we have the resources to fire
     if( resourceCheck(socket, 0, -1, costs, 3) ) {
       // Remember that the ship will fire, when the new turn starts
-      socket.curShip.willFire = true;
+      curShip.willFire = true;
     }
 
   });
@@ -720,8 +742,7 @@ io.on('connection', socket => {
         startTurn(room, true);
         
         // set turn timer
-        // TO DO timer = 20;
-        timer = 600;
+        timer = 20;
         break;
 
       // If the next state is the game over state ...
@@ -1344,7 +1365,9 @@ function startTurn(room, gameStart = false) {
           // replenish crew
           // REMEMBER: curShip.workingCrew is the total crew number 
           //   => curShip.resources only contains the current resources, with allocated stuff subtracted
-          curShip.resources[1] = curShip.workingCrew;
+          // REMEMBER: peddle crew cost is permanent
+          //   => Every lvl costs 2 crew, until you "release" them 
+          curShip.resources[1] = (curShip.workingCrew - curShip.roleStats[3].peddleLvl*2);
 
           // (Basic) Ship resources (gold, crew, wood, gun powder)
           pPack["resources"] = curShip.resources;
@@ -1357,9 +1380,18 @@ function startTurn(room, gameStart = false) {
 
           // if we can fire, calculate the cost of firing
           if(curShip.captainCanFire) {
-            // reduce function calculates the number of cannons (positive loads), multiplies by (half) the current weaponeer value
-            let numCannons = curShip.cannons.reduce(function(tot, cur) { if(cur >= 0) { return tot + 1; } else { return tot; } }, 0)
-            pPack["firingCosts"] = Math.round((curShip.roleStats[4].lvl + 1) / 2) * numCannons;
+            // without cannoneer, just set crew to the average level of all basic roles
+            let cannoneerInGame = false;
+            let firingCosts = Math.ceil( (curShip.roleStats[1].lvl + curShip.roleStats[2].lvl + curShip.roleStats[3].lvl + 1) / 3 ); 
+
+            // if there is a cannoneer in the game, the calculation becomes different
+            if(cannoneerInGame) {
+              // reduce function calculates the number of cannons (positive loads), multiplies by (half) the current weaponeer value
+              let numCannons = curShip.cannons.reduce(function(tot, cur) { if(cur >= 0) { return tot + 1; } else { return tot; } }, 0)
+              firingCosts = Math.round((curShip.roleStats[4].lvl + 1) / 2) * numCannons;
+            }
+
+            pPack["firingCosts"] = firingCosts;
           }
           
           break;
@@ -1395,8 +1427,9 @@ function startTurn(room, gameStart = false) {
 
         // Sailor
         case 3:
-          // TO DO?? I think the sailor doesn't need to know anything extra
-          // Perhaps, they could receive the previous setting on their sails, but doesn't feel really necessary
+          // The sailor DOES need to know the peddle/sail setting => there might have been a crew deficit
+          // TO DO: Find a way to update the sailLvl and peddleLvl (via pPack on server <===> pre-signal on client)
+          pPack["speed"] = curShip.speed;
           break;
 
         // Cannoneer
@@ -1650,8 +1683,8 @@ function finishTurn(room) {
     // this ONLY works because we're working with 8 angles; diagonal angles still get rounded (to 1 or -1, depending on the angle)
     let movementVector = [Math.round( Math.cos(angle) ), Math.round( Math.sin(angle) )];
 
-    // speed is sailing level + peddle level (previously peddles counted for two, but that's just too much)
-    let speed = curShip.roleStats[3].sailLvl + curShip.roleStats[3].peddleLvl;
+    // speed is saved inside the object (and automatically updated when sails/peddle level changes)
+    let speed = curShip.speed;
     let oldObj = { x: curShip.x, y: curShip.y, index: i }
     let x = curShip.x, y = curShip.y;
 
@@ -1895,6 +1928,11 @@ function finishTurn(room) {
         val2 = val1 + 1 + Math.random()*3;
       }
 
+      // If the second good is 0, also update it to be at least 1
+      if(val2 == 0) {
+        val2 = val2 + 1 + Math.random()*3;
+      }
+
       // this formula is similar to how we determine how many routes each dock gets
       // the larger the dock, the more I want to "compress" its size with a square root (or similar function)
       const dockSize = Math.sqrt(curRoom.docks[d].size)*0.5;
@@ -1946,6 +1984,7 @@ function createShip(index) {
     x: 0, 
     y: 0, 
     orientation: 0, 
+    speed: 0,
     health: 100, 
     roleStats: [
       { lvl: 0, lvlUp: false }, 
