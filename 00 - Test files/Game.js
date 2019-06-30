@@ -6,6 +6,129 @@
  *
  */
 
+const EVENT_DICT = {
+
+	"main": {
+		"new-player": ["New player!", ["explore"] ],
+
+		"pirate-born": ["Pirate @[0] started", [] ],
+
+		"new-monster-type": ["Monster @[0] sighted", [] ],
+
+		"natural-disaster": ["Natural disaster!", [] ],
+
+		"monster-rampage": ["Monster @[0] rampages!", []],
+	},
+
+	"sub": {
+		"explore": ["Player @[0] explores", [] ],
+
+		"place-dock": ["Player @[0] placed a dock", [] ],
+		"found-city": ["Player @[0] founded a city", [] ],
+
+		"pirate-dies": ["Pirate @[0] died", [] ],
+
+		"natural-disaster-end": ["Natural disaster ended", [] ],
+
+		"monster-rampage-end": ["Monster @[0] rampage ended", []],
+	},
+
+}
+
+// REMARK: The "@[x]" bits represent an unknown value that should be input there (at runtime). 
+
+/*
+
+TO DO:
+
+~ Make each player start with one ship. 
+	=> Each SHIP and the PLAYER OBJECT ITSELF has a list of possible events
+	=> They may all pick exactly one event
+(This allows some ships to explore, while another may build a dock, and another is fighting a war)
+
+~ Implement player behaviour (desire to expand) + necessary events + necessary variables saved (like player reputation)
+~ Show what's happening on the screen. (Someone built a dock? Place it on the screen! Also color tiles based on territory)
+~ Execute timed events
+
+QUESTION: How do we save the things a player has "under his control"? 
+ => For each tile, save who "owns" it
+ => For each player, save an array of tiles on the edge of their explored territory. When the "explore" event triggers, they search / claim these lands.
+ 	=> If they find a land suitable for dock/city, they build it.
+
+IDEA: Measure a player's army (strength) by how many ships he has. "Building a new ship" can become an action. 
+ => Ships that sink, result in wrecks you can explore. 
+ => Ships that don't sink will be yours once the game starts :p
+
+	YESSSS: If a player has more ships, they can explore more per timestep!
+
+PLANNABLE: 
+ => Pirate start/end (kill possibility)
+ => Monster rampage start/end (kill possibility)
+ => Natural disaster start/end
+ => War start/end (kill possibility)
+
+(kill possibility = end event might be unnecessary because it terminates before that)
+
+*/
+
+
+/*
+
+"BEHAVIOUR" of units within the backstory simulation
+
+=== PLAYERS ===
+
+Players always try to expand their wealth, influence, army size, etc.
+ => When a player group is doing nothing, it explores.
+ => Unclaimed lands will become claimed
+ => Anything it discovers is saved
+ => To get enough resources, it builds docks and cities
+ => Docks generate trading routes over time
+
+This is the "ideal" situation. But, there are other players in the world!
+ => When they are attacked, they can suffer (great) losses, and their relationship with the attacker will deteriorate.
+ => Similarly, if someone thinks another player is becoming too powerful, they might start a war
+ => Random events might influence relations (such as a bad deal, betrayal, claiming a land somebody else also wanted)
+ => Additionally, aggressive players might just take control over other player's territories
+
+And there are random events outside of players control, like weather conditions (heavy storms) and monster attacks (mostly a monster rampage)
+
+
+=== PIRATES ===
+
+Pirates are born randomly or out of bad conditions (when a group is weak/marginalized, it can spawn more pirates)
+ => Pirates are always looking for a fight
+ => They actively sail the waters, and anybody who passes by will be attacked
+ => From time to time, they attack docks or coast cities, and might take away claimed territory.
+ => After a good looting, pirates may bury a treasure.
+ => When a great pirate ship sinks, it leaves behind a wreck (at the spot it sank), and possibly more clues/treasure/loot
+
+Pirates don't _explore_. 
+ => They have a home base, a preferred area, in which they just sail around. 
+ => Any tile within a certain radius of this home base is valid.
+ => If their home base is destroyed (or severely threatened), they will get out of this area and start chasing anyone they see as an enemy.
+
+IDEA: Keep track of the HEALTH of a certain ship? If it attacks too many times, and receives too much damage, it will sink. This might even be the result of a small fight.
+
+QUESTION: What happens when a pirate dies of natural causes? 
+ => 1) Another pirate takes over the ship?
+ => 2) We just let the ship sink/disappear "for unknown reasons"?
+ => 3) Nothing. If the pirate managed to make an impact, nice. If not, no worries?
+
+=== WAR ===
+
+When two (or more) players have a bad enough relationship, any subsequent "bad event" can trigger a war. (This is the "inciting incident".)
+
+Any players that are allied can join the battle. Pirates may also join the battle, if it's in their "neighbourhood".
+
+War can have many stages. Battling is only one of them. 
+ => If one side chooses to battle, but the other doesn't, the first side performs a surprise attack and will have a great result.
+ => Only if both sides choose to battle at the same time, a GREAT BATTLE ensues. The result is dramatic (and often ends the war instantly)
+
+Other stages are "growing an army", "gathering allies", "building more docks/coast cities", "taking control of an enemy dock/city"
+
+*/
+
 var gameScene = new Phaser.Class({
     Extends: Phaser.Scene,
     initialize: function gameScene ()
@@ -23,169 +146,9 @@ var gameScene = new Phaser.Class({
     	this.checkedTiles = {};
     	this.islands = [];
     	this.docks = [];
-
-    	this.load.image('aishipskey', 'resIconGold.png');
-    },
-
-    calculateRoute: function(start, end) {
-    	let Q = new PriorityQueue();
-
-    	Q.put(start, 0);
-
-    	// Maps are fast for searching, need unique values, AND can use an object as the key
-    	let came_from = new Map();
-    	let cost_so_far = new Map();
-    	let tiles_checked = new Map();
-
-    	let startLabel = start[0] + "-" + start[1];
-
-    	came_from.set(startLabel, null);
-		cost_so_far.set(startLabel, 0);
-
-		let reachable = false;
-
-		while( !Q.isEmpty() ) {
-			let current = Q.get();
-
-			let currentLabel = current[0] + "-" + current[1]
-			tiles_checked.set(currentLabel, true);
-        
-        	// stop when we've found the first "shortest route" to our destination
-	        if(current[0] == end[0] && current[1] == end[1]) { reachable = true; break; }
-
-	        // update all neighbours (to new distance, if run through the current tile)
-			let positions = [[-1,0],[1,0],[0,1],[0,-1]];
-			for(let a = 0; a < 4; a++) {
-				let tempX = current[0] + positions[a][0];
-	    		let tempY = current[1] + positions[a][1];
-
-	    		if(tempX < 0) { tempX += this.mapWidth; } else if(tempX >= this.mapWidth) { tempX -= this.mapWidth; }
-	    		if(tempY < 0) { tempY += this.mapHeight; } else if(tempY >= this.mapHeight) { tempY -= this.mapHeight;}
-
-	    		// don't consider tiles that aren't sea
-	    		if(this.map[tempY][tempX] >= 0.2) {
-	    			continue;
-	    		}
-
-	    		// calculate the new cost
-	    		// movement is always 1, in our world 
-	    		let new_cost = cost_so_far.get(currentLabel) + 1;
-
-	    		// get the tile
-	    		let next = [tempX, tempY];
-	    		let nextLabel = tempX + "-" + tempY;
-
-	    		// if the tile hasn't been visited yet, OR the new cost is lower than the current one, revisit it and save the update!
-	    		if(!cost_so_far.has(nextLabel) || new_cost < cost_so_far.get(nextLabel) ) {
-	    			if(tiles_checked.has(nextLabel)) {
-	    				continue;
-	    			}
-
-	    			// save the lower cost
-	    			cost_so_far.set(nextLabel, new_cost)
-
-	    			// calculate heuristic
-	    			// 1) Calculate Manhattan distance to target tile
-	    			let dX = Math.abs(tempX - end[0]);
-	    			if(dX > 0.5*this.mapWidth) { dX = (this.mapWidth - dX) }
-
-	    			let dY = Math.abs(tempY - end[1]);
-	    			if(dY > 0.5*this.mapHeight) { dY = (this.mapHeight - dY) }
-
-    				// 2) Shallow water has a higher cost than deep water
-	    			
-	    			let heuristic = (dX + dY) + this.map[tempY][tempX]*20;
-
-	    			// add this tile to the priority queue
-	    			// 3) Tie-breaker: Add a small number (1.01) to incentivice the algorithm to explore tiles more near the target, instead of at the start
-	    			let priority = new_cost + heuristic * (1.0 + 0.01);
-	    			Q.put(next, priority);
-
-	    			// save where we came from
-	    			came_from.set(nextLabel, current)
-	    		}
-			}
-		}
-
-		// if it was unreachable, tell that
-		if(!reachable) {
-			console.log("This target was not reachable");
-			return [];
-		}
-
-		// reconstruct the path
-		let path = []
-		let current = end
-
-	    while((current[0] != start[0] || current[1] != start[1])) {
-	        path.push(current)
-	        current = came_from.get(current[0] + "-" + current[1])
-	    }
-
-	    path.push(start); // add the start position to the path
-	    path.reverse(); // reverse the array (default goes backwards; the reverse should go forward)
-
-		return path
-    },
-
-    exploreIsland: function(x, y, island) {
-    	// add this tile to the island
-    	island.push([x,y]);
-
-    	// mark this tile as checked
-    	this.checkedTiles[x+"-"+y] = true;
-
-    	// check tiles left/right/top/bottom
-    	// TO DO: We don't check diagonally now. Should we?
-    	var positions = [[-1,0],[1,0],[0,1],[0,-1]]
-    	var freeTiles = []
-
-    	for(let a = 0; a < 4; a++) {
-    		let tempX = x + positions[a][0];
-    		let tempY = y + positions[a][1];
-
-    		// the map is seemless => top stitches to the bottom, left stitches to the right
-    		if(tempX < 0) { 
-    			tempX += this.mapWidth; 
-    		} else if(tempX >= this.mapWidth) {
-    			tempX -= this.mapWidth;
-    		}
-
-    		if(tempY < 0) {
-    			tempY += this.mapHeight;
-    		} else if(tempY >= this.mapHeight) {
-    			tempY -= this.mapHeight;
-    		}
-
-    		let tempKey = tempX+"-"+tempY;
-
-    		// if this is an island AND not yet checked, explore it!
-    		if(this.map[tempY][tempX] >= 0.2) {
-				if(!(tempKey in this.checkedTiles)) {
-	    			this.exploreIsland(tempX, tempY, island);
-	    		}
-    		} else {
-    			// if this tile is not an island (a free tile, water), save it
-    			freeTiles.push([tempX, tempY]);
-    		}
-    	}
-
-    	// If there's at least one non-land tile, this tile should be on the edge of the island
-    	if(freeTiles.length > 0) {
-    		// Pick one of the free spots, add it to the possible docks
-    		let randFreeSpot = freeTiles[ Math.floor(Math.random() * freeTiles.length) ];
-
-    		this.possibleDocks.push( randFreeSpot )
-    	}
-
-    	return island;
     },
 
 	create: function() {
-		// create new noise object
-		//let gen = new SimplexNoise();
-		//noise = new NOISE();
-		
 		noise.seed(Math.random());
 
 		let pixelHeight = this.mapHeight*this.tileSize;
@@ -198,12 +161,6 @@ var gameScene = new Phaser.Class({
 		for (let y = 0; y < this.mapHeight; y++) {
 			this.map[y] = [];
 			for (let x = 0; x < this.mapWidth; x++) { 
-
-				// OLD CODE (2D noise)
-				// let zoom = 150;
-				//let nx = x*this.tileSize / zoom;
-				//let ny = y*this.tileSize / zoom;
-				//this.map[y][x] = noise.perlin2(nx, ny)
 
 				// NEW CODE
 				// 4D noise => wraps back to 2D map, SEAMLESS
@@ -221,206 +178,9 @@ var gameScene = new Phaser.Class({
 		        let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
 
 				this.map[y][x] = noise.perlin4(nx, ny, nz, nw);
-				//this.map[y][x] = NOISE.Simplex.prototype.noise(nx, ny, nz, nw);
-
-		        /*
-				// subtract RADIAL GRADIENT
-				// value is the distance to the center by X and Y, and then taking the mean
-				// this is too harsh => set all center values to 0, and bump the outside values up by 0.5 => creates a nice rolloff
-				let radialValue = (Math.abs(nx - halfPxWidth)/halfPxWidth + Math.abs(ny - halfPxHeight)/halfPxHeight) * 0.5;
-				if(radialValue < 0.5) {
-					radialValue = 0;
-				} else {
-					radialValue -= 0.5;
-				}
-
-				this.map[y][x] = noise.perlin2(nx / 150, ny / 150) - radialValue;
-				*/
 			}
 		}
-
-		this.aiShips = [];
-
-		/*** DETERMINE ISLANDS ***/
-		// loop through the map
-		for (let y = 0; y < this.mapHeight; y++) {
-			for (let x = 0; x < this.mapWidth; x++) { 
-				// everytime we find an island tile ...
-				if(this.map[y][x] >= 0.2) {
-					// that doesn't already belong to an island ...
-					let key = x + "-"+y
-					if(!(key in this.checkedTiles)) {
-						this.possibleDocks = [];
-
-						// start the investigation!
-						this.islands.push( this.exploreIsland(x, y, []) );
-
-						// pick a random dock for this island
-						// get island size => get amount of free dock locations => determines dock size
-						let islandSize = this.possibleDocks.length;
-						let randDock = this.possibleDocks[ Math.floor(Math.random() * this.possibleDocks.length)]
-
-						this.docks.push( { pos: randDock, size: islandSize, deal: [[0, 4], [2, 6]] } );
-					}
-				}
-			}
-		}
-
-		/*** Place MONSTERS and PLAYER SHIPS ***/
-		// determine amount of blocks needed
-		let numMonsters = 10;
-		let numPlayers = 3;
-		let totalBlocks = numMonsters + numPlayers;
-
-		// the ratio must be 3:1 (x to y), so, after solving the equality, this formula follows
-		let blocksX = Math.sqrt(3 * totalBlocks);
-		let blocksY = 1/3 * blocksX;
-
-		// when rounding, we might get a number too far below or above the right one
-		// that's why we need to differentiate between how we round the variables
-
-		if(Math.ceil(blocksX)*Math.floor(blocksY) < totalBlocks) {
-			blocksX = Math.floor(blocksX);
-			blocksY = Math.ceil(blocksY);
-		} else {
-			blocksX = Math.ceil(blocksX);
-			blocksY = Math.floor(blocksY);
-		}
-
-		console.log(blocksX, ' - ', blocksY)
-
-		// populate block array
-		let blockArr = [];
-		for(let i = 0; i < blocksX; i++) {
-			for(let j = 0; j < blocksY; j++) {
-				blockArr.push({ x: i, y: j });
-			}
-		}
-		
-		console.time("Placing monsters and ships");
-
-		// place monsters AND ships
-		this.monsters = [];
-		this.playerShips = [];
-		for(let i = 0; i < totalBlocks; i++) {
-			// monsters only spawn in sea that is deep enough
-			// so keep trying, until we found a position
-			let randIndex = Math.floor(Math.random() * blockArr.length);
-			let randomBlock = blockArr.splice(randIndex, 1)[0];
-			let numTries = 0;
-			let maxTries = 10;
-
-			// we have a maximum of 10 tries. 
-			// If we haven't found a spot then, there's probably (almost) no correct spot within this sector
-			let rX, rY;
-			do {
-				rX = Math.floor( (randomBlock.x + Math.random()) * (this.mapWidth / blocksX) );
-				rY = Math.floor( (randomBlock.y + Math.random()) * (this.mapHeight / blocksY) );
-
-				numTries++;
-			} while (this.map[rY][rX] >= -0.2 && numTries <= maxTries);
-			// If we've exceeded our tries, just pick a random spot on the MAP, not within our own sector
-			// This should always succeed, even if it takes 50 or 100 tries, and is reasonably fast
-			if(numTries > maxTries) {
-				do {
-					rX = Math.floor( Math.random() * this.mapWidth );
-					rY = Math.floor( Math.random() * this.mapHeight );
-				} while (this.map[rY][rX] >= -0.2);
-			}
-
-			if(i < numMonsters) {
-				this.monsters.push( { x: rX, y: rY, chasing: false, target: null, prevTarget: null, chasingCounter: 0, reputation: 0 } );
-			} else {
-				this.playerShips.push( { x: rX, y: rY });
-			}
-
-		}
-
-		console.timeEnd("Placing monsters and ships");
-
-		/*** CALCULATE ROUTES BETWEEN HARBORS ****/
-		console.time("Route calculations");
-
-		let numDocks = this.docks.length;
-		let connectionArray = [];
-
-		// the "connection array" contains whether two docks are connected or not
-		// this way, we don't need to search through all the docks all the time, we just check this array to see if there's a connection
-		for(let i = 0; i < numDocks; i++) {
-			// create an array filled with "false" values
-			connectionArray[i] = Array(numDocks).fill(false);
-
-			// we DO have a connection to ourselves
-			connectionArray[i][i] = true; 
-
-			// initialize routes property for this dock (used in the next loop)
-			this.docks[i].routes = [];
-		}
-
-		for(let i = 0; i < numDocks; i++) {
-			let curNumRoutes = this.docks[i].routes.length; // routes we already received from other docks
-			let maxRoutesHarbor = Math.round( Math.sqrt(this.docks[i].size)*0.25 )// max routes our harbor can/should handle
-
-			let maxRoutes = Math.min(this.docks.length - 1, maxRoutesHarbor); // max routes we would be able to find, in TOTAL, across the whole map
-			let routesToDo = 0;
-
-			if(curNumRoutes < maxRoutes) {
-				routesToDo = maxRoutes - curNumRoutes;
-			}
-
-			while(routesToDo > 0) {
-				// pick a random dock
-				let j = Math.floor( Math.random() * this.docks.length) ;
-
-				// if there's already a connection, continue immediately
-				if(connectionArray[i][j]) {
-					continue;
-				} else {
-					// otherwise, make the connection!
-					let startPos = this.docks[i].pos;
-					let endPos = this.docks[j].pos;
-
-					let route = this.calculateRoute(startPos, endPos)
-
-					// shave first and last bit from the route
-					route.splice(0, 1);
-					route.splice( (route.length-1) , 1);
-
-					// save it on both docks (but in REVERSE on the second)
-					this.docks[i].routes.push( { route: route, target: j } );
-					this.docks[j].routes.push( { route: route.slice().reverse(), target: i } );
-
-					// save both connections in the connection Array
-					connectionArray[i][j] = true;
-					connectionArray[j][i] = true;
-
-					// we've finished one route!
-					routesToDo--;
-				}
-			}
-
-			// if this dock has routes, place an AI ship on each of them
-			if(this.docks[i].routes.length > 0) {
-				for(let r = 0; r < this.docks[i].routes.length; r++) {
-					// TO DO: COPY THIS TO THE ACTUAL GAME
-					// It happens more frequently than I thought
-					if(this.docks[i].routes[r].route.length < 1) {
-						// this route was unreachable
-						continue;
-					}
-
-					let randRoute = this.docks[i].routes[r].route[0]; // immediately fetch the first (0 index) step of the route
-
-					// save the dock and route index where you started
-					// this is used to follow the route
-			    	// TO DO: Save resources, attack/defense value, movement speed.
-			    	this.aiShips.push( { x: randRoute[0], y: randRoute[1], routeIndex: [i, r], routePointer: 0 } );
-				}
-
-			}
-			
-		}
-		console.timeEnd("Route calculations");
+	
 
 		/*** CREATE MAP VISUALS ***/
 
@@ -453,123 +213,28 @@ var gameScene = new Phaser.Class({
 			}
 		}
 
-		// make some different dock colors
-		let dockColors = [0xFF00FF, 0x00FFFF, 0xFFFF00, 0xFFFFFF, 0x000000, 0xFF0000, 0x00FF00, 0x0000FF,
-						0xFF00FF, 0x00FFFF, 0xFFFF00, 0xFFFFFF, 0x000000, 0xFF0000, 0x00FF00, 0x0000FF];
+		/*** CREATE TIMELINE ***/
 
-		// display the docks
-		for(let i = 0; i < this.docks.length; i++) {
-			let x = this.docks[i].pos[0];
-			let y = this.docks[i].pos[1];
+		this.timeGraphics = this.add.graphics(0,0);
+		this.timeGraphics.myTextSprites = [];
 
-			// make the docks ... PURPLE
-			graphics.fillStyle(dockColors[i], 1);
+		// Initialize timeline
+		this.timestep = 0;
+		this.unitsInWorld = { players: [], pirates: [], monsters: [] };
+		this.possibleEvents = { players: [], pirates: [], monsters: [] };
 
-			graphics.fillRect(x*this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
+		this.timedEvents = [];
 
-			// add size
-			let dockSize = this.docks[i].size;
-			this.add.text(x*this.tileSize, y*this.tileSize, dockSize, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
+		this.maxPlayers = 3;
 
-			// display its routes
-			for(let a = 0; a < this.docks[i].routes.length; a++) {
-				let r = this.docks[i].routes[a].route;
-
-				// loop through the route
-				for(let rr = 0; rr < r.length; rr++) {
-					let routeX = r[rr][0];
-					let routeY = r[rr][1];
-
-					// draw a small square (half size) for each route point
-					graphics.fillRect((routeX + 0.375)*this.tileSize, (routeY + 0.375)*this.tileSize, 0.25*this.tileSize, 0.25*this.tileSize);
-				}
-			}
-		}
-		
-		// set stroke style (beige, slightly transparent, not too thick)
-		graphics.lineStyle(2, 0xF9E4B7, 0.7);
-
-		var alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-
-		// draw grid lines VERTICALLY
-		// also add LETTERS at the top
-		for (let x = 0; x < this.mapWidth; x++) {
-			// x1, y1, x2, y2
-			let line = new Phaser.Geom.Line(x*this.tileSize, 0, x*this.tileSize, this.mapHeight*this.tileSize);
-			graphics.strokeLineShape(line);
-
-			// supports single letter (A) and double letter (AA) -> (I don't expect to need more)
-			let text = '?';
-			if(x < 26) {
-				text = alphabet[x]
-			} else {
-				text = alphabet[Math.floor(x / 26) - 1] + alphabet[x % 26];
-			}
-
-			this.add.text((x+0.5)*this.tileSize, this.tileSize*0.5, text, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
-		}
-			
-		// draw grid lines HORIZONTALLY
-		// also add NUMBERS at the side
-		for (let y = 0; y < this.mapHeight; y++) {
-			let line = new Phaser.Geom.Line(0, y*this.tileSize, this.mapWidth*this.tileSize, y*this.tileSize);
-			graphics.strokeLineShape(line);
-
-			this.add.text(this.tileSize*0.5, (y+0.5)*this.tileSize, y, { fontSize: 16, color: "#000000" }).setOrigin(0.5);
-		}
-
-		// display the ships
-		for(let i = 0; i < numPlayers; i++) {
-			let curShip = this.playerShips[i];
-
-			graphics.lineStyle(2, 0x0000FF, 1.0);
-			graphics.fillStyle(0x00FFFF, 1.0);
-
-			graphics.fillRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
-			graphics.strokeRect(curShip.x*this.tileSize, curShip.y*this.tileSize, this.tileSize, this.tileSize);
-		}
-
-		// display the AI ships
-		this.aiShipSprites = [];
-		for(let i = 0; i < this.aiShips.length; i++) {
-			let curShip = this.aiShips[i];
-
-			let newSprite = this.add.sprite(curShip.x*this.tileSize, curShip.y*this.tileSize, 'aishipskey');
-			this.aiShipSprites.push(newSprite);
-
-			newSprite.displayWidth = this.tileSize*0.7;
-			newSprite.displayHeight = this.tileSize*0.7;
-		}
-
-		// display the monsters
-		this.monsterSprites = [];
-		for(let i = 0; i < numMonsters; i++) {
-			let curMon = this.monsters[i];
-
-			/*graphics.lineStyle(2, 0x000000, 1.0);
-			graphics.fillStyle(0xFF0000, 1.0);
-
-			graphics.fillRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);
-			graphics.strokeRect(curMon.x*this.tileSize, curMon.y*this.tileSize, this.tileSize, this.tileSize);*/
-
-			let newSprite = this.add.sprite(curMon.x*this.tileSize, curMon.y*this.tileSize, 'keythatdoesntexist');
-			this.monsterSprites.push(newSprite);
-
-			newSprite.displayWidth = this.tileSize*0.5;
-			newSprite.displayHeight = this.tileSize*0.5;
-		}
-
-		
-
-		var timer = this.time.addEvent({
+		// Every X ms, go to a new step within the timeline
+		this.simulationTimer = this.time.addEvent({
 		    delay: 500,                // ms
-		    callback: this.moveShips,
+		    callback: this.updateTimeline,
 		    //args: [],
 		    callbackScope: this,
 		    loop: true
 		});
-
-		//window.graphics = graphics;
 	},
 
 	wrapCoords: function(c, bound) {
@@ -581,168 +246,213 @@ var gameScene = new Phaser.Class({
 		return c;
 	},
 
-	moveShips: function() {
+	updateTimeline: function() {
+		let allEventsNow = [];
 
-		// moving AI ships
-		for(let i = 0; i < this.aiShipSprites.length; i++) {
-			// get the SHIP
-			let s = this.aiShips[i];
+		let somethingHappened = false;
 
-			let shipSpeed = 3;
+		// Execute timed/planned events (such as a pirate dying or a storm ending naturally)
+		for(let i = 0; i < this.timedEvents.length; i++) {
+			const curEv = this.timedEvents[i];
 
-			// get the route object (contains the actual route ("route") and the dock where the route ends ("target"))
-			let routeObject = this.docks[ s.routeIndex[0] ].routes[ s.routeIndex[1] ];
+			// if the current event's time (index 0) is equal to the current simulation time ...
+			if(curEv[0] == this.timestep) {
+				// ... execute this event!
+				// index 1 = unit type; index 2 = unit number it relates to; index 3 = event key; 
+				let curUnit = this.unitsInWorld[ curEv[1] ][ curEv[2] ];
+				if(curUnit == null || curUnit == undefined) {
+					// unit doesn't exist anymore; do nothing
+					console.log("TIMED EVENT || Unit doesn't exist anymore; no further action");
+				} else {
+					// TO DO: If an event should happen at this timestep, execute it
+					// In most cases, that just means an "end" condition: remove this unit or stop this "phase"
+					console.log("TIMED EVENT ||", curEv[3]);
+				}
 
-			//increase pointer by ship speed
-			s.routePointer = Math.min(routeObject.route.length - 1, s.routePointer + 3);
 
-			// move SPRITE to next spot
-			let nextSpot = routeObject.route[s.routePointer]
-
-			let s1 = this.aiShipSprites[i];
-
-			// NOTE: the "+ 0.5" is only for displaying, must be removed on the server
-			s1.x = (nextSpot[0] + 0.5)*this.tileSize;
-			s1.y = (nextSpot[1] + 0.5)*this.tileSize;
-
-			// also update the object itself (instead of only the sprite)
-			s.x = nextSpot[0];
-			s.y = nextSpot[1];
-
-			// if we're at the end, pick a new route
-			if(s.routePointer == (routeObject.route.length - 1)) {
-				let newDock = this.docks[ routeObject.target ];
-				let routeIndex = Math.floor( Math.random() * newDock.routes.length );
-
-				// Save the dock we're coming form (which was previously our target) and which of its routes we're taking
-				s.routeIndex = [routeObject.target, routeIndex]
-				s.routePointer = -1;
+				// remove event from array
+				this.timedEvents.splice(i, 1);
+				i--;
 			}
 		}
 
-		// moving monsters ALTERNATIVE
-		for(let i = 0; i < this.monsterSprites.length; i++) {
-			let curSprite = this.monsterSprites[i];
-			let curMon = this.monsters[i];
+		// for each player, check possible events, pick one
+		for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+			const tempPosEvents = this.possibleEvents.players[i];
+			let tempEvent = '';
 
-			let moveSpeed = 2;
-			let chaseSpeed = 4;
-			let sightRadius = 6;
+			// pick a random possible event, if available
+			if(tempPosEvents.length > 0) {
+				tempEvent = tempPosEvents[ Math.floor( Math.random() * tempPosEvents.length )];
 
-			let targetPos;
+				// check if event is a sub event or main event
+				// (and get the right list based on that information)
+				let eventType = 'sub';
+				if(!(tempEvent in EVENT_DICT["sub"])) {
+					eventType = 'main';
+				}
 
-			if(curMon.chasingCounter >= 4) {
-				curMon.chasingCounter = 0;
-				curMon.chasing = false;
-				curMon.prevTarget = curMon.target;
-				curMon.target = null;
+				// log the chosen event
+				let eventDesc = EVENT_DICT[eventType][tempEvent][0]
+	   			let eventStrings = [i];
+
+				// clear possible events => add possible consequent events from tempEvent
+				// index 0 is the full event title/description, index 1 is the list of possible events
+				this.possibleEvents.players[i] = EVENT_DICT[eventType][tempEvent][1];
+
+				// record that something happened
+				somethingHappened = true;
+
+				// replace all "@[x]" bits with their corresponding input/string/value
+	   			for(let a = 0; a < eventStrings.length; a++) {
+		   			eventDesc = eventDesc.replace( '@[' + a + ']', eventStrings[a] );   				
+	   			}
+
+	   			allEventsNow.push(eventDesc);
+
+				console.log(eventDesc);
 			}
-
-			if(curMon.target == null) {
-				// check if a dock is near us
-				for(let a = 0; a < this.docks.length; a++) {
-					let dist = Math.abs(this.docks[a].x - curMon.x) + Math.abs(this.docks[a].y - curMon.y);
-
-					if(dist < sightRadius && this.docks[a] != curMon.prevTarget) {
-						curMon.target = this.docks[a];
-						curMon.chasing = true;
-						break;
-					}
-				}
-
-				// check if a ship is near us
-				for(let a = 0; a < this.playerShips.length; a++) {
-					let dist = Math.abs(this.playerShips[a].x - curMon.x) + Math.abs(this.playerShips[a].y - curMon.y);
-
-					if(dist < sightRadius && this.playerShips[a] != curMon.prevTarget) {
-						curMon.target = this.playerShips[a];
-						curMon.chasing = true;
-						break;
-					}
-				}
-
-				// check if an ai ship is near us
-				for(let a = 0; a < this.aiShips.length; a++) {
-					let dist = Math.abs(this.aiShips[a].x - curMon.x) + Math.abs(this.aiShips[a].y - curMon.y);
-
-					if(dist < sightRadius && this.aiShips[a] != curMon.prevTarget) {
-						curMon.target = this.aiShips[a];
-						curMon.chasing = true;
-						break;
-					}
-				}
-
-				// if there's nothing, just pick a random tile
-
-				// if it's still null
-				if(curMon.target == null) {
-					// pick a random position around us that is reachable (NOT island)
-					let rX, rY;
-					const maxTries = 20;
-					let numTries = 0;
-					do {
-						let angle = Math.random() * 2 * Math.PI;
-						rX = Math.floor(this.wrapCoords( curMon.x + Math.cos(angle)*moveSpeed, this.mapWidth));
-						rY = Math.floor(this.wrapCoords( curMon.y + Math.sin(angle)*moveSpeed, this.mapHeight));
-
-						numTries++;
-					} while((this.map[rY][rX] >= 0.2 || (this.map[rY][rX] >= -0.3 && Math.random() >= 0.2)) && numTries <= maxTries);
-
-					if(numTries > maxTries) {
-						targetPos = [];
-					} else {
-						targetPos = [rX, rY];
-					}
-
-					curMon.reputation += numTries;
-				}
-			}
-
-			// if we have a target, move to that position
-			// (otherwise, it defaults to targetPos => a random location near us)
-			if(curMon.target != null) {
-				curMon.chasingCounter++;
-				targetPos = [curMon.target.x, curMon.target.y];
-
-				// if there is no target ... 
-				// or we're already at the target ...
-				// don't do anything
-				if(targetPos.length < 1) { 
-					continue
-				}
-
-				if((targetPos[0] == curMon.x && targetPos[1] == curMon.y)) {
-					continue;
-				}
-			}
-
-
-			// calculate a route to this position
-			let tempRoute = this.calculateRoute([curMon.x, curMon.y], targetPos)
-
-			// if destination was unreachable, too bad, try again next turn
-			if(tempRoute.length < 1) {
-				continue;
-			}
-
-			// shave first bit from the route (that's the monster's current position)
-			// it's possible that the route is just the starting tile, nothing else, that's why the IF statement is
-			tempRoute.splice(0, 1);				
-
-			// follow the route for as long as our moveSpeed allows
-			let routeIndex = Math.min(tempRoute.length - 1, moveSpeed)
-			if(curMon.chasing) {
-				routeIndex = Math.min(tempRoute.length - 1, chaseSpeed);
-			}
-			let tempDestination = tempRoute[routeIndex]
-
-			curMon.x = tempDestination[0];
-			curMon.y = tempDestination[1];
-
-			curSprite.x = (tempDestination[0] + 0.5)*this.tileSize;
-			curSprite.y = (tempDestination[1] + 0.5)*this.tileSize;
 		}
 
+		// if nothing happens, go through all possible main events, pick one
+		// main events don't necessarily need to be related to a certain player
+
+		// QUESTION / TO DO: If the chosen event does not succeed, try again, until we find one that DOES succeed?
+		if(!somethingHappened) {
+			// save array of main events (for easy access)
+			const obj = EVENT_DICT["main"]
+
+			// get a random key (which is the actual event)
+			let keys = Object.keys(obj)
+   			let tempEvent = keys[ Math.floor( Math.random() * keys.length) ];
+
+   			// for logging the chosen event
+   			let eventDesc = EVENT_DICT["main"][tempEvent][0]
+   			let eventStrings = [];
+
+   			// sometimes events don't go through (because they are not allowed or impossible)
+   			// save that here
+   			let eventSucceeded = true;
+   			let num;
+
+   			// most main events have a special action associated with it
+   			// this switch statement executes those actions
+   			switch(tempEvent) {
+
+   				// NEW PLAYER: A new player joins. Add him to the array of players, and give it some future events.
+   				case 'new-player':
+	   				// get player num
+	   				num = this.unitsInWorld.players.length;
+
+	   				// if we already have enough players, stop here
+	   				if(num >= this.maxPlayers) {
+	   					eventSucceeded = false;
+	   					break;
+	   				}
+
+	   				// add player to arrays
+	   				const newPlayer = { num: num };
+   					this.unitsInWorld.players.push(newPlayer);
+   					this.possibleEvents.players.push([]);
+
+   					// save possible follow-up events
+					this.possibleEvents.players[num] = EVENT_DICT["main"][tempEvent][1];
+
+					// event strings (for logging)
+					eventStrings = [num];
+					break;
+
+				// NEW PIRATE: A new pirate joins the game. Add him to the pirates array, and plan his death.
+				case 'pirate-born':
+					num = this.unitsInWorld.pirates.length;
+
+					const newPirate = { num: num };
+					this.unitsInWorld.pirates.push(newPirate)
+
+					// save possible follow-up events
+					this.possibleEvents.pirates[num] = EVENT_DICT["main"][tempEvent][1];
+
+					// Plan death (20 turns later, for now)
+					this.timedEvents.push([this.timestep + 20, 'pirates', num, 'pirate-dies']);
+
+					// event strings (for logging)
+					eventStrings = [num];
+					break;
+
+				// NEW MONSTER: A new monster type has been discovered.
+				// Monsters don't really have a place in this simulation
+				// New TYPES are discovered. Every type just has ONE monster representing it. Once in a while, it goes on a rampage.
+				case 'new-monster-type':
+					num = this.unitsInWorld.monsters.length;
+
+					// if we already have enough monsters, stop here
+	   				if(num >= this.maxPlayers) {
+	   					eventSucceeded = false;
+	   					break;
+	   				}
+
+					const newMonster = { num: num };
+					this.unitsInWorld.monsters.push(newMonster)
+
+					// save possible follow-up events
+					this.possibleEvents.monsters[num] = EVENT_DICT["main"][tempEvent][1];
+
+					// event strings (for logging)
+					eventStrings = [num];
+
+					break;
+   			}
+
+   			if(eventSucceeded) {
+	   			// replace all "@[x]" bits with their corresponding input/string/value
+	   			for(let a = 0; a < eventStrings.length; a++) {
+		   			eventDesc = eventDesc.replace( '@[' + a + ']', eventStrings[a] );   				
+	   			}
+
+	   			// actually log the chosen event
+	   			console.log(eventDesc);
+
+	   			allEventsNow.push(eventDesc);
+   			}
+
+		}
+
+		// display the events on the timeline
+		// switch between low and high text, so it stays readable (and doesn't overlap)
+		let maxSteps = 50;
+		let timelineWidth = 20;
+		let x = (this.timestep % timelineWidth) * (window.innerWidth/timelineWidth), y = 40;
+		let extraY = (this.timestep % 2 == 0) ? 0 : 60;
+
+		// when a new iteration starts, clear the graphics, draw a new line, and destroy all text sprites
+		if(x == 0) { 
+			this.timeGraphics.clear();
+
+			this.timeGraphics.fillStyle(0xFFFFFF, 1);
+			this.timeGraphics.fillRect(0, 50, window.innerWidth, 5);
+
+			for(let i = 0; i < this.timeGraphics.myTextSprites.length; i++) {
+				this.timeGraphics.myTextSprites[i].destroy();
+			}
+
+			this.timeGraphics.myTextSprites = [];
+		}
+
+		// display text (that shows all events for this step)
+		for(let a = 0; a < allEventsNow.length; a++) {
+			this.timeGraphics.myTextSprites.push( this.add.text(x, y + 60 + a*20 + extraY, allEventsNow[a], { fontSize: 12, color: "#FFFFFF" }).setOrigin(0.5) );
+		}
+
+		// display vertical line (with correct height to reach the events)
+		this.timeGraphics.fillRect(x, y, 3, 60 + extraY);
+
+		// increase timestep
+		this.timestep++;
+
+		// arbitrary ending condition (time out after X number of steps)
+		if(this.timestep >= maxSteps) {
+			this.simulationTimer.remove();
+		}
 	},
 
 	// core game loop
@@ -759,36 +469,3 @@ var gameScene = new Phaser.Class({
     },
 
 });
-
-class PriorityQueue {
-
-	constructor() {
-		this.elements = [];
-	}
-
-	isEmpty() {
-		return (this.elements.length == 0);
-	}
-
-	put(item, priority) {
-		// check if it already exists
-		// THAT SHOULDN'T MATTER
-
-		// loop through current list
-		let insertIndex = 0;
-		while(insertIndex < this.elements.length) {
-			if(this.elements[insertIndex][0] >= priority) {
-				break;
-			}
-			insertIndex++;
-		}
-
-		// add this element!
-		this.elements.splice(insertIndex, 0, [priority, item]);
-	}
-
-	get() {
-		// remove first element from elements, return it
-		return this.elements.shift()[1];
-	}
-}
