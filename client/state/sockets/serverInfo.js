@@ -17,6 +17,8 @@ const serverInfo = {
 
   health: 100,
 
+  roleStats: [ { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0}, { lvl: 0} ],
+
   // These variables are for the player interface only
   // They keep track of what you've already done/seen/activated
   submittedPreparation: {},

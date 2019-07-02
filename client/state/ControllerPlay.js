@@ -82,7 +82,6 @@ class ControllerWaiting extends Phaser.State {
     // TO DO: This could be much simpler. No need to go through all the roles; just initialize everything to zero.
     // loop through all the roles
     let roles = serverInfo.myRoles;
-    serverInfo.roleStats = [ { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0}, { lvl: 0} ];
     for(let i = 0; i < roles.length; i++) {
       let roleNum = roles[i];
       switch(roleNum) {

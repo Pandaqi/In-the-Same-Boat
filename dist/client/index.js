@@ -92,6 +92,8 @@ var serverInfo = {
 
   health: 100,
 
+  roleStats: [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }],
+
   // These variables are for the player interface only
   // They keep track of what you've already done/seen/activated
   submittedPreparation: {},
@@ -498,6 +500,9 @@ var loadMainSockets = function loadMainSockets(socket, gm, serverInfo) {
       // if it's a roleUpdate => permanently update our level! (which role should be updated, is saved in data[key])
       if (key.substring(0, 10) == 'roleUpdate') {
         serverInfo.roleStats[data[key]].lvl++;
+      } else if (key.substring(0, 9) == 'roleStats') {
+        // if it's a role stat, get the role number, and which stat to change, and set it to the new value
+        serverInfo.roleStats[data[key][0]][data[key][1]] = data[key][2];
       } else {
         // otherwise, just blindly set the key to this value
         serverInfo[key] = data[key];
@@ -1997,15 +2002,17 @@ var GamePlay = function (_Phaser$State) {
                 _newSprite3.myFogDot = _newDot3;
             }
 
-            this.moveUnits();
-
             // Display fog
             this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
             this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
 
             var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
 
+            // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
+            this.moveUnits();
+
             // Display the messages from the radio
+            // TO DO
 
             // Display NIGHT OVERLAY (for nighttime)
             this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
@@ -2048,7 +2055,16 @@ var GamePlay = function (_Phaser$State) {
                 averageY /= curIsland.myTiles.length;
 
                 // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
+                // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
                 gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.timerText());
+            });
+
+            // Function that is activated when a dock is discovered
+            socket.on('dock-discovered', function (data) {
+                // TO DO
+                // Get dock
+                // Reveal tile (remove fog; also a bit around it?)
+                // Always display dock trade from now on
             });
 
             // Function that is called whenever a new turn starts
@@ -3536,6 +3552,44 @@ function loadPlayInterface(num, cont) {
                         cont.appendChild(span2);
 
                         break;
+
+                    // Discovery => a dock has been discovered, and you may give it a name
+                    // @parameter index of the dock
+                    case 3:
+                        var span3 = document.createElement("span");
+                        span3.classList.add("captain-task");
+                        span3.innerHTML = "<p>You have found a new dock! What will you name it?</p>";
+
+                        var inp3 = document.createElement("input");
+                        inp3.type = "text";
+                        inp3.placeholder = "Diddly Dock";
+                        span3.appendChild(inp3);
+
+                        var btn3 = document.createElement("button");
+                        btn3.setAttribute('data-taskid', _i2);
+                        btn3.innerHTML = 'Submit name';
+                        span3.appendChild(btn3);
+
+                        btn3.addEventListener('click', function () {
+                            // prevent submitting an empty name
+                            if (inp3.value.length < 1) {
+                                return;
+                            }
+
+                            // send signal to server
+                            socket.emit('name-dock', { name: inp3.value, dock: param });
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span3.remove();
+                        });
+
+                        cont.appendChild(span3);
+
+                        break;
                 }
             };
 
@@ -4432,7 +4486,6 @@ var ControllerWaiting = function (_Phaser$State) {
       // TO DO: This could be much simpler. No need to go through all the roles; just initialize everything to zero.
       // loop through all the roles
       var roles = _serverInfo.serverInfo.myRoles;
-      _serverInfo.serverInfo.roleStats = [{ lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }, { lvl: 0 }];
       for (var i = 0; i < roles.length; i++) {
         var roleNum = roles[i];
         switch (roleNum) {

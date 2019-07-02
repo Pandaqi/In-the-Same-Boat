@@ -9,7 +9,7 @@
 const EVENT_DICT = {
 
 	"main": {
-		"new-player": ["New player!", ["explore"] ],
+		"new-player": ["New player!", [] ],
 
 		"pirate-born": ["Pirate @[0] started", [] ],
 
@@ -41,10 +41,34 @@ const EVENT_DICT = {
 
 TO DO:
 
-~ Make each player start with one ship. 
-	=> Each SHIP and the PLAYER OBJECT ITSELF has a list of possible events
-	=> They may all pick exactly one event
-(This allows some ships to explore, while another may build a dock, and another is fighting a war)
+Make the explore function work
+Show the tiles it explores ( = the current territory of each player)
+When the explore function finds a place for a dock/city, place it immediately. (For testing now; there'll be resources later)
+
+REMEMBER: 
+ => Check if a unit has an event planned. If not, set it to the default (explore/roam around)
+ => We don't need to distinguish between individual and general events. 
+ 	=> General events are called explicitly from somewhere else (a main event, a ship encountering an enemy, etc.)
+ 	=> General events can instantly make their ships do something else.
+
+Somehow distinguish between "specific ship events" and "general player events" !!!
+	=> For example, a player group cannot "explore", but their ships can. 
+	=> The other way around: a player can start a war or be diplomatic, individual ships can't
+	OOOR, is the main/sub disctinction exactly that? The main events create new units and can only be done from the whole group. Sub events handly individual stuff.
+
+TWO OPTIONS:
+	1) Events are always meant for the group, but they are "passed down" to individual units.
+	   With a player set to "explore", he will automatically tell all his ships to explore.
+	2) We distinguish between individual and group events, which will need a little bit of restructuring/rewriting.
+
+PROBLEM: We need some way for individual events to initiate group events (somehow they need to link back/propagate events)
+
+MAYBE this whole event system is just complicating things. We can just switch to this set of rules:
+	1) When nothing to do, explore/roam around
+	2) When an enemy is
+	3) NO, THIS DOESN'T WORK EITHER
+
+
 
 ~ Implement player behaviour (desire to expand) + necessary events + necessary variables saved (like player reputation)
 ~ Show what's happening on the screen. (Someone built a dock? Place it on the screen! Also color tiles based on territory)
@@ -177,7 +201,9 @@ var gameScene = new Phaser.Class({
 		        let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
 		        let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
 
-				this.map[y][x] = noise.perlin4(nx, ny, nz, nw);
+		        let curVal = noise.perlin4(nx, ny, nz, nw);
+
+				this.map[y][x] = { val: curVal,  owner: -1 };
 			}
 		}
 	
@@ -191,7 +217,7 @@ var gameScene = new Phaser.Class({
 		// display the tiles
 		for (let y = 0; y < this.mapHeight; y++) {
 			for (let x = 0; x < this.mapWidth; x++) {
-				let curVal = this.map[y][x];
+				let curVal = this.map[y][x].val;
 
 				// DEEP OCEAN
 				if(curVal < -0.3) {
@@ -227,6 +253,8 @@ var gameScene = new Phaser.Class({
 
 		this.maxPlayers = 3;
 
+		this.territoryGraphics = this.add.graphics(0,0);
+
 		// Every X ms, go to a new step within the timeline
 		this.simulationTimer = this.time.addEvent({
 		    delay: 500,                // ms
@@ -246,9 +274,246 @@ var gameScene = new Phaser.Class({
 		return c;
 	},
 
-	updateTimeline: function() {
-		let allEventsNow = [];
 
+	// @parameter obj => the object of which we should pick an event (always in list "possibleEvents")
+	pickEvent: function(obj, generalEvent = false) {
+		// either pick the "possibleEvents" array or the general "events" object
+		let tempPosEvents = [];
+		if(generalEvent) {
+			tempPosEvents = Object.keys(obj)
+		} else {
+			tempPosEvents = obj.possibleEvents;
+		}
+
+		
+		if(tempPosEvents.length > 0) {
+			// if we have events, pick one (at random)
+			let randEvent = tempPosEvents[ Math.floor( Math.random() * tempPosEvents.length )];
+			this.executeEvent(randEvent, obj)
+		} else {
+			// if we have no events, and we're dealing with an actual unit, set this object to explore
+			// exploring can mean something (slightly) different for different units
+			if(!generalEvent) {
+				this.executeEvent('explore', obj)				
+			}
+		}
+		
+	},
+
+	executeEvent: function(ev, obj) {
+		// check if event is a sub event or main event
+		// (and get the right list based on that information)
+		let evType = 'main';
+		if(!(ev in EVENT_DICT["main"])) {
+			evType = 'sub';
+		}
+
+		// perform required action for this event
+		// the function is split between main and sub
+		// there's no other reason for this than readability: the functions can be shorter and more to the point
+		if(evType == "main") {
+			this.executeMainEventAction(ev, obj);		
+
+			// main events don't have general follow-ups
+			// instead, any possible events are handled in the "executeMainEventAction"	
+		} else {
+			this.executeSubEventAction(ev, obj);
+
+			// clear possible events => add possible consequent events from ev
+			// index 0 is the full event title/description, index 1 is the list of possible events
+			obj.possibleEvents = EVENT_DICT[evType][ev][1];
+		}
+
+		// record that something happened
+		// TO DO
+
+		// get proper eventStrings for logging
+		// TO DO
+		let eventStrings = [obj.num];
+
+		// log the event => give event description and input (to be replaced within string)
+		this.logEvent(EVENT_DICT[evType][ev][0], eventStrings)
+	},
+
+	executeSubEventAction(ev, obj, ref = null) {
+		const possibleEvents = EVENT_DICT["sub"][ev][1];
+
+		switch(ev) {
+
+			// PIRATE DIES: Remove the pirate from the world
+			// For now, we just set to null. In the future, we might think about actually removing it.
+			// TO DO: Maybe the list of ships can an obj, with the keys being the NAME of the ship
+			case 'pirate-dies':
+				this.unitsInWorld[ ref.unitType ][ ref.unitIndex ] = null;
+
+				break;
+
+			// EXPLORE ACTION
+			case 'explore':
+				// if this object doesn't have a "myPlayer" property, stop here
+				// this means that it's a general event or an event on a general group (like a whole player entity)
+				// TO DO: Pirate ships can also explore, so this if-statement might change in the future
+				if(!("myPlayer" in obj)) {
+					break;
+				}
+
+				// get the free tiles
+				let curPlayer = this.unitsInWorld["players"][ obj.myPlayer ];
+
+				// pick X free tiles to explore
+				//  => mark these as "owner = this player"
+				//  => remove them from possibleTiles
+				//  => add the newly found tiles to possibleTiles
+				let maxExplores = 3;
+				let numExplores = Math.min(maxExplores, curPlayer.possibleTiles.length);
+				for(let i = 0; i < numExplores; i++) {
+					// get random tile
+					let randIndex = Math.floor( Math.random() * curPlayer.possibleTiles.length );
+
+					// remove tile from array (and save it, in one line of code!)
+					let tempTile = curPlayer.possibleTiles.splice(randIndex, 1)[0];
+
+					// set this tile to be owned by this player now!
+					// (save the index of the player)
+					this.map[tempTile.y][tempTile.x].owner = obj.myPlayer
+
+					// check tiles around it for possible new explores
+					const positions = [[1,0],[-1,0],[0,1],[0,-1]]
+				    for(let a = 0; a < 4; a++) {
+				      let x = this.wrapCoords(tempTile.x + positions[a][0], this.mapWidth);
+				      let y = this.wrapCoords(tempTile.y + positions[a][1], this.mapHeight);
+
+				      // if this tile isn't already owned, and it's sea (not land), try to own it!
+				      // NOTE: In later versions, there will be other units that explore land
+				      if( this.map[y][x].owner < 0 && this.map[y][x].val < 0.2) {
+				      	curPlayer.possibleTiles.push({ x: x, y: y });
+				      }
+				    }
+
+				    // TO DO: When checking surrounding tiles, we can check how many LAND tiles are among them
+				    // If there is at least one land tile, this sea tile becomes a possible place for a DOCK
+				    // If we find a land tile neighbouring a sea tile, this becomes a possible place for a COAST CITY
+
+				    // move the ship to one of those tiles
+					// (the "final tile it explored this timestep")
+					if(i == (numExplores-1)) {
+						obj.x = tempTile.x;
+						obj.y = tempTile.y;
+					}
+				}
+
+				break;
+		}
+
+	},
+
+	executeMainEventAction(ev, obj) {
+		let num;
+		const possibleEvents = EVENT_DICT["main"][ev][1];
+
+		// most main events have a special action associated with it
+		// this switch statement executes those actions
+		switch(ev) {
+
+			// NEW PLAYER: A new player joins. Add him to the array of players, and give it some future events.
+			case 'new-player':
+			// get player num
+			num = this.unitsInWorld.players.length;
+
+			// if we already have enough players, stop here
+			if(num >= this.maxPlayers) {
+				eventSucceeded = false;
+				break;
+			}
+
+			// determine random starting position
+			// keep trying until we have a non-land tile
+			let startX, startY;
+			do {
+				startX = Math.floor( Math.random() * this.mapWidth);
+				startY = Math.floor( Math.random() * this.mapHeight);
+			} while( this.map[startY][startX].val >= 0.2);
+
+			// add player to array
+			// TO DO: Properly give possible events => differentiate between general (group) events and invidual (ship) events
+			const newPlayer = { num: num, myShips: [], possibleEvents: [], possibleTiles: [ {x: startX, y: startY }] };
+
+			// give himself possible events
+			newPlayer.possibleEvents = possibleEvents
+
+			// give him one ship (with possible events)
+			newPlayer.myShips = [ { x: startX, y: startY, possibleEvents: possibleEvents, myPlayer: num } ]
+
+			this.unitsInWorld.players.push(newPlayer);
+
+			// event strings (for logging)
+			//eventStrings = [num];
+			break;
+
+		// NEW PIRATE: A new pirate joins the game. Add him to the pirates array, and plan his death.
+		case 'pirate-born':
+			num = this.unitsInWorld.pirates.length;
+
+			// create new pirate
+			// save possible follow-up events
+			// TO DO: Give pirates a name, ship name, place of birth/prefrence, position, strength, etc.
+			const newPirate = { num: num };
+			newPirate.possibleEvents = possibleEvents;
+
+			this.unitsInWorld.pirates.push(newPirate)
+
+			// Plan death (20 turns later, for now)
+			this.timedEvents.push([this.timestep + 20, 'pirates', num, 'pirate-dies']);
+
+			// event strings (for logging)
+			//eventStrings = [num];
+			break;
+
+		// NEW MONSTER: A new monster type has been discovered.
+		// Monsters don't really have a place in this simulation
+		// New TYPES are discovered. Every type just has ONE monster representing it. Once in a while, it goes on a rampage.
+		case 'new-monster-type':
+			num = this.unitsInWorld.monsters.length;
+
+			// if we already have enough monsters, stop here
+			if(num >= this.maxPlayers) {
+				eventSucceeded = false;
+				break;
+			}
+
+			// create new monster
+			// save possible follow-up events
+			const newMonster = { num: num };
+			newMonster.possibleEvents = possibleEvents;
+			this.unitsInWorld.monsters.push(newMonster)
+
+			// event strings (for logging)
+			//eventStrings = [num];
+			break;
+		}
+	},
+
+	logEvent: function(ev, inp) {
+		// replace all "@[x]" bits with their corresponding input/string/value
+		for(let a = 0; a < inp.length; a++) {
+			ev = ev.replace( '@[' + a + ']', inp[a] );   				
+		}
+
+		// save it inside overall timeline display
+		// TO DO
+
+		// log it (for debugging)
+		console.log(ev);
+	},
+
+	updateTimeline: function() {
+		/***
+
+			UPDATING EVENTS/SIMULATION
+
+		***/
+
+		let allEventsNow = [];
 		let somethingHappened = false;
 
 		// Execute timed/planned events (such as a pirate dying or a storm ending naturally)
@@ -264,11 +529,15 @@ var gameScene = new Phaser.Class({
 					// unit doesn't exist anymore; do nothing
 					console.log("TIMED EVENT || Unit doesn't exist anymore; no further action");
 				} else {
-					// TO DO: If an event should happen at this timestep, execute it
+					// execute the event (send the event name AND the object to which it pertains)
 					// In most cases, that just means an "end" condition: remove this unit or stop this "phase"
-					console.log("TIMED EVENT ||", curEv[3]);
-				}
+					this.executeSubEventAction( curEv[3], curUnit, { unitType: curEv[1], unitIndex: curEv[2] } );
 
+					// log the event (debugging)
+					console.log("TIMED EVENT ||", curEv[3]);
+
+
+				}
 
 				// remove event from array
 				this.timedEvents.splice(i, 1);
@@ -277,145 +546,62 @@ var gameScene = new Phaser.Class({
 		}
 
 		// for each player, check possible events, pick one
+		// NOTE: If no possible events, it automatically goes to exploring mode
 		for(let i = 0; i < this.unitsInWorld.players.length; i++) {
-			const tempPosEvents = this.possibleEvents.players[i];
-			let tempEvent = '';
+			// execute one event on the player as a whole/group
+			// this is a general event like "start a war"
+			let curPlayer = this.unitsInWorld.players[i];
+			this.pickEvent(curPlayer);
 
-			// pick a random possible event, if available
-			if(tempPosEvents.length > 0) {
-				tempEvent = tempPosEvents[ Math.floor( Math.random() * tempPosEvents.length )];
-
-				// check if event is a sub event or main event
-				// (and get the right list based on that information)
-				let eventType = 'sub';
-				if(!(tempEvent in EVENT_DICT["sub"])) {
-					eventType = 'main';
-				}
-
-				// log the chosen event
-				let eventDesc = EVENT_DICT[eventType][tempEvent][0]
-	   			let eventStrings = [i];
-
-				// clear possible events => add possible consequent events from tempEvent
-				// index 0 is the full event title/description, index 1 is the list of possible events
-				this.possibleEvents.players[i] = EVENT_DICT[eventType][tempEvent][1];
-
-				// record that something happened
-				somethingHappened = true;
-
-				// replace all "@[x]" bits with their corresponding input/string/value
-	   			for(let a = 0; a < eventStrings.length; a++) {
-		   			eventDesc = eventDesc.replace( '@[' + a + ']', eventStrings[a] );   				
-	   			}
-
-	   			allEventsNow.push(eventDesc);
-
-				console.log(eventDesc);
+			// loop through all the ships that this player has
+			// for each ship, also execute one event
+			let playerShips = curPlayer.myShips;
+			for(let a = 0; a < playerShips.length; a++) {
+				this.pickEvent(playerShips[a]);
 			}
 		}
 
-		// if nothing happens, go through all possible main events, pick one
-		// main events don't necessarily need to be related to a certain player
+		// if nothing happens OR with a certain probability ...
+		// ... go through all possible main events and pick one
+		// NOTE: main events don't necessarily need to be related to a certain player
 
 		// QUESTION / TO DO: If the chosen event does not succeed, try again, until we find one that DOES succeed?
 		if(!somethingHappened) {
-			// save array of main events (for easy access)
-			const obj = EVENT_DICT["main"]
-
-			// get a random key (which is the actual event)
-			let keys = Object.keys(obj)
-   			let tempEvent = keys[ Math.floor( Math.random() * keys.length) ];
-
-   			// for logging the chosen event
-   			let eventDesc = EVENT_DICT["main"][tempEvent][0]
-   			let eventStrings = [];
-
-   			// sometimes events don't go through (because they are not allowed or impossible)
-   			// save that here
-   			let eventSucceeded = true;
-   			let num;
-
-   			// most main events have a special action associated with it
-   			// this switch statement executes those actions
-   			switch(tempEvent) {
-
-   				// NEW PLAYER: A new player joins. Add him to the array of players, and give it some future events.
-   				case 'new-player':
-	   				// get player num
-	   				num = this.unitsInWorld.players.length;
-
-	   				// if we already have enough players, stop here
-	   				if(num >= this.maxPlayers) {
-	   					eventSucceeded = false;
-	   					break;
-	   				}
-
-	   				// add player to arrays
-	   				const newPlayer = { num: num };
-   					this.unitsInWorld.players.push(newPlayer);
-   					this.possibleEvents.players.push([]);
-
-   					// save possible follow-up events
-					this.possibleEvents.players[num] = EVENT_DICT["main"][tempEvent][1];
-
-					// event strings (for logging)
-					eventStrings = [num];
-					break;
-
-				// NEW PIRATE: A new pirate joins the game. Add him to the pirates array, and plan his death.
-				case 'pirate-born':
-					num = this.unitsInWorld.pirates.length;
-
-					const newPirate = { num: num };
-					this.unitsInWorld.pirates.push(newPirate)
-
-					// save possible follow-up events
-					this.possibleEvents.pirates[num] = EVENT_DICT["main"][tempEvent][1];
-
-					// Plan death (20 turns later, for now)
-					this.timedEvents.push([this.timestep + 20, 'pirates', num, 'pirate-dies']);
-
-					// event strings (for logging)
-					eventStrings = [num];
-					break;
-
-				// NEW MONSTER: A new monster type has been discovered.
-				// Monsters don't really have a place in this simulation
-				// New TYPES are discovered. Every type just has ONE monster representing it. Once in a while, it goes on a rampage.
-				case 'new-monster-type':
-					num = this.unitsInWorld.monsters.length;
-
-					// if we already have enough monsters, stop here
-	   				if(num >= this.maxPlayers) {
-	   					eventSucceeded = false;
-	   					break;
-	   				}
-
-					const newMonster = { num: num };
-					this.unitsInWorld.monsters.push(newMonster)
-
-					// save possible follow-up events
-					this.possibleEvents.monsters[num] = EVENT_DICT["main"][tempEvent][1];
-
-					// event strings (for logging)
-					eventStrings = [num];
-
-					break;
-   			}
-
-   			if(eventSucceeded) {
-	   			// replace all "@[x]" bits with their corresponding input/string/value
-	   			for(let a = 0; a < eventStrings.length; a++) {
-		   			eventDesc = eventDesc.replace( '@[' + a + ']', eventStrings[a] );   				
-	   			}
-
-	   			// actually log the chosen event
-	   			console.log(eventDesc);
-
-	   			allEventsNow.push(eventDesc);
-   			}
-
+			// simply pick a random main event; second parameter ensures it is general (and not a "possibleEvents" array)
+			this.pickEvent(EVENT_DICT["main"], true)
 		}
+
+
+
+
+		/***
+
+			DISPLAYING TERRITORY
+
+		***/
+
+		this.territoryGraphics.clear();
+
+
+		let ownerColors = [0xFF0000, 0xFF00FF, 0xFFFFFF, 0x000000, 0x00FFFF];
+		for(let y = 0; y < this.mapHeight; y++) {
+			for(let x = 0; x < this.mapWidth; x++) {
+				let curOwner = this.map[y][x].owner;
+
+				if(curOwner >= 0) {
+					this.territoryGraphics.fillStyle(ownerColors[curOwner], 1);
+
+					this.territoryGraphics.fillRect(x * this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
+				}
+			}
+		}
+
+
+		/***
+
+			DISPLAYING THE TIMELINE
+
+		***/
 
 		// display the events on the timeline
 		// switch between low and high text, so it stays readable (and doesn't overlap)
