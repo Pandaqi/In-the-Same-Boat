@@ -21,15 +21,23 @@ const EVENT_DICT = {
 	},
 
 	"sub": {
+		// the almighty explore event
 		"explore": ["Player @[0] explores", [] ],
 
+		// building events
 		"place-dock": ["Player @[0] placed a dock", [] ],
 		"found-city": ["Player @[0] founded a city", [] ],
+		"build-ship": ["Player @[0] built a ship", [] ],
 
-		"pirate-dies": ["Pirate @[0] died", [] ],
+		// resource generating events (most are perpetual; they keep cycling until something breaks the cycle)
+		"start-trade-route": ["Player @[0] sends ship on trade route", ["trade-route"] ],
+		"trade-route": ["Player @[0] continues trade route", ["trade-route"] ],
+		"fish": ["Player @[0] fishes for resources/treasure", ["fish"] ],
+		"attack-ship": ["Player @[0] attacks a ship", [] ],
 
+		// timed events (with units dying or "ending", mostly)
 		"natural-disaster-end": ["Natural disaster ended", [] ],
-
+		"pirate-dies": ["Pirate @[0] died", [] ],
 		"monster-rampage-end": ["Monster @[0] rampage ended", []],
 	},
 
@@ -203,7 +211,7 @@ var gameScene = new Phaser.Class({
 
 		        let curVal = noise.perlin4(nx, ny, nz, nw);
 
-				this.map[y][x] = { val: curVal,  owner: -1 };
+				this.map[y][x] = { val: curVal,  owner: -1, dock: null };
 			}
 		}
 	
@@ -251,7 +259,10 @@ var gameScene = new Phaser.Class({
 
 		this.timedEvents = [];
 
-		this.maxPlayers = 3;
+		this.maxPlayers = 5;
+		this.maxSteps = 100;
+
+		this.allEventsNow = [];
 
 		this.territoryGraphics = this.add.graphics(0,0);
 
@@ -317,11 +328,10 @@ var gameScene = new Phaser.Class({
 			// main events don't have general follow-ups
 			// instead, any possible events are handled in the "executeMainEventAction"	
 		} else {
-			this.executeSubEventAction(ev, obj);
+			let unitType = ("myType" in obj) ? obj.myType : null;
+			let unitIndex = ("myPlayer" in obj) ? obj.myPlayer : null;
 
-			// clear possible events => add possible consequent events from ev
-			// index 0 is the full event title/description, index 1 is the list of possible events
-			obj.possibleEvents = EVENT_DICT[evType][ev][1];
+			this.executeSubEventAction(ev, obj, { unitType: unitType, unitIndex: unitIndex });
 		}
 
 		// record that something happened
@@ -338,22 +348,172 @@ var gameScene = new Phaser.Class({
 	executeSubEventAction(ev, obj, ref = null) {
 		const possibleEvents = EVENT_DICT["sub"][ev][1];
 
+		// clear the possible events; later, we'll populate it with new ones
+		obj.possibleEvents = [];
+
 		switch(ev) {
 
 			// PIRATE DIES: Remove the pirate from the world
 			// For now, we just set to null. In the future, we might think about actually removing it.
-			// TO DO: Maybe the list of ships can an obj, with the keys being the NAME of the ship
+			// TO DO: Maybe the list of ships can be an obj, with the keys being the NAME of the ship
 			case 'pirate-dies':
 				this.unitsInWorld[ ref.unitType ][ ref.unitIndex ] = null;
 
 				break;
+
+			// PLACE A DOCK
+			// Check if we have enough resources; build if so, try to gather more if not
+			// Set the dock value on the map to something other than null
+			// Also save that the player has this dock
+			case 'place-dock':
+				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
+				var cost = 4;
+				if(mainUnit.resources >= cost) {
+					let newDock = { name: "Dockio" };
+
+					this.map[ obj.y ][ obj.x ].dock = newDock;
+					mainUnit.docks.push(newDock);
+
+					mainUnit.resources -= cost;
+				} else {
+					// Plan events that generate more income
+					obj.possibleEvents.push(...["start-trade-route", "fish", "attack-ship"]);
+				}
+
+				break;
+
+			// FOUND A CITY
+			// Set the city value on the map to something other than null
+			case 'found-city':
+				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
+				var cost = 4;
+				if(mainUnit.resources >= cost) {
+					let newCity = { name: "Holymolyknoly" };
+
+					this.map[ obj.y ][ obj.x ].city = newCity;
+					mainUnit.cities.push(newCity);
+
+					mainUnit.resources -= cost;
+				} else {
+					// Plan events that generate more income
+					obj.possibleEvents.push(...["start-trade-route", "fish", "attack-ship"]);
+				}
+
+				break;
+
+			// BUILD A SHIP
+			// Check if we have enough resources
+			// Generate the ship and add it to the ships array
+			// Position doesn't matter: it will snap to the explored tiles anyway (within the same timestep)
+			case 'build-ship':
+				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
+				var cost = 8;
+				if(mainUnit.resources >= cost) {
+					let newShip = { name: "Queen Maxima's Revenge" };
+
+					// TO DO: Write general function for this??
+					mainUnit.myShips.push( { x: 0, y: 0, possibleEvents: [], myPlayer: ref.unitIndex, myType: 'players', canExplore: true, tradeRoute: [], tradeRouteCounter: -1 }  );
+
+					mainUnit.resources -= cost;
+				} else {
+					// TO DO: Make events that generate more income
+					//  => This is different from "place-dock" and "found-city", as it happens on the main player, not an individual ship
+					
+					//obj.possibleEvents.push("");
+				}
+
+				break;
+
+			// START A NEW TRADE ROUTE
+			// Pick a random dock to trade with
+			case 'start-trade-route':
+				// get one of our own docks (which is from where we start)
+				let ourDocks = this.unitsInWorld.players[ ref.unitIndex ].docks;
+
+				// if we don't have docks, the show cannot go on!
+				if(ourDocks.length <= 0) {
+					break;
+				}
+
+				// initialize trade route
+				obj.tradeRoute = [];
+				obj.tradeRouteCounter = 0;
+
+				// set a random dock as our start dock
+				obj.tradeRoute[0] = ourDocks[ Math.floor( Math.random() * ourDocks.length )];
+
+				// keep searching for a player with docks
+				// timeout after 10 tries
+				let pickPlayer;
+				let tries;
+				do {
+					pickPlayer = this.unitsInWorld.players[ Math.floor( Math.random() * this.unitsInWorld.players.length ) ];
+					tries++;
+
+					if(tries >= 10) {
+						break;
+					}
+				} while( pickPlayer.docks.length <= 0 || pickPlayer.num == ref.unitIndex );
+
+				// we failed in finding a potential dock!
+				if(tries >= 10) {
+					obj.tradeRouteCounter = -1;
+					break;
+				}
+
+				// then get a random dock, and save it as the trade route destination
+				obj.tradeRoute[1] = pickPlayer.docks[ Math.floor( Math.random() * pickPlayer.docks.length )];					
+				break;
+
+			// CONTINUE ON TRADE ROUTE
+			// Just jump back and forth between docks, delivering resources everytime it gets BACK
+			case 'trade-route':
+				// if we're meant to have a trade route, but we don't, keep trying to find one
+				if(obj.tradeRouteCounter < 0) {
+					obj.possibleEvents.push("start-trade-route");
+					break;
+				}
+
+				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
+
+				// switch between start and end
+				obj.tradeRouteCounter = (obj.tradeRouteCounter + 1) % 2;
+
+				// move ship to that location
+				obj.x = obj.tradeRoute[obj.tradeRouteCounter].x
+				obj.y = obj.tradeRoute[obj.tradeRouteCounter].y
+
+				// TO DO: If a trade request is ignored, relations become worse
+				// TO DO: But if a trade route is succesful, relations strengthen
+
+				// if it's the home base, get resources
+				if(obj.tradeRouteCounter == 0) {
+					mainUnit.resources += 4;
+				}
+				break;
+
+			// FISH
+			// The ship simply stands still where it is and generates some resources every turn
+			case 'fish': 
+				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
+				mainUnit.resources += 2.5;
+
+				break;
+
+			// ATTACK A SHIP
+			// The ship searches for a ship nearby, which is not their own/friendly, and attacks it
+			// TO DO
+			case 'attack-ship': 
+
+				break;
+
 
 			// EXPLORE ACTION
 			case 'explore':
 				// if this object doesn't have a "myPlayer" property, stop here
 				// this means that it's a general event or an event on a general group (like a whole player entity)
 				// TO DO: Pirate ships can also explore, so this if-statement might change in the future
-				if(!("myPlayer" in obj)) {
+				if(!obj.canExplore) {
 					break;
 				}
 
@@ -365,45 +525,76 @@ var gameScene = new Phaser.Class({
 				//  => remove them from possibleTiles
 				//  => add the newly found tiles to possibleTiles
 				let maxExplores = 3;
-				let numExplores = Math.min(maxExplores, curPlayer.possibleTiles.length);
-				for(let i = 0; i < numExplores; i++) {
+				for(let i = 0; i < maxExplores; i++) {
+					// if there's nothing left to explore, don't even try!
+					// break out of the whole loop
+					if(curPlayer.possibleTiles.length <= 0) {
+						break;
+					}
+
 					// get random tile
 					let randIndex = Math.floor( Math.random() * curPlayer.possibleTiles.length );
 
 					// remove tile from array (and save it, in one line of code!)
 					let tempTile = curPlayer.possibleTiles.splice(randIndex, 1)[0];
+					let actualTile = this.map[tempTile.y][tempTile.x];
+
+					// if this tile has another owner OR has a dock, don't explore it
+					// but continue to the next tile, and reduce the incrementer (so we will explore enough tiles)
+					if( actualTile.owner >= 0 || actualTile.dock != null || actualTile.city != null) {
+						i--;
+						continue;
+					}
 
 					// set this tile to be owned by this player now!
 					// (save the index of the player)
 					this.map[tempTile.y][tempTile.x].owner = obj.myPlayer
 
 					// check tiles around it for possible new explores
+					let landTiles = 0;
 					const positions = [[1,0],[-1,0],[0,1],[0,-1]]
 				    for(let a = 0; a < 4; a++) {
-				      let x = this.wrapCoords(tempTile.x + positions[a][0], this.mapWidth);
-				      let y = this.wrapCoords(tempTile.y + positions[a][1], this.mapHeight);
+						let x = this.wrapCoords(tempTile.x + positions[a][0], this.mapWidth);
+						let y = this.wrapCoords(tempTile.y + positions[a][1], this.mapHeight);
 
-				      // if this tile isn't already owned, and it's sea (not land), try to own it!
-				      // NOTE: In later versions, there will be other units that explore land
-				      if( this.map[y][x].owner < 0 && this.map[y][x].val < 0.2) {
-				      	curPlayer.possibleTiles.push({ x: x, y: y });
-				      }
+						// if this tile is at sea,
+						// ... and nobody owns it yet
+						// ... and there isn't a dock
+						// ... try to own it!
+						// NOTE: In later versions, there will be other units that explore land
+						if(this.map[y][x].val < 0.2) {
+							if( this.map[y][x].owner < 0 && this.map[y][x].dock == null) {
+								curPlayer.possibleTiles.push({ x: x, y: y });
+							}
+						} else {
+							landTiles++;
+						}
 				    }
+
+					// move the ship to the tile
+				    obj.x = tempTile.x;
+					obj.y = tempTile.y;
+
+					// if there's land (so we can build something) ...
+					// ... plan the event to build something
+					if(landTiles > 0) {
+						obj.possibleEvents.push("place-dock");
+						obj.possibleEvents.push("found-city");
+						break;
+					}
 
 				    // TO DO: When checking surrounding tiles, we can check how many LAND tiles are among them
 				    // If there is at least one land tile, this sea tile becomes a possible place for a DOCK
 				    // If we find a land tile neighbouring a sea tile, this becomes a possible place for a COAST CITY
-
-				    // move the ship to one of those tiles
-					// (the "final tile it explored this timestep")
-					if(i == (numExplores-1)) {
-						obj.x = tempTile.x;
-						obj.y = tempTile.y;
-					}
 				}
 
 				break;
 		}
+
+		// add possibleEvents (from the event we're currently evaluating; saved in dictionary)
+		// to the end of the array
+		// NOTE: might be nothing, might be very important
+		obj.possibleEvents.push(...possibleEvents)
 
 	},
 
@@ -432,19 +623,18 @@ var gameScene = new Phaser.Class({
 			do {
 				startX = Math.floor( Math.random() * this.mapWidth);
 				startY = Math.floor( Math.random() * this.mapHeight);
-			} while( this.map[startY][startX].val >= 0.2);
+			} while( this.map[startY][startX].val >= 0.2 || this.map[startY][startX].owner >= 0);
 
 			// add player to array
-			// TO DO: Properly give possible events => differentiate between general (group) events and invidual (ship) events
-			const newPlayer = { num: num, myShips: [], possibleEvents: [], possibleTiles: [ {x: startX, y: startY }] };
+			const newPlayer = { num: num, myShips: [], possibleEvents: [], possibleTiles: [ {x: startX, y: startY }], docks: [], cities: [], resources: 8, myPlayer: num, myType: 'players' };
 
 			// give himself possible events
 			newPlayer.possibleEvents = possibleEvents
 
-			// give him one ship (with possible events)
-			newPlayer.myShips = [ { x: startX, y: startY, possibleEvents: possibleEvents, myPlayer: num } ]
-
+			// add player to the world
 			this.unitsInWorld.players.push(newPlayer);
+
+			// NOTE: The first thing a player does, is build a new ship. So, that always happens in the "build-ship" event
 
 			// event strings (for logging)
 			//eventStrings = [num];
@@ -452,15 +642,25 @@ var gameScene = new Phaser.Class({
 
 		// NEW PIRATE: A new pirate joins the game. Add him to the pirates array, and plan his death.
 		case 'pirate-born':
-			num = this.unitsInWorld.pirates.length;
+			let piratesList = this.unitsInWorld.pirates;
+
+			num = piratesList.length;
+			// go through all pirates and insert pirate at first "null" position
+			// this ensures the array doesn't grow very large (with useless null values) over time
+			for(let i = 0; i < piratesList.length; i++) {
+				if(piratesList[i] == null) {
+					num = i;
+					break;
+				}
+			}
 
 			// create new pirate
 			// save possible follow-up events
 			// TO DO: Give pirates a name, ship name, place of birth/prefrence, position, strength, etc.
 			const newPirate = { num: num };
 			newPirate.possibleEvents = possibleEvents;
-
-			this.unitsInWorld.pirates.push(newPirate)
+			
+			this.unitsInWorld.pirates[num] = newPirate;
 
 			// Plan death (20 turns later, for now)
 			this.timedEvents.push([this.timestep + 20, 'pirates', num, 'pirate-dies']);
@@ -500,7 +700,7 @@ var gameScene = new Phaser.Class({
 		}
 
 		// save it inside overall timeline display
-		// TO DO
+		this.allEventsNow.push(ev);
 
 		// log it (for debugging)
 		console.log(ev);
@@ -513,7 +713,7 @@ var gameScene = new Phaser.Class({
 
 		***/
 
-		let allEventsNow = [];
+		this.allEventsNow = [];
 		let somethingHappened = false;
 
 		// Execute timed/planned events (such as a pirate dying or a storm ending naturally)
@@ -535,8 +735,6 @@ var gameScene = new Phaser.Class({
 
 					// log the event (debugging)
 					console.log("TIMED EVENT ||", curEv[3]);
-
-
 				}
 
 				// remove event from array
@@ -545,12 +743,32 @@ var gameScene = new Phaser.Class({
 			}
 		}
 
+		// for each player, generate income
+		let curPlayers = this.unitsInWorld.players;
+		for(let i = 0; i < curPlayers.length; i++) {
+			// income is always at least 1
+			// every dock generates income
+			// every city generates different income, but costs a little as well (to maintain/feed everyone)
+			// a ship doesn't generate income by default, but always costs a little to maintain
+			//  => a ship might give income if it's part of a trade route OR if it destroys another ship
+			// ??
+			let income = (curPlayers[i].docks.length * 0.5) + (curPlayers[i].cities.length * 0.5) - (curPlayers[i].myShips.length*2);
+			if(income <= 0) {
+				income = 1;
+			}
+
+			curPlayers[i].resources += income;
+
+			// the main player can always try to build a ship (after getting income)
+			curPlayers[i].possibleEvents.push("build-ship");
+		}
+
 		// for each player, check possible events, pick one
 		// NOTE: If no possible events, it automatically goes to exploring mode
-		for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+		for(let i = 0; i < curPlayers.length; i++) {
 			// execute one event on the player as a whole/group
 			// this is a general event like "start a war"
-			let curPlayer = this.unitsInWorld.players[i];
+			let curPlayer = curPlayers[i];
 			this.pickEvent(curPlayer);
 
 			// loop through all the ships that this player has
@@ -582,17 +800,35 @@ var gameScene = new Phaser.Class({
 
 		this.territoryGraphics.clear();
 
+		// display territory + docks
+		let ownerColors = [0xFF0000, 0xFF00FF, 0x000000, 0x00FFFF, 0xFFFF00];
+		let dockColors = [0xAA0000, 0xAA00AA, 0x333333, 0x00AAAA, 0xAAAA00];
+		let shipColors = [0x660000, 0x660066, 0x666666, 0x006666, 0x666600];
 
-		let ownerColors = [0xFF0000, 0xFF00FF, 0xFFFFFF, 0x000000, 0x00FFFF];
 		for(let y = 0; y < this.mapHeight; y++) {
 			for(let x = 0; x < this.mapWidth; x++) {
 				let curOwner = this.map[y][x].owner;
+				let noDock = (this.map[y][x].dock == null);
 
+				// territory
 				if(curOwner >= 0) {
-					this.territoryGraphics.fillStyle(ownerColors[curOwner], 1);
+					if(noDock) {
+						this.territoryGraphics.fillStyle(ownerColors[curOwner], 1);						
+					} else {
+						this.territoryGraphics.fillStyle(dockColors[curOwner], 1);
+					}
 
 					this.territoryGraphics.fillRect(x * this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
 				}
+			}
+		}
+
+		// display ships
+		for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+			let pShips = this.unitsInWorld.players[i].myShips;
+			for(let a = 0; a < pShips.length; a++) {
+				this.territoryGraphics.fillStyle(shipColors[i], 1);
+				this.territoryGraphics.fillRect(pShips[a].x * this.tileSize, pShips[a].y * this.tileSize, this.tileSize, this.tileSize);
 			}
 		}
 
@@ -603,9 +839,10 @@ var gameScene = new Phaser.Class({
 
 		***/
 
+		this.timeGraphics.visible = false;
+
 		// display the events on the timeline
 		// switch between low and high text, so it stays readable (and doesn't overlap)
-		let maxSteps = 50;
 		let timelineWidth = 20;
 		let x = (this.timestep % timelineWidth) * (window.innerWidth/timelineWidth), y = 40;
 		let extraY = (this.timestep % 2 == 0) ? 0 : 60;
@@ -625,9 +862,11 @@ var gameScene = new Phaser.Class({
 		}
 
 		// display text (that shows all events for this step)
-		for(let a = 0; a < allEventsNow.length; a++) {
-			this.timeGraphics.myTextSprites.push( this.add.text(x, y + 60 + a*20 + extraY, allEventsNow[a], { fontSize: 12, color: "#FFFFFF" }).setOrigin(0.5) );
+		/*
+		for(let a = 0; a < this.allEventsNow.length; a++) {
+			this.timeGraphics.myTextSprites.push( this.add.text(x, y + 60 + a*20 + extraY, this.allEventsNow[a], { fontSize: 12, color: "#FFFFFF" }).setOrigin(0.5) );
 		}
+		*/
 
 		// display vertical line (with correct height to reach the events)
 		this.timeGraphics.fillRect(x, y, 3, 60 + extraY);
@@ -636,7 +875,7 @@ var gameScene = new Phaser.Class({
 		this.timestep++;
 
 		// arbitrary ending condition (time out after X number of steps)
-		if(this.timestep >= maxSteps) {
+		if(this.timestep >= this.maxSteps) {
 			this.simulationTimer.remove();
 		}
 	},
