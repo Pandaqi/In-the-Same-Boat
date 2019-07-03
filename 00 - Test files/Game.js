@@ -211,7 +211,7 @@ var gameScene = new Phaser.Class({
 
 		        let curVal = noise.perlin4(nx, ny, nz, nw);
 
-				this.map[y][x] = { val: curVal,  owner: -1, dock: null };
+				this.map[y][x] = { val: curVal,  owner: -1, units: [], numUnits: 0, dock: null, city: null };
 			}
 		}
 	
@@ -285,9 +285,51 @@ var gameScene = new Phaser.Class({
 		return c;
 	},
 
+	placeSimUnit: function(obj, x, y) {
+		let oldTile = this.map[obj.y][obj.x];
+
+		// negative numbers means this unit won't move to a new place!
+		if(x < 0 || y < 0) {
+			return;
+		}
+		let newTile = this.map[y][x];
+
+		// remove it from the old tile
+		if(oldTile.numUnits > 0 && ("myTileIndex" in obj)) {
+			// remove object from previous tile
+			oldTile.units[ obj.myTileIndex ] = null;
+
+			// reduce num units
+			oldTile.numUnits--;
+
+			// if there are no units, clear the units array
+			// (otherwise the null values stay in there and it is never reset)
+			if(oldTile.numUnits <= 0) {
+				oldTile.units = [];				
+			}
+		}
+
+		// otherwise, add it to the new tile
+		// update corresponding map tile
+		newTile.units.push(obj);
+		newTile.numUnits++;
+
+		// save this object's tile index
+		obj.myTileIndex = (newTile.units.length - 1);
+
+		// update object itself
+		obj.x = x;
+		obj.y = y;
+	},
 
 	// @parameter obj => the object of which we should pick an event (always in list "possibleEvents")
 	pickEvent: function(obj, generalEvent = false) {
+		// if the object is null, which means it is destroyed or unavailable in some way, do nothing
+		if(obj == null) {
+			console.log("NULL OBJECT HERE")
+			return;
+		}
+
 		// either pick the "possibleEvents" array or the general "events" object
 		let tempPosEvents = [];
 		if(generalEvent) {
@@ -369,7 +411,7 @@ var gameScene = new Phaser.Class({
 				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
 				var cost = 4;
 				if(mainUnit.resources >= cost) {
-					let newDock = { name: "Dockio" };
+					let newDock = { name: "Dockio", x: obj.x, y: obj.y };
 
 					this.map[ obj.y ][ obj.x ].dock = newDock;
 					mainUnit.docks.push(newDock);
@@ -377,7 +419,7 @@ var gameScene = new Phaser.Class({
 					mainUnit.resources -= cost;
 				} else {
 					// Plan events that generate more income
-					obj.possibleEvents.push(...["start-trade-route", "fish", "attack-ship"]);
+					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship"]);
 				}
 
 				break;
@@ -388,7 +430,7 @@ var gameScene = new Phaser.Class({
 				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
 				var cost = 4;
 				if(mainUnit.resources >= cost) {
-					let newCity = { name: "Holymolyknoly" };
+					let newCity = { name: "Holymolyknoly", x: obj.x, y: obj.y };
 
 					this.map[ obj.y ][ obj.x ].city = newCity;
 					mainUnit.cities.push(newCity);
@@ -396,7 +438,7 @@ var gameScene = new Phaser.Class({
 					mainUnit.resources -= cost;
 				} else {
 					// Plan events that generate more income
-					obj.possibleEvents.push(...["start-trade-route", "fish", "attack-ship"]);
+					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship"]);
 				}
 
 				break;
@@ -445,7 +487,7 @@ var gameScene = new Phaser.Class({
 				// keep searching for a player with docks
 				// timeout after 10 tries
 				let pickPlayer;
-				let tries;
+				let tries = 0;
 				do {
 					pickPlayer = this.unitsInWorld.players[ Math.floor( Math.random() * this.unitsInWorld.players.length ) ];
 					tries++;
@@ -480,8 +522,7 @@ var gameScene = new Phaser.Class({
 				obj.tradeRouteCounter = (obj.tradeRouteCounter + 1) % 2;
 
 				// move ship to that location
-				obj.x = obj.tradeRoute[obj.tradeRouteCounter].x
-				obj.y = obj.tradeRoute[obj.tradeRouteCounter].y
+				this.placeSimUnit(obj, obj.tradeRoute[obj.tradeRouteCounter].x, obj.tradeRoute[obj.tradeRouteCounter].y)
 
 				// TO DO: If a trade request is ignored, relations become worse
 				// TO DO: But if a trade route is succesful, relations strengthen
@@ -503,7 +544,42 @@ var gameScene = new Phaser.Class({
 			// ATTACK A SHIP
 			// The ship searches for a ship nearby, which is not their own/friendly, and attacks it
 			// TO DO
+			//  => get loot
+			//  => only attack if non-friendly / really necessary
+			//  => worsen relationships because of the attack
+			//  => if the ship goes down, save it (the 5 ws: what/who/where/when/why?)
 			case 'attack-ship': 
+				let range = 5;
+
+				// go through a square around the ship
+				for(let y = 0; y < range*2; y++) {
+					for(let x = 0; x < range*2; x++) {
+						let curTile = this.map[y][x];
+
+						// if this tile has units
+						if(curTile.numUnits > 0) {
+							// attack all that are not ours
+							let unitsHere = curTile.units;
+							let unitString = JSON.stringify(unitsHere); // merely for debugging
+							for(let a = 0; a < unitsHere.length; a++) {
+								let curUnit = unitsHere[a];
+
+								if(curUnit.myPlayer != obj.myPlayer) {
+									// TO DO
+									// TO DO: I need different code for pirate ships ... meh
+									// For now, just destroy the ship, by setting it to null
+									this.placeSimUnit(curUnit, -1, -1);
+
+									this.unitsInWorld.players[ curUnit.myPlayer ].myShips[ curUnit.num ] = null;
+								}
+							}
+
+							console.log("SHIP BATTLE || ", unitString);
+
+							break;
+						}
+					}
+				}
 
 				break;
 
@@ -561,7 +637,7 @@ var gameScene = new Phaser.Class({
 						// ... and nobody owns it yet
 						// ... and there isn't a dock
 						// ... try to own it!
-						// NOTE: In later versions, there will be other units that explore land
+						// NOTE: In later versions, there will be different units that explore land
 						if(this.map[y][x].val < 0.2) {
 							if( this.map[y][x].owner < 0 && this.map[y][x].dock == null) {
 								curPlayer.possibleTiles.push({ x: x, y: y });
@@ -571,9 +647,8 @@ var gameScene = new Phaser.Class({
 						}
 				    }
 
-					// move the ship to the tile
-				    obj.x = tempTile.x;
-					obj.y = tempTile.y;
+				    // move the ship to the tile
+				    this.placeSimUnit(obj, tempTile.x, tempTile.y);
 
 					// if there's land (so we can build something) ...
 					// ... plan the event to build something
@@ -703,7 +778,7 @@ var gameScene = new Phaser.Class({
 		this.allEventsNow.push(ev);
 
 		// log it (for debugging)
-		console.log(ev);
+		//console.log(ev);
 	},
 
 	updateTimeline: function() {
@@ -867,6 +942,10 @@ var gameScene = new Phaser.Class({
 			this.timeGraphics.myTextSprites.push( this.add.text(x, y + 60 + a*20 + extraY, this.allEventsNow[a], { fontSize: 12, color: "#FFFFFF" }).setOrigin(0.5) );
 		}
 		*/
+
+		// simply log all events (of the current timestep) at once
+		console.log(this.timestep);
+		// console.log(this.allEventsNow);
 
 		// display vertical line (with correct height to reach the events)
 		this.timeGraphics.fillRect(x, y, 3, 60 + extraY);
