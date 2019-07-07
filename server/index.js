@@ -73,6 +73,8 @@ io.on('connection', socket => {
       signalHistory: [],
       peopleDisconnected: [],
       destroyingGame: false,
+
+      cities: [],
     }
 
     // save the main room in the socket, for easy access later
@@ -602,6 +604,42 @@ io.on('connection', socket => {
     sendSignal(socket.mainRoom, true, 'dock-discovered', { index: data.dock, name: data.name }, false, false)
   });
 
+  socket.on('name-city', data => {
+    let curCity = rooms[socket.mainRoom].cities[data.city];
+
+    curCity.name = data.name;
+    curCity.discovered = true;
+
+    // send the index of the island to monitors; so they can reveal it
+    sendSignal(socket.mainRoom, true, 'city-discovered', { index: data.city, name: data.name }, false, false)
+  });
+
+  socket.on('explore-city', cityIndex => {
+    let curCity = rooms[socket.mainRoom].cities[cityIndex];
+
+    let costs = { 1: 4 }
+    if(resourceCheck(socket, 0, 0, costs, 10)) {
+      // TO DO
+      // If we succeed, get the clues stored in this city, and return them as a captain message (not a task)
+
+      // PROBLEM: The error messages are "cleared" at the end of each turn
+      // We need to somehow DELAY grabbing the message 
+      // (just save interim-messages in a different array, copy them to errorMessages AFTER clearing)
+    }
+    
+  });
+
+  socket.on('explore-tile', function() {
+    let costs = { 1: 4 }
+    if(resourceCheck(socket, 0, 0, costs, 11)) {
+      // TO DO
+      // If we succeed, get the clues stored in this city, and return them as a captain message (not a task)
+
+      // NOTE: This function is almost identical to 'explore-city'
+    }
+    
+  });
+
   socket.on('dock-trade', dockIndex => {
     // get the deal, create an object that holds the cost (not the reward)
     let deal = rooms[socket.mainRoom].docks[dockIndex].deal;
@@ -973,7 +1011,8 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
       curShip.resources[convKey] -= costs[key];
 
       // if it's crew, but we're not ALLOCATING crew (but spending it), actually spend it
-      let allocationActions = [1,3]
+      // TO DO/REMARK: Remember to update this array of allocationActions for future actions
+      let allocationActions = [1, 3, 10, 11]
       let allocatingCrew = allocationActions.includes(actionType);
       if(convKey == 1 && !allocatingCrew) {
         curShip.workingCrew -= costs[key];
@@ -1249,7 +1288,7 @@ function startTurn(room, gameStart = false) {
         }
       }
 
-      // dock trade
+      // dock   (if undiscovered, name it; if discovered, you can trade)
       if(hasDock(curTile)) {
         const ind = curTile.dock;
 
@@ -1264,8 +1303,25 @@ function startTurn(room, gameStart = false) {
 
           // send the message type ("trade with dock"), the deal, and the dock index
           captainTasks.push([2, { deal: deal, index: ind }]);
+        } 
+      }
+
+      // city   (if undiscovered, name it; if discovered, you can ask around for clues)
+      if(hasCity(curTile)) {
+        const ind = curTile.city;
+
+        // if the city hasn't been discovered yet, discover it!
+        if(!curRoom.cities[ind].discovered) {
+          captainTasks.push([4, ind]);
+        } else {
+          // tell captain that he can "ask around/look around"
+          captainTasks.push([5, ind]);
         }
-        
+      }
+
+      // arbitrary exploration  (if the ship is going slow enough, you can explore your current tile)
+      if(curShip.speed <= 1) {
+        captainTasks.push([6, null])
       }
     }
 
@@ -1719,19 +1775,22 @@ function finishTurn(room) {
       let tile = curRoom.map[tempY][tempX];
 
       // check if the next tile (we want to go to) is reachable
-      // NOT REACHABLE if: an island or a dock
-      if(isIsland(tile) || hasDock(tile)) {
+      // NOT REACHABLE if: an island or a dock or a city
+      if(isIsland(tile) || hasDock(tile) || hasCity(tile)) {
         // ship gets damage
         dealDamage(curRoom, curShip, curShip, 10, true)
 
-        // tile also gets damage! (This way, docks can be destroyed by bumping into them)
+        // tile also gets damage! (This way, docks/cities can be "taken over" by bumping into them)
         dealDamage(curRoom, tile, curShip, 10);
 
         // Inform captain of damage
         curShip.errorMessages.push([5,0]);
 
         // set speed to 0
+        // don't forget to turn off the sails and peddles as well => extra penalty AND keeps code clean and synchronized
         curShip.speed = 0;
+        curShip.roleStats[3].sailLvl = 0;
+        curShip.roleStats[3].peddleLevel = 0;
         break;
 
       // if it's reachable, then we just update the position and move to the next step
@@ -2258,6 +2317,10 @@ function isIsland(obj) {
 
 function hasDock(obj) {
   return (obj.dock != undefined && obj.dock != null);
+}
+
+function hasCity(obj) {
+  return (obj.city != undefined && obj.city != null);
 }
 
 function isChecked(obj) {

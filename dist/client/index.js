@@ -1054,6 +1054,14 @@ function loadErrorMessage(i) {
         case 9:
             finalMsg = 'Trade with dock failed!';
             break;
+
+        case 10:
+            finalMsg = "Asking around didn't yield any results!";
+            break;
+
+        case 11:
+            finalMsg = 'Searching for clues failed!';
+            break;
     }
 
     var errorMsg = document.createElement("span");
@@ -3367,6 +3375,23 @@ function loadFireButton() {
     return curString;
 }
 
+function loadExploreButton() {
+    // display the word 'EXPLORE!' (this button controls both exploring parts of the ocean and asking around in cities)
+    var curString = '<span class="upgradeButtonLabel">EXPLORE!</span>';
+
+    // calculate the crew costs for exploration
+    // TO DO: For now, it always costs 4 crew
+    //        (also, don't forget to sync this between client and server)
+    var costs = { 1: 4 };
+
+    // display costs inside upgrade button
+    for (var key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    }
+
+    return curString;
+}
+
 function loadDeal(deal) {
     var resDict = ['Gold', 'Crew', 'Wood', 'Ammo']; //resDict[ deal[0][0] ] for resource as a string
 
@@ -3588,6 +3613,100 @@ function loadPlayInterface(num, cont) {
                         });
 
                         cont.appendChild(span3);
+
+                        break;
+
+                    // Discovery => a city has been discovered, and you may give it a name
+                    // @parameter index of the city
+                    case 4:
+                        var span4 = document.createElement("span");
+                        span4.classList.add("captain-task");
+                        span4.innerHTML = "<p>You stumbled upon a small town! What will you name it?</p>";
+
+                        var inp4 = document.createElement("input");
+                        inp4.type = "text";
+                        inp4.placeholder = "City of Stars";
+                        span4.appendChild(inp4);
+
+                        var btn4 = document.createElement("button");
+                        btn4.setAttribute('data-taskid', _i2);
+                        btn4.innerHTML = 'Submit name';
+                        span4.appendChild(btn4);
+
+                        btn4.addEventListener('click', function () {
+                            // prevent submitting an empty name
+                            if (inp4.value.length < 1) {
+                                return;
+                            }
+
+                            // send signal to server
+                            socket.emit('name-city', { name: inp4.value, city: param });
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span4.remove();
+                        });
+
+                        cont.appendChild(span4);
+
+                        break;
+
+                    // Exploration => you are near a city and can ask around for clues
+                    // @parameter index of the city
+                    case 5:
+                        var span5 = document.createElement("span");
+                        span5.classList.add("captain-task");
+                        span5.innerHTML = "<p>The people in this town might know something. Want to ask around?</p>";
+
+                        var btn5 = document.createElement("button");
+                        btn5.setAttribute('data-taskid', _i2);
+                        btn5.innerHTML = loadExploreButton();
+                        span5.appendChild(btn5);
+
+                        btn5.addEventListener('click', function () {
+                            // send signal to server
+                            socket.emit('explore-city', param);
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span5.remove();
+                        });
+
+                        cont.appendChild(span5);
+
+                        break;
+
+                    // Exploration => you are at (deep) sea and can dive in search of clues
+                    // @parameter ??
+                    case 6:
+                        var span6 = document.createElement("span");
+                        span6.classList.add("captain-task");
+                        span6.innerHTML = "<p>Want to dive and search for treasure?</p>";
+
+                        var btn6 = document.createElement("button");
+                        btn6.setAttribute('data-taskid', _i2);
+                        btn6.innerHTML = loadExploreButton();
+                        span6.appendChild(btn6);
+
+                        btn6.addEventListener('click', function () {
+                            // send signal to server
+                            socket.emit('explore-tile');
+
+                            // pop this task off the list
+                            // set it to null; it will just be ignored from now on
+                            _serverInfo.serverInfo.taskList[this.getAttribute('data-taskid')] = null;
+
+                            // remove this whole task block
+                            span6.remove();
+                        });
+
+                        cont.appendChild(span6);
 
                         break;
                 }

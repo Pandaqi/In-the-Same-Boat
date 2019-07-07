@@ -50,6 +50,14 @@ export default function loadErrorMessage(i) {
         case 9:
             finalMsg = 'Trade with dock failed!';
             break;
+
+        case 10:
+            finalMsg = "Asking around didn't yield any results!";
+            break;
+
+        case 11:
+            finalMsg = 'Searching for clues failed!';
+            break;
     }
 
     let errorMsg = document.createElement("span")
