@@ -222,6 +222,13 @@ var gameScene = new Phaser.Class({
 		// display map
 		var graphics = this.add.graphics(0, 0);
 
+		this.timeGraphics = this.add.graphics(0,0);
+		this.timeGraphics.myTextSprites = [];
+
+		this.territoryGraphics = this.add.graphics(0,0);
+
+		var popoutGraphics = this.add.graphics(0,0);
+
 		// display the tiles
 		for (let y = 0; y < this.mapHeight; y++) {
 			for (let x = 0; x < this.mapWidth; x++) {
@@ -241,16 +248,25 @@ var gameScene = new Phaser.Class({
 					graphics.fillStyle(0x228B22, 1);
 				}
 
+				// display this tile (just a rectangle with flat colours)
 				graphics.fillRect(x*this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
+
+				// if this is ocean, but the tile above us is land, display 3D-effect pop-out
+				if(curVal < 0.2 && y >= 1 && this.map[y - 1][x].val >= 0.2) {
+					// display a dark-brown rectangle, same width as tile, but small height ( = pop-out height)
+					popoutGraphics.fillStyle(0x341C02, 1); //0x654321 ??
+					popoutGraphics.fillRect(x*this.tileSize, y*this.tileSize, this.tileSize, this.tileSize*0.2);
+
+					// display a transparent dark (blue) rectangle, same width as tile, but small height ( = shadow of the island )
+					popoutGraphics.fillStyle(0x000000, 0.3);
+					popoutGraphics.fillRect(x*this.tileSize, ( y + 0.2) *this.tileSize, this.tileSize, this.tileSize*0.15);					
+				}
 
 				//this.add.text((x+0.5)*this.tileSize, (y+0.5)*this.tileSize, Math.round(curVal * 10)/10, { fontSize: 16 }).setOrigin(0.5);
 			}
 		}
 
 		/*** CREATE TIMELINE ***/
-
-		this.timeGraphics = this.add.graphics(0,0);
-		this.timeGraphics.myTextSprites = [];
 
 		// Initialize timeline
 		this.timestep = 0;
@@ -263,8 +279,6 @@ var gameScene = new Phaser.Class({
 		this.maxSteps = 100;
 
 		this.allEventsNow = [];
-
-		this.territoryGraphics = this.add.graphics(0,0);
 
 		// Every X ms, go to a new step within the timeline
 		this.simulationTimer = this.time.addEvent({
@@ -292,6 +306,7 @@ var gameScene = new Phaser.Class({
 		if(x < 0 || y < 0) {
 			return;
 		}
+
 		let newTile = this.map[y][x];
 
 		// remove it from the old tile
@@ -338,7 +353,6 @@ var gameScene = new Phaser.Class({
 			tempPosEvents = obj.possibleEvents;
 		}
 
-		
 		if(tempPosEvents.length > 0) {
 			// if we have events, pick one (at random)
 			let randEvent = tempPosEvents[ Math.floor( Math.random() * tempPosEvents.length )];
@@ -361,11 +375,13 @@ var gameScene = new Phaser.Class({
 			evType = 'sub';
 		}
 
+		let eventSucceeded = false;
+
 		// perform required action for this event
 		// the function is split between main and sub
 		// there's no other reason for this than readability: the functions can be shorter and more to the point
 		if(evType == "main") {
-			this.executeMainEventAction(ev, obj);		
+			eventSucceeded = this.executeMainEventAction(ev, obj);		
 
 			// main events don't have general follow-ups
 			// instead, any possible events are handled in the "executeMainEventAction"	
@@ -373,22 +389,27 @@ var gameScene = new Phaser.Class({
 			let unitType = ("myType" in obj) ? obj.myType : null;
 			let unitIndex = ("myPlayer" in obj) ? obj.myPlayer : null;
 
-			this.executeSubEventAction(ev, obj, { unitType: unitType, unitIndex: unitIndex });
+			eventSucceeded = this.executeSubEventAction(ev, obj, { unitType: unitType, unitIndex: unitIndex });
 		}
 
 		// record that something happened
 		// TO DO
 
-		// get proper eventStrings for logging
-		// TO DO
-		let eventStrings = [obj.num];
+		if(eventSucceeded) {
+			// get proper eventStrings for logging
+			// TO DO
+			let eventStrings = [obj.num];
 
-		// log the event => give event description and input (to be replaced within string)
-		this.logEvent(EVENT_DICT[evType][ev][0], eventStrings)
+			// log the event => give event description and input (to be replaced within string)
+			this.logEvent(EVENT_DICT[evType][ev][0], eventStrings)
+		}
 	},
 
 	executeSubEventAction(ev, obj, ref = null) {
 		const possibleEvents = EVENT_DICT["sub"][ev][1];
+
+		// determine whether event succeeded or not (mainly used for logging/saving)
+		let eventSucceeded = true;
 
 		// clear the possible events; later, we'll populate it with new ones
 		obj.possibleEvents = [];
@@ -420,6 +441,8 @@ var gameScene = new Phaser.Class({
 				} else {
 					// Plan events that generate more income
 					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship"]);
+
+					eventSucceeded = false;
 				}
 
 				break;
@@ -439,6 +462,8 @@ var gameScene = new Phaser.Class({
 				} else {
 					// Plan events that generate more income
 					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship"]);
+
+					eventSucceeded = false;
 				}
 
 				break;
@@ -453,7 +478,7 @@ var gameScene = new Phaser.Class({
 				if(mainUnit.resources >= cost) {
 					let newShip = { name: "Queen Maxima's Revenge" };
 
-					// TO DO: Write general function for this??
+					// TO DO: Write general ship creation function for this??
 					mainUnit.myShips.push( { x: 0, y: 0, possibleEvents: [], myPlayer: ref.unitIndex, myType: 'players', canExplore: true, tradeRoute: [], tradeRouteCounter: -1 }  );
 
 					mainUnit.resources -= cost;
@@ -462,6 +487,7 @@ var gameScene = new Phaser.Class({
 					//  => This is different from "place-dock" and "found-city", as it happens on the main player, not an individual ship
 					
 					//obj.possibleEvents.push("");
+					eventSucceeded = false;
 				}
 
 				break;
@@ -474,6 +500,7 @@ var gameScene = new Phaser.Class({
 
 				// if we don't have docks, the show cannot go on!
 				if(ourDocks.length <= 0) {
+					eventSucceeded = false;
 					break;
 				}
 
@@ -499,6 +526,7 @@ var gameScene = new Phaser.Class({
 
 				// we failed in finding a potential dock!
 				if(tries >= 10) {
+					eventSucceeded = false;
 					obj.tradeRouteCounter = -1;
 					break;
 				}
@@ -512,6 +540,7 @@ var gameScene = new Phaser.Class({
 			case 'trade-route':
 				// if we're meant to have a trade route, but we don't, keep trying to find one
 				if(obj.tradeRouteCounter < 0) {
+					eventSucceeded = false;
 					obj.possibleEvents.push("start-trade-route");
 					break;
 				}
@@ -567,7 +596,7 @@ var gameScene = new Phaser.Class({
 								if(curUnit.myPlayer != obj.myPlayer) {
 									// TO DO
 									// TO DO: I need different code for pirate ships ... meh
-									// For now, just destroy the ship, by setting it to null
+									// For now, just destroy the ship, by setting it to null and removing it from the map (by setting it to negative coordinates)
 									this.placeSimUnit(curUnit, -1, -1);
 
 									this.unitsInWorld.players[ curUnit.myPlayer ].myShips[ curUnit.num ] = null;
@@ -590,6 +619,7 @@ var gameScene = new Phaser.Class({
 				// this means that it's a general event or an event on a general group (like a whole player entity)
 				// TO DO: Pirate ships can also explore, so this if-statement might change in the future
 				if(!obj.canExplore) {
+					eventSucceeded = false;
 					break;
 				}
 
@@ -671,11 +701,14 @@ var gameScene = new Phaser.Class({
 		// NOTE: might be nothing, might be very important
 		obj.possibleEvents.push(...possibleEvents)
 
+		return eventSucceeded;
 	},
 
 	executeMainEventAction(ev, obj) {
 		let num;
 		const possibleEvents = EVENT_DICT["main"][ev][1];
+
+		let eventSucceeded = true;
 
 		// most main events have a special action associated with it
 		// this switch statement executes those actions
@@ -766,6 +799,8 @@ var gameScene = new Phaser.Class({
 			//eventStrings = [num];
 			break;
 		}
+
+		return eventSucceeded;
 	},
 
 	logEvent: function(ev, inp) {

@@ -1010,6 +1010,7 @@ function resourceCheck(socket, role, curLevel, costs = null, actionType = 0) {
 function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
   obj.health -= dmg;
 
+  // if the damage was NOT self inflicted (like bumping into an island or dock/city)
   if(!selfInflicted) {
     // if the attacker was a player ship, they receive a (feedback) message about the attack
     if(attacker.myUnitType == 0) {
@@ -1702,6 +1703,7 @@ function finishTurn(room) {
 
     // round everything non-zero upwards to a 1 
     // this ONLY works because we're working with 8 angles; diagonal angles still get rounded (to 1 or -1, depending on the angle)
+    // if we had more/different angles, we'd need something else
     let movementVector = [Math.round( Math.cos(angle) ), Math.round( Math.sin(angle) )];
 
     // speed is saved inside the object (and automatically updated when sails/peddle level changes)
@@ -1719,10 +1721,17 @@ function finishTurn(room) {
       // check if the next tile (we want to go to) is reachable
       // NOT REACHABLE if: an island or a dock
       if(isIsland(tile) || hasDock(tile)) {
+        // ship gets damage
         dealDamage(curRoom, curShip, curShip, 10, true)
+
+        // tile also gets damage! (This way, docks can be destroyed by bumping into them)
+        dealDamage(curRoom, tile, curShip, 10);
 
         // Inform captain of damage
         curShip.errorMessages.push([5,0]);
+
+        // set speed to 0
+        curShip.speed = 0;
         break;
 
       // if it's reachable, then we just update the position and move to the next step
@@ -2156,7 +2165,7 @@ function createBaseMap(room) {
       // Save the noise value in the (huge) 2D map array
       // Also initialize empty variables for possible units that might be on this tile later
       const value = noise.perlin4(nx, ny, nz, nw);
-      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true, dock: null };
+      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true, dock: null, health: 0 };
 
       // if it's a (really) deep sea tile, save it as a possible spawn point
       if(value < -0.6) {
@@ -2235,7 +2244,9 @@ function discoverIslands(room) {
         room.docks.push( { name: 'Undiscovered Dock', discovered: false, x: randDock.x, y: randDock.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
 
         // add this object into the map (only by index)
+        // also set the health of the tile (which controls WHATEVER BUILDING is on the tile)
         room.map[randDock.y][randDock.x].dock = (room.docks.length - 1);
+        room.map[randDock.y][randDock.x].health = 100
       }
     }
   }
