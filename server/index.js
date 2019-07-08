@@ -619,12 +619,9 @@ io.on('connection', socket => {
 
     let costs = { 1: 4 }
     if(resourceCheck(socket, 0, 0, costs, 10)) {
-      // TO DO
-      // If we succeed, get the clues stored in this city, and return them as a captain message (not a task)
-
-      // PROBLEM: The error messages are "cleared" at the end of each turn
-      // We need to somehow DELAY grabbing the message 
-      // (just save interim-messages in a different array, copy them to errorMessages AFTER clearing)
+      // TO DO: Write generateClue function, which gets the necessary info (such as island names or nearest player), then sets "message type" + "info"
+      // The client reads the clue and transforms it back into a proper string. (generateClue does NOT turn it into a string)
+      socket.curShip.delayedClues.push( generateClue(curCity.x, curCity.y, curCity.clue) );
     }
     
   });
@@ -632,10 +629,19 @@ io.on('connection', socket => {
   socket.on('explore-tile', function() {
     let costs = { 1: 4 }
     if(resourceCheck(socket, 0, 0, costs, 11)) {
-      // TO DO
-      // If we succeed, get the clues stored in this city, and return them as a captain message (not a task)
+      let s = socket.curShip;
+      let curTreasure = this.map[s.y][s.x].treasure;
+      if(curTreasure != null) {
+        // inform captain that treasure has been found
+         // TO DO: second parameter must be the NAME of the treasure
+        socket.curShip.delayedClues.push( [12, curTreasure.name] );
 
-      // NOTE: This function is almost identical to 'explore-city'
+        // remove treasure from this tile
+        this.map[s.y][s.x].treasure = null;
+
+        // increase treasure counter on ship
+        // TO DO: ^^^
+      }
     }
     
   });
@@ -1560,6 +1566,10 @@ function finishTurn(room) {
 
     // clear error messages
     curShip.errorMessages = [];
+
+    // add delayed error messages (mostly treasure clues/info); then clear the array
+    curShip.errorMessages = curShip.delayedClues;
+    curShip.delayedClues = [];
 
     // stop firing!
     curShip.willFire = false;
@@ -2813,3 +2823,23 @@ function distributeStartingUnits(room) {
 
   }
 }
+
+/*** == END of distribution code == ***/
+
+/*** == BEGIN of clue generation code == ***/
+
+function generateClue(x, y, clue) {
+  let num = clue.num;
+  let name = clue.name;
+
+  let info = [];
+
+  // this is a HUGE switch statement to generate the right information for a specific clue
+  // TO DO
+
+  // error message 13 means a clue
+  // the object contains the clue num, name, and list of input variables (info)
+  return [13, { num: num, name: name, info: info }];
+}
+
+/*** == END of clue generation code == ***/

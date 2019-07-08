@@ -3,21 +3,21 @@ import { ROLE_DICTIONARY } from '../utils/roleDictionary'
 
 export default function loadErrorMessage(i) { 
     let msgType = serverInfo.errorMessages[i][0];
-    let msgRole = ROLE_DICTIONARY[ serverInfo.errorMessages[i][1] ];
+    let msgParam = serverInfo.errorMessages[i][1];
 
     let finalMsg = '';
     let msgVisualType = 0; // 0 = error message, 1 = reward/feedback message
     switch(msgType) {
         case 0:
-            finalMsg = 'Upgrade by <em>' + msgRole + '</em> failed!';
+            finalMsg = 'Upgrade by <em>' + ROLE_DICTIONARY[msgParam] + '</em> failed!';
             break;
 
         case 1:
-            finalMsg = 'Crew allocation by <em>' + msgRole + '</em> failed!';
+            finalMsg = 'Crew allocation by <em>' + ROLE_DICTIONARY[msgParam] + '</em> failed!';
             break;
 
         case 2:
-            finalMsg = 'Purchase by <em>' + msgRole + '</em> failed!';
+            finalMsg = 'Purchase by <em>' + ROLE_DICTIONARY[msgParam] + '</em> failed!';
             break;
 
         case 3:
@@ -58,6 +58,30 @@ export default function loadErrorMessage(i) {
         case 11:
             finalMsg = 'Searching for clues failed!';
             break;
+
+        case 12:
+            finalMsg = "Congratulations! You have found the treasure of " + msgParam;
+            msgVisualType = 1;
+            break;
+
+        // This one's special: it handles ALL possible clues
+        // msgParam is an object, containing the clue NUMBER, treasure NAME, and other necessary INFO
+        case 13:
+            // get clue from dictionary
+            finalMsg = CLUE_STRINGS[ msgParam.num ];
+
+            // insert name (owner of treasure; unique identifier)
+            finalMsg = finalMsg.replace('@[name]', msgParam.name);
+
+            // insert all other variables/info
+            // (the right values for these are already calculated on the server)
+            for(let a = 0; a < msgParam.info.length; a++) {
+                finalMsg = finalMsg.replace( '@[' + a + ']', msgParam.info[a]);                 
+            }
+
+            msgVisualType = 1;
+            break;
+
     }
 
     let errorMsg = document.createElement("span")
