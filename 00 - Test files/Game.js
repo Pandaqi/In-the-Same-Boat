@@ -45,6 +45,22 @@ const EVENT_DICT = {
 
 // REMARK: The "@[x]" bits represent an unknown value that should be input there (at runtime). 
 
+const CLUE_STRINGS = [
+	"They say @[name]'s treasure sank in the @[0] ocean", // deep or shallow
+	"The Treasure of @[name] should be @[0] tiles from the nearest island", // integer
+	"@[name] hid a treasure somewhere in sector @[0]", // sector number: 1 up to and including 9
+	"There are @[0] docks within a @[1] tile radius of @[name]'s treasure", // integer, integer 
+	"@[name]'s treasure is probably near @[dock][0]" // dock lookup => dock index
+]
+
+/*
+Meer naar links of meer naar rechts?
+In de buurt van een monster "spawn point"?
+Hoeveel is de afstand naar <een andere belangrijke plek in de wereld>?
+*/
+
+
+
 /*
 
 TO DO:
@@ -271,18 +287,17 @@ var gameScene = new Phaser.Class({
 		// Initialize timeline
 		this.timestep = 0;
 		this.unitsInWorld = { players: [], pirates: [], monsters: [] };
-		this.possibleEvents = { players: [], pirates: [], monsters: [] };
 
 		this.timedEvents = [];
 
-		this.maxPlayers = 5;
+		this.maxPlayers = 3;
 		this.maxSteps = 100;
 
 		this.allEventsNow = [];
 
 		// Every X ms, go to a new step within the timeline
 		this.simulationTimer = this.time.addEvent({
-		    delay: 500,                // ms
+		    delay: 5,                // ms
 		    callback: this.updateTimeline,
 		    //args: [],
 		    callbackScope: this,
@@ -421,6 +436,8 @@ var gameScene = new Phaser.Class({
 			// TO DO: Maybe the list of ships can be an obj, with the keys being the NAME of the ship
 			case 'pirate-dies':
 				this.unitsInWorld[ ref.unitType ][ ref.unitIndex ] = null;
+
+				// TO DO: Call "placeSimUnit" with negative coordinates, before setting this obj to null?
 
 				break;
 
@@ -589,9 +606,13 @@ var gameScene = new Phaser.Class({
 						if(curTile.numUnits > 0) {
 							// attack all that are not ours
 							let unitsHere = curTile.units;
-							let unitString = JSON.stringify(unitsHere); // merely for debugging
+							//let unitString = JSON.stringify(unitsHere); // merely for debugging
 							for(let a = 0; a < unitsHere.length; a++) {
 								let curUnit = unitsHere[a];
+
+								if(curUnit == null) {
+									continue;
+								}
 
 								if(curUnit.myPlayer != obj.myPlayer) {
 									// TO DO
@@ -603,7 +624,7 @@ var gameScene = new Phaser.Class({
 								}
 							}
 
-							console.log("SHIP BATTLE || ", unitString);
+							//console.log("SHIP BATTLE || ", unitString);
 
 							break;
 						}
@@ -923,9 +944,9 @@ var gameScene = new Phaser.Class({
 				// territory
 				if(curOwner >= 0) {
 					if(noDock) {
-						this.territoryGraphics.fillStyle(ownerColors[curOwner], 1);						
+						this.territoryGraphics.fillStyle(ownerColors[curOwner], 0.3);						
 					} else {
-						this.territoryGraphics.fillStyle(dockColors[curOwner], 1);
+						this.territoryGraphics.fillStyle(dockColors[curOwner], 0.3);
 					}
 
 					this.territoryGraphics.fillRect(x * this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
@@ -991,7 +1012,121 @@ var gameScene = new Phaser.Class({
 		// arbitrary ending condition (time out after X number of steps)
 		if(this.timestep >= this.maxSteps) {
 			this.simulationTimer.remove();
+
+			this.placeTreasures();
 		}
+	},
+
+	generatePirateName: function() {
+		let nameParts = ["black", "beard", "sparrow", "thunder", "storm", "bird", "sun", "silver", "gold", "diamond", "hurricane",
+						 "finger", "death", "dance", "fighter", "breaker", "ship", "treasure", "wizard"]
+		let nameLength = Math.floor( Math.random() * 2) + 1;
+
+		// keep making new names, until we find one that hasn't already been used
+		// TO DO/IDEA: We can have longer names, but then they'll be split into two (first name + last name, or simply a double name)
+		let name;
+		do {
+			name = '';
+			for(let i = 0; i < nameLength; i++) {
+				name += nameParts[Math.floor( Math.random() * nameParts.length )];
+			}
+		} while(name in this.treasures);
+
+		// return name CAPITALIZED
+		return name.charAt(0).toUpperCase() + name.slice(1);
+	},
+
+	placeTreasures: function() {
+		this.treasures = {};
+
+		let numTres = this.maxPlayers*3;
+		for(let i = 0; i < numTres; i++) {
+			this.placeTreasure();
+		}
+	},
+
+
+	placeTreasure: function() {
+		// find a proper spot for the treasure
+		//  => in the ocean
+		//  => not under a dock
+		//  => not under a city
+		let x, y, tileAvailable;
+		do {
+			x = Math.floor( Math.random() * this.mapWidth );
+			y = Math.floor( Math.random() * this.mapHeight );
+
+			tileAvailable = (this.map[y][x].val < 0.2 && this.map[y][x].dock == null && this.map[y][x].city == null)
+		} while(!tileAvailable);
+
+		// get a name for this treasure
+		// (in the final version, this will simply be the name of the pirate that owned it)
+		let treasureName = this.generatePirateName();
+
+		// add treasure to the array
+		this.treasures[treasureName] = { x: x, y: y }
+
+		// log it (for testing purposes)
+		console.log(" == TREASURE BY " + treasureName + " CREATED! == ");
+
+		// generate clues for this treasure
+		let numClues = 2;
+		this.generateClues(x, y, treasureName, numClues);
+	},
+
+	generateClues: function(x, y, name, numClues) {
+		let cluesAlreadyUsed = [];
+		let clueType = -1;
+		let TOTAL_NUM_CLUES = CLUE_STRINGS.length;
+		for(let i = 0; i < numClues; i++) {
+			let curClue = {};
+
+			// pick a random clue
+			// as long as we haven't used this clue type before
+			do {
+				clueType = Math.floor( Math.random() * TOTAL_NUM_CLUES );
+			} while(cluesAlreadyUsed.includes(clueType))
+
+			// add clue to used clues
+			cluesAlreadyUsed.push(clueType)
+
+			// get the correct information
+			curClue.type = clueType;
+			curClue.name = name;
+			curClue.info = this.getClueInfo(x, y, clueType);
+
+			// log it (for testing purposes)
+			let clueString = CLUE_STRINGS[clueType];
+			clueString = clueString.replace('@[name]', name);
+
+			// static replacements: a number that will never change
+			for(let a = 0; a < curClue.info.length; a++) {
+				clueString = clueString.replace( '@[' + a + ']', curClue.info);   				
+			}
+
+			// dynamic replacements: looking up the name of a dock/city/island/whatever
+			// HANDY URL: https://stackoverflow.com/questions/29560913/javascript-regex-to-extract-variables
+			
+			// TO DO: Don't replace by result[1], but get the actual parameter (curClue.info[ result[1] ]), and THEN get the actual dock with that
+			// TO DO: Obviously, don't replace by [[dockio replaco]]
+
+			var regex = new RegExp(/\@\[dock\]\[(\d+)\]/gi), result, out = [];
+			while(result = regex.exec(clueString)) {
+			    clueString = clueString.replace("@[dock][" + result[1] + "]", "[[dockio replaco " + result[1] + " ]]")
+			}
+
+			console.log( clueString )
+		}
+	},
+
+	getClueInfo: function(x, y, num) {
+		switch(num) {
+			case 0:
+
+				break;
+		}
+
+		return [];
 	},
 
 	// core game loop
