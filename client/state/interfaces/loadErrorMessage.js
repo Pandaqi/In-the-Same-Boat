@@ -57,11 +57,11 @@ export default function loadErrorMessage(i) {
             break;
 
         case 11:
-            finalMsg = 'Searching for clues failed!';
+            finalMsg = 'Exploration failed!';
             break;
 
         case 12:
-            finalMsg = "Congratulations! You have found the treasure of " + msgParam;
+            finalMsg = "Congratulations! You have found the treasure of <strong>" + msgParam + "</strong>!";
             msgVisualType = 1;
             break;
 
@@ -81,6 +81,10 @@ export default function loadErrorMessage(i) {
             }
 
             msgVisualType = 1;
+            break;
+
+        case 14:
+            finalMsg = 'Unfortunately, there was no treasure here';
             break;
 
     }

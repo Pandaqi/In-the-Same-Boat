@@ -441,18 +441,18 @@ var mainStyle = exports.mainStyle = {
 		var wordWrapWidth = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1000;
 		var fill = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "#333";
 
-		return { font: "bold 26px Arial", fill: fill, wordWrap: true, wordWrapWidth: wordWrapWidth };
+		return { font: "Pirata One", fontSize: 26, fill: fill, wordWrap: true, wordWrapWidth: wordWrapWidth };
 	},
 
 	subText: function subText() {
 		var wordWrapWidth = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1000;
 		var fill = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "#666";
 
-		return { font: "bold 12px Arial", fill: fill, wordWrap: true, wordWrapWidth: wordWrapWidth };
+		return { font: "Arial", fontSize: 12, fill: fill, wordWrap: true, wordWrapWidth: wordWrapWidth };
 	},
 
 	timerText: function timerText() {
-		return { font: "bold 26px Arial", fill: "#FF0000" };
+		return { font: "Pirata One", fontSize: 42, fill: "#FF0000" };
 	}
 };
 
@@ -1062,11 +1062,11 @@ function loadErrorMessage(i) {
             break;
 
         case 11:
-            finalMsg = 'Searching for clues failed!';
+            finalMsg = 'Exploration failed!';
             break;
 
         case 12:
-            finalMsg = "Congratulations! You have found the treasure of " + msgParam;
+            finalMsg = "Congratulations! You have found the treasure of <strong>" + msgParam + "</strong>!";
             msgVisualType = 1;
             break;
 
@@ -1086,6 +1086,10 @@ function loadErrorMessage(i) {
             }
 
             msgVisualType = 1;
+            break;
+
+        case 14:
+            finalMsg = 'Unfortunately, there was no treasure here';
             break;
 
     }
@@ -1808,6 +1812,9 @@ var GamePlay = function (_Phaser$State) {
 
             // docks
             this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
+
+            // cities
+            this.game.load.image('city', _serverInfo.serverInfo.dockDrawing);
         }
     }, {
         key: 'create',
@@ -1820,8 +1827,6 @@ var GamePlay = function (_Phaser$State) {
             /***
                 Recreate the map (based on the seed)
               This creates the 4D noise value on each location, and immediately displays the correct (colored) square
-                TO DO: Determine islands by myself? Or receive them from the server? (Might just as well send them, if we're sending this much information)
-                     => Because, I need to know which tiles to "reveal" on the map, and where to put the text with the ISLAND NAME
               ***/
 
             // seed the noise object (with the mapSeed)
@@ -1866,7 +1871,8 @@ var GamePlay = function (_Phaser$State) {
 
                     // save the noise value
                     var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
-                    this.map[y][x] = { val: curVal, checked: false, fog: true };
+                    //this.map[y][x] = { val: curVal, checked: false, fog: true };
+                    this.map[y][x] = { val: curVal, checked: false, fog: false }; // TO DO: Debugging
 
                     // display the map
                     var tileColor = void 0;
@@ -1969,20 +1975,26 @@ var GamePlay = function (_Phaser$State) {
                 newSprite.myFogDot = newDot;
             }
 
-            // Display monsters
-            console.log(_serverInfo.serverInfo.monsters);
-            var monsters = _serverInfo.serverInfo.monsters;
-            this.monsterSprites = [];
-            for (var _i3 = 0; _i3 < monsters.length; _i3++) {
-                var _x3 = monsters[_i3].x,
-                    _y3 = monsters[_i3].y;
+            // Display cities
+            var cities = _serverInfo.serverInfo.cities;
+            this.citySprites = [];
+            for (var _i3 = 0; _i3 < cities.length; _i3++) {
+                var _x3 = cities[_i3].x,
+                    _y3 = cities[_i3].y;
 
-                var _cacheLabel = 'monsterNum' + monsters[_i3].myMonsterType;
+                var _cacheLabel = 'city';
 
-                var _newSprite = gm.add.sprite(0, 0, _cacheLabel);
+                // create the sprite
+                var _newSprite = gm.add.sprite(_x3 * tileSize, (_y3 - 0.5) * tileSize, _cacheLabel);
                 _newSprite.width = _newSprite.height = tileSize;
+
                 _newSprite.visible = false;
-                this.monsterSprites.push(_newSprite);
+                _newSprite.originalX = _x3;
+                _newSprite.originalY = _y3;
+
+                this.citySprites.push(_newSprite);
+
+                console.log(_x3, _y3);
 
                 // also create THE DOT!
                 var _newDot = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, dotBmd);
@@ -1991,21 +2003,23 @@ var GamePlay = function (_Phaser$State) {
                 _newSprite.myFogDot = _newDot;
             }
 
-            // Display AI Ships
-            console.log(_serverInfo.serverInfo.aiShips);
+            console.log(cities);
+            console.log(this.citySprites.length);
 
-            var aiShips = _serverInfo.serverInfo.aiShips;
-            this.aiShipSprites = [];
-            for (var _i4 = 0; _i4 < aiShips.length; _i4++) {
-                var _x4 = aiShips[_i4].x,
-                    _y4 = aiShips[_i4].y;
+            // Display monsters
+            console.log(_serverInfo.serverInfo.monsters);
+            var monsters = _serverInfo.serverInfo.monsters;
+            this.monsterSprites = [];
+            for (var _i4 = 0; _i4 < monsters.length; _i4++) {
+                var _x4 = monsters[_i4].x,
+                    _y4 = monsters[_i4].y;
 
-                var _cacheLabel2 = 'aiShipNum' + aiShips[_i4].myShipType;
+                var _cacheLabel2 = 'monsterNum' + monsters[_i4].myMonsterType;
 
                 var _newSprite2 = gm.add.sprite(0, 0, _cacheLabel2);
                 _newSprite2.width = _newSprite2.height = tileSize;
                 _newSprite2.visible = false;
-                this.aiShipSprites.push(_newSprite2);
+                this.monsterSprites.push(_newSprite2);
 
                 // also create THE DOT!
                 var _newDot2 = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, dotBmd);
@@ -2014,20 +2028,21 @@ var GamePlay = function (_Phaser$State) {
                 _newSprite2.myFogDot = _newDot2;
             }
 
-            // Display player Ships
-            console.log(_serverInfo.serverInfo.playerShips);
+            // Display AI Ships
+            console.log(_serverInfo.serverInfo.aiShips);
 
-            var playerShips = _serverInfo.serverInfo.playerShips;
-            this.playerShipSprites = [];
-            for (var _i5 = 0; _i5 < playerShips.length; _i5++) {
-                var _x5 = playerShips[_i5].x,
-                    _y5 = playerShips[_i5].y;
-                var _cacheLabel3 = 'shipNum' + playerShips[_i5].num;
+            var aiShips = _serverInfo.serverInfo.aiShips;
+            this.aiShipSprites = [];
+            for (var _i5 = 0; _i5 < aiShips.length; _i5++) {
+                var _x5 = aiShips[_i5].x,
+                    _y5 = aiShips[_i5].y;
+
+                var _cacheLabel3 = 'aiShipNum' + aiShips[_i5].myShipType;
 
                 var _newSprite3 = gm.add.sprite(0, 0, _cacheLabel3);
                 _newSprite3.width = _newSprite3.height = tileSize;
                 _newSprite3.visible = false;
-                this.playerShipSprites.push(_newSprite3);
+                this.aiShipSprites.push(_newSprite3);
 
                 // also create THE DOT!
                 var _newDot3 = gm.add.sprite(_x5 * tileSize, _y5 * tileSize, dotBmd);
@@ -2036,11 +2051,35 @@ var GamePlay = function (_Phaser$State) {
                 _newSprite3.myFogDot = _newDot3;
             }
 
+            // Display player Ships
+            console.log(_serverInfo.serverInfo.playerShips);
+
+            var playerShips = _serverInfo.serverInfo.playerShips;
+            this.playerShipSprites = [];
+            for (var _i6 = 0; _i6 < playerShips.length; _i6++) {
+                var _x6 = playerShips[_i6].x,
+                    _y6 = playerShips[_i6].y;
+                var _cacheLabel4 = 'shipNum' + playerShips[_i6].num;
+
+                var _newSprite4 = gm.add.sprite(0, 0, _cacheLabel4);
+                _newSprite4.width = _newSprite4.height = tileSize;
+                _newSprite4.visible = false;
+                this.playerShipSprites.push(_newSprite4);
+
+                // also create THE DOT!
+                var _newDot4 = gm.add.sprite(_x6 * tileSize, _y6 * tileSize, dotBmd);
+                _newDot4.width = _newDot4.height = tileSize;
+
+                _newSprite4.myFogDot = _newDot4;
+            }
+
             // Display fog
             this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
             this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
 
             var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
+
+            fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
 
             // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
             this.moveUnits();
@@ -2074,15 +2113,15 @@ var GamePlay = function (_Phaser$State) {
                 // reveal all tiles associated with this island
                 var averageX = 0,
                     averageY = 0;
-                for (var _i6 = 0; _i6 < curIsland.myTiles.length; _i6++) {
-                    var _x6 = curIsland.myTiles[_i6][0],
-                        _y6 = curIsland.myTiles[_i6][1];
+                for (var _i7 = 0; _i7 < curIsland.myTiles.length; _i7++) {
+                    var _x7 = curIsland.myTiles[_i7][0],
+                        _y7 = curIsland.myTiles[_i7][1];
 
-                    averageX += _x6;
-                    averageY += _y6;
+                    averageX += _x7;
+                    averageY += _y7;
 
-                    _this2.map[_y6][_x6].fog = false;
-                    ths.fogBmd.clear(_x6 * ths.tileSize, _y6 * ths.tileSize, ths.tileSize, ths.tileSize);
+                    _this2.map[_y7][_x7].fog = false;
+                    ths.fogBmd.clear(_x7 * ths.tileSize, _y7 * ths.tileSize, ths.tileSize, ths.tileSize);
                 }
 
                 averageX /= curIsland.myTiles.length;
@@ -2090,15 +2129,42 @@ var GamePlay = function (_Phaser$State) {
 
                 // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
                 // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
-                gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.timerText());
+                gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.mainText());
             });
 
-            // Function that is activated when a dock is discovered
+            // Function that is activated when a DOCK is discovered
             socket.on('dock-discovered', function (data) {
+                // Get corresponding dock
+                var curDock = _serverInfo.serverInfo.docks[data.index];
+                var x = curDock.x,
+                    y = curDock.y;
+
+                // Add name on top of it
+                // (give it a different color and wrap it sooner)
+                gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FFFF00'));
+
+                // Clear the fog here
+                _this2.map[y][x].fog = false;
+                ths.fogBmd.clear(x * ths.tileSize, y * ths.tileSize, ths.tileSize, ths.tileSize);
+
                 // TO DO
-                // Get dock
-                // Reveal tile (remove fog; also a bit around it?)
-                // Always display dock trade from now on
+                // Always display the corresponding dock trade from now on
+            });
+
+            // Function that is activated when a CITY / TOWN is discovered
+            socket.on('city-discovered', function (data) {
+                // Get corresponding dock
+                var curCity = _serverInfo.serverInfo.cities[data.index];
+                var x = curCity.x,
+                    y = curCity.y;
+
+                // Add name on top of it
+                // (give it a different color and wrap it sooner)
+                gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FF00FF'));
+
+                // Clear the fog here
+                _this2.map[y][x].fog = false;
+                ths.fogBmd.clear(x * ths.tileSize, y * ths.tileSize, ths.tileSize, ths.tileSize);
             });
 
             // Function that is called whenever a new turn starts
@@ -2111,14 +2177,14 @@ var GamePlay = function (_Phaser$State) {
 
                 // update fog
                 // go through all discoveredTiles, remove the fog on them
-                for (var _i7 = 0; _i7 < _serverInfo.serverInfo.discoveredTiles.length; _i7++) {
+                for (var _i8 = 0; _i8 < _serverInfo.serverInfo.discoveredTiles.length; _i8++) {
                     // get tile (by coordinates [x,y])
-                    var _x7 = _serverInfo.serverInfo.discoveredTiles[_i7].x,
-                        _y7 = _serverInfo.serverInfo.discoveredTiles[_i7].y;
+                    var _x8 = _serverInfo.serverInfo.discoveredTiles[_i8].x,
+                        _y8 = _serverInfo.serverInfo.discoveredTiles[_i8].y;
 
                     // remove the fog, both behind the scenes, and visually
-                    _this2.map[_y7][_x7].fog = false;
-                    ths.fogBmd.clear(_x7 * ths.tileSize, _y7 * ths.tileSize, ths.tileSize, ths.tileSize);
+                    _this2.map[_y8][_x8].fog = false;
+                    ths.fogBmd.clear(_x8 * ths.tileSize, _y8 * ths.tileSize, ths.tileSize, ths.tileSize);
                 }
 
                 // move all units to their new positions
@@ -2138,6 +2204,9 @@ var GamePlay = function (_Phaser$State) {
                         _this2.lightSprite.visible = false;
                     }
                 }
+
+                // TO DO: Remove once night mode is active; now it's just annoying
+                _this2.lightSprite.visible = false;
 
                 if (!_serverInfo.serverInfo.dayTime) {
                     // update NIGHT OVERLAY; Only if it's actually nighttime!
@@ -2172,28 +2241,32 @@ var GamePlay = function (_Phaser$State) {
                 this.unitsOnMap.push(this.dockSprites[i]);
             }
 
-            for (var _i8 = 0; _i8 < this.monsterSprites.length; _i8++) {
-                this.monsterSprites[_i8].originalX = _serverInfo.serverInfo.monsters[_i8].x;
-                this.monsterSprites[_i8].originalY = _serverInfo.serverInfo.monsters[_i8].y;
-
-                this.unitsOnMap.push(this.monsterSprites[_i8]);
-                this.tempMap[_serverInfo.serverInfo.monsters[_i8].y][_serverInfo.serverInfo.monsters[_i8].x][0]++;
+            for (var _i9 = 0; _i9 < this.citySprites.length; _i9++) {
+                this.unitsOnMap.push(this.citySprites[_i9]);
             }
 
-            for (var _i9 = 0; _i9 < this.aiShipSprites.length; _i9++) {
-                this.aiShipSprites[_i9].originalX = _serverInfo.serverInfo.aiShips[_i9].x;
-                this.aiShipSprites[_i9].originalY = _serverInfo.serverInfo.aiShips[_i9].y;
+            for (var _i10 = 0; _i10 < this.monsterSprites.length; _i10++) {
+                this.monsterSprites[_i10].originalX = _serverInfo.serverInfo.monsters[_i10].x;
+                this.monsterSprites[_i10].originalY = _serverInfo.serverInfo.monsters[_i10].y;
 
-                this.unitsOnMap.push(this.aiShipSprites[_i9]);
-                this.tempMap[_serverInfo.serverInfo.aiShips[_i9].y][_serverInfo.serverInfo.aiShips[_i9].x][0]++;
+                this.unitsOnMap.push(this.monsterSprites[_i10]);
+                this.tempMap[_serverInfo.serverInfo.monsters[_i10].y][_serverInfo.serverInfo.monsters[_i10].x][0]++;
             }
 
-            for (var _i10 = 0; _i10 < this.playerShipSprites.length; _i10++) {
-                this.playerShipSprites[_i10].originalX = _serverInfo.serverInfo.playerShips[_i10].x;
-                this.playerShipSprites[_i10].originalY = _serverInfo.serverInfo.playerShips[_i10].y;
+            for (var _i11 = 0; _i11 < this.aiShipSprites.length; _i11++) {
+                this.aiShipSprites[_i11].originalX = _serverInfo.serverInfo.aiShips[_i11].x;
+                this.aiShipSprites[_i11].originalY = _serverInfo.serverInfo.aiShips[_i11].y;
 
-                this.unitsOnMap.push(this.playerShipSprites[_i10]);
-                this.tempMap[_serverInfo.serverInfo.playerShips[_i10].y][_serverInfo.serverInfo.playerShips[_i10].x][0]++;
+                this.unitsOnMap.push(this.aiShipSprites[_i11]);
+                this.tempMap[_serverInfo.serverInfo.aiShips[_i11].y][_serverInfo.serverInfo.aiShips[_i11].x][0]++;
+            }
+
+            for (var _i12 = 0; _i12 < this.playerShipSprites.length; _i12++) {
+                this.playerShipSprites[_i12].originalX = _serverInfo.serverInfo.playerShips[_i12].x;
+                this.playerShipSprites[_i12].originalY = _serverInfo.serverInfo.playerShips[_i12].y;
+
+                this.unitsOnMap.push(this.playerShipSprites[_i12]);
+                this.tempMap[_serverInfo.serverInfo.playerShips[_i12].y][_serverInfo.serverInfo.playerShips[_i12].x][0]++;
             }
 
             // reset the shadow canvas, set the fill style to transparent black
@@ -2203,9 +2276,9 @@ var GamePlay = function (_Phaser$State) {
             var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
 
             // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
-            for (var _i11 = 0; _i11 < this.unitsOnMap.length; _i11++) {
+            for (var _i13 = 0; _i13 < this.unitsOnMap.length; _i13++) {
                 // this code simply gets the current unit and checks if the tile is still in fog
-                var curUnit = this.unitsOnMap[_i11];
+                var curUnit = this.unitsOnMap[_i13];
                 var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
 
                 // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
@@ -2223,7 +2296,7 @@ var GamePlay = function (_Phaser$State) {
                 tempPos[0] += this.tileSize - newWidth + (Math.random() * 0.2 - 0.4) * this.tileSize;
 
                 // increase counter
-                this.tempMap[this.unitsOnMap[_i11].originalY][this.unitsOnMap[_i11].originalX][1]++;
+                this.tempMap[this.unitsOnMap[_i13].originalY][this.unitsOnMap[_i13].originalX][1]++;
 
                 if (isInFog) {
                     // only display the dot
@@ -2243,8 +2316,8 @@ var GamePlay = function (_Phaser$State) {
                     curUnit.width = curUnit.height = newWidth;
 
                     // place the unit
-                    this.unitsOnMap[_i11].x = tempPos[0];
-                    this.unitsOnMap[_i11].y = tempPos[1];
+                    curUnit.x = tempPos[0];
+                    curUnit.y = tempPos[1];
 
                     // change color for player ships
                     // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
@@ -3406,9 +3479,9 @@ function loadExploreButton() {
     var curString = '<span class="upgradeButtonLabel">EXPLORE!</span>';
 
     // calculate the crew costs for exploration
-    // TO DO: For now, it always costs 4 crew
+    // TO DO: For now, it always costs 1 crew
     //        (also, don't forget to sync this between client and server)
-    var costs = { 1: 4 };
+    var costs = { 1: 1 };
 
     // display costs inside upgrade button
     for (var key in costs) {
@@ -3689,6 +3762,7 @@ function loadPlayInterface(num, cont) {
 
                         var btn5 = document.createElement("button");
                         btn5.setAttribute('data-taskid', _i2);
+                        btn5.classList.add('upgradeButton');
                         btn5.innerHTML = loadExploreButton();
                         span5.appendChild(btn5);
 
@@ -3717,6 +3791,7 @@ function loadPlayInterface(num, cont) {
 
                         var btn6 = document.createElement("button");
                         btn6.setAttribute('data-taskid', _i2);
+                        btn6.classList.add('upgradeButton');
                         btn6.innerHTML = loadExploreButton();
                         span6.appendChild(btn6);
 
@@ -4024,6 +4099,8 @@ function loadPlayInterface(num, cont) {
                     label = 'aiShipNum' + unit.index;
                 } else if (unit.myType == 3) {
                     label = 'dock';
+                } else if (unit.myType == 4) {
+                    label = 'city';
                 }
 
                 var newSprite = canvas.myGame.add.sprite(unit.x * localTileSize, unit.y * localTileSize, label);
@@ -4518,16 +4595,16 @@ module.exports = UPGRADE_EFFECT_DICT;
 Object.defineProperty(exports, "__esModule", {
 	value: true
 });
-var CLUE_STRINGS = exports.CLUE_STRINGS = ["They say @[name]'s treasure sank in the @[0] ocean", // 0 // deep or shallow
-"The Treasure of @[name] should be @[0] tiles from the nearest island", // 1 // integer
-"@[name] hid a treasure somewhere in sector @[0]", // 2 // sector number: 1 up to and including 9
-"There are @[0] docks within a @[1] tile radius of @[name]'s treasure", // 3 // integer, integer 
-"There are @[0] cities within a @[1] tile radius of @[name]'s treasure", // 4 // integer, integer 
-"There are @[0] unique islands within a @[1] tile radius of @[name]'s treasure", // 5 // integer, integer 
-"The dock nearest to @[name]'s treasure is @[0]", // 6 // dock name
-"The island nearest to @[name]'s treasure is @[0]", // 7 // island name
-"The city nearest to @[name]'s treasure is @[0]", // 8 // city name
-"@[0] is currently closest to @[name]'s treasure!"];
+var CLUE_STRINGS = exports.CLUE_STRINGS = ["They say <strong>@[name]'s treasure</strong> sank in the @[0] ocean", // 0 // deep or shallow
+"The <strong>Treasure of @[name]</strong> should be @[0] tiles from the nearest island", // 1 // integer
+"<strong>@[name]</strong> hid a treasure somewhere in sector @[0]", // 2 // sector number: 1 up to and including 9
+"There are @[0] docks within a @[1] tile radius of <strong>@[name]'s treasure</strong>", // 3 // integer, integer 
+"There are @[0] cities within a @[1] tile radius of <strong>@[name]'s treasure</strong>", // 4 // integer, integer 
+"There are @[0] unique islands within a @[1] tile radius of <strong>@[name]'s treasure</strong>", // 5 // integer, integer 
+"The dock nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 6 // dock name
+"The island nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 7 // island name
+"The town nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 8 // city name
+"<em>@[0]</em> is currently closest to <strong>@[name]'s treasure</strong>!"];
 
 /***/ }),
 /* 30 */

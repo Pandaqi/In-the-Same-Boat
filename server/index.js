@@ -75,6 +75,8 @@ io.on('connection', socket => {
       destroyingGame: false,
 
       cities: [],
+
+      treasures: {},
     }
 
     // save the main room in the socket, for easy access later
@@ -540,7 +542,7 @@ io.on('connection', socket => {
     let curShip = socket.curShip;
 
     // if no cannoneer in game, just get average instrument level
-    cannoneerInGame = false;
+    let cannoneerInGame = false;
     let firingCosts = Math.ceil( Math.ceil( (curShip.roleStats[1].lvl + curShip.roleStats[2].lvl + curShip.roleStats[3].lvl + 1) / 3 ) );
 
     // if cannoneer is in game, calculate cost of firing (based on cannoneer level and number of cannons and all)
@@ -557,7 +559,7 @@ io.on('connection', socket => {
       firingCosts = Math.round((cannonLevel + 1) / 2) * numberOfCannons;
     }
 
-    let costs = { 1: firingCosts}
+    let costs = { 1: firingCosts }
 
     // Check if we have the resources to fire
     if( resourceCheck(socket, 0, -1, costs, 3) ) {
@@ -615,32 +617,34 @@ io.on('connection', socket => {
   });
 
   socket.on('explore-city', cityIndex => {
-    let costs = { 1: 4 }
+    let costs = { 1: 1 }
     if(resourceCheck(socket, 0, 0, costs, 10)) {
-      // TO DO: Write generateClue function, which gets the necessary info (such as island names or nearest player), then sets "message type" + "info"
-      // The client reads the clue and transforms it back into a proper string. (generateClue does NOT turn it into a string)
+      // The client reads the clue and transforms it back into a proper string. 
+      // (generateClue does NOT turn it into a string; only gathers the necessary variables)
       let curCity = rooms[socket.mainRoom].cities[cityIndex];
 
-      socket.curShip.delayedClues.push( generateClue(rooms[socket.mainRoom], curCity.x, curCity.y, curCity.clue) );
+      socket.curShip.delayedClues.push( generateClue(rooms[socket.mainRoom], curCity.clue) );
     }
     
   });
 
   socket.on('explore-tile', function() {
-    let costs = { 1: 4 }
+    let costs = { 1: 1 }
     if(resourceCheck(socket, 0, 0, costs, 11)) {
       let s = socket.curShip;
-      let curTreasure = this.map[s.y][s.x].treasure;
-      if(curTreasure != null) {
+      let curTile = rooms[socket.mainRoom].map[s.y][s.x];
+      if(curTile.treasure != null) {
         // inform captain that treasure has been found
-         // TO DO: second parameter must be the NAME of the treasure
-        socket.curShip.delayedClues.push( [12, curTreasure.name] );
+        socket.curShip.delayedClues.push( [12, curTile.treasure.name] );
 
         // remove treasure from this tile
-        this.map[s.y][s.x].treasure = null;
+        curTile.treasure = null;
 
         // increase treasure counter on ship
         // TO DO: ^^^
+      } else {
+        // if there's no treasure here, inform the player about that
+        socket.curShip.delayedClues.push( [14, ""] );
       }
     }
     
@@ -1206,6 +1210,9 @@ function startTurn(room, gameStart = false) {
     // this function also adds a DOCK to each island
     discoverIslands(curRoom)
 
+    // plant TREASURES
+    createTreasures(curRoom);
+
     // create routes between docks
     // save the routes themselves within the dock
     // create an AI ship for each dock, pick a random route, place the ship at the start of the route
@@ -1228,6 +1235,8 @@ function startTurn(room, gameStart = false) {
     // TO DO: Only send the information we need: the type (for displaying the drawing) and their location (perhaps orientation)
     // TO DO: Later on, we need to send the dock deals, and which islands have been discovered
     mPack["docks"] = curRoom.docks;
+    mPack["cities"] = curRoom.cities;
+
     mPack["monsters"] = curRoom.monsters;
     mPack["aiShips"] = curRoom.aiShips;
     mPack["playerShips"] = curRoom.playerShips;
@@ -1269,11 +1278,17 @@ function startTurn(room, gameStart = false) {
   for(let i = 0; i < curRoom.playerShips.length; i++) {
     let curShip = curRoom.playerShips[i];
 
+    let islandsWeAlreadyChecked = {};
+    let captainTasks = [];
+
+    // arbitrary exploration  (if the ship is going slow enough, you can explore your current tile)
+    if(curShip.speed <= 1) {
+      captainTasks.push([6, null])
+    }
+
     // == ADJACENCY (CAPTAIN) STUFF ==
     // check the tiles left/right/top/bottom
     const positions = [[-1,0],[1,0],[0,1],[0,-1]];
-    let islandsWeAlreadyChecked = {};
-    let captainTasks = [];
     for(let j = 0; j < 4; j++) {
       // get tile
       let xTile = wrapCoords(curShip.x + positions[j][0], curRoom.mapWidth);
@@ -1324,11 +1339,6 @@ function startTurn(room, gameStart = false) {
           captainTasks.push([5, ind]);
         }
       }
-
-      // arbitrary exploration  (if the ship is going slow enough, you can explore your current tile)
-      if(curShip.speed <= 1) {
-        captainTasks.push([6, null])
-      }
     }
 
     // == CARTOGRAPHER STUFF ==
@@ -1355,16 +1365,22 @@ function startTurn(room, gameStart = false) {
 
         let mapTile = curRoom.map[yTile][xTile];
 
-        // if this tile has no units (which we keep track of), immediately continue
-        if(!mapTile.hasUnits) {
-          continue;
-        }
-
         // TO DO: Based on "detailLvl", send more or less info about a particular object (like orientation, last known speed, etc.)
 
         // if this tile has a dock, add it
+        // NOTE: The "index" parameter here is only used for unique images (right now, all docks and cities look the same)
         if(mapTile.dock != null) {
           curShip.personalUnits.push({ myType: 3, index: 0, x: x, y: y });
+        }
+
+        // if this tile has a city
+        if(mapTile.city != null) {
+          curShip.personalUnits.push({ myType: 4, index: 0, x: x, y: y});
+        }
+
+        // if this tile has no units (which we keep track of), immediately continue
+        if(!mapTile.hasUnits) {
+          continue;
         }
 
         // if this tile has ai ships, add them
@@ -2234,7 +2250,7 @@ function createBaseMap(room) {
       // Save the noise value in the (huge) 2D map array
       // Also initialize empty variables for possible units that might be on this tile later
       const value = noise.perlin4(nx, ny, nz, nw);
-      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true, dock: null, health: 0 };
+      room.map[y][x] = { val: value, monsters: [], playerShips: [], aiShips: [], fog: true, dock: null, city: null, health: 0 };
 
       // if it's a (really) deep sea tile, save it as a possible spawn point
       if(value < -0.6) {
@@ -2286,6 +2302,7 @@ function createBaseMap(room) {
 function discoverIslands(room) {
   room.islands = []; // initialize islands variable
   room.docks = []; // initialize docks variable
+  room.cities = []; // initialize cities variable
 
   for (let y = 0; y < room.mapHeight; y++) {
     for (let x = 0; x < room.mapWidth; x++) { 
@@ -2304,18 +2321,47 @@ function discoverIslands(room) {
         // pick random spot for a dock
         // get the amount of free spots => indicator of island size => determines dock size
         let islandSize = room.islands[islandIndex].freeSpots.length;
-        let randDock = room.islands[islandIndex].freeSpots[ Math.floor(Math.random() * islandSize)]
 
-        // create new DOCK OBJECT
-        // deals are random in the very first turn (there's no information about what might be useful); after turn 1 they are automatically created correctly
-        let good1 = Math.floor(Math.random()*4), good2 = Math.floor(Math.random()*4), val1 = Math.round(Math.random()*5), val2 = Math.round(Math.random()*5);
+        for(let i = 0; i < islandSize; i++) {
+          // with 50% chance, don't place anything in this free spot
+          if(Math.random() <= 0.5) {
+            continue;
+          }
 
-        room.docks.push( { name: 'Undiscovered Dock', discovered: false, x: randDock.x, y: randDock.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
+          // if there's already something here, also don't place anything
+          let curSpot = room.islands[islandIndex].freeSpots[i];
+          let curTile = room.map[curSpot.y][curSpot.x];
+          if(curTile.dock != null || curTile.city != null) {
+            continue;
+          }
 
-        // add this object into the map (only by index)
-        // also set the health of the tile (which controls WHATEVER BUILDING is on the tile)
-        room.map[randDock.y][randDock.x].dock = (room.docks.length - 1);
-        room.map[randDock.y][randDock.x].health = 100
+          // with 50% chance, place a dock
+          // otherwise, place a city
+          if(Math.random() <= 0.5) {
+            // create new DOCK OBJECT
+            // deals are random in the very first turn (there's no information about what might be useful); after turn 1 they are automatically created correctly
+            let good1 = Math.floor(Math.random()*4), good2 = Math.floor(Math.random()*4), val1 = Math.round(Math.random()*5), val2 = Math.round(Math.random()*5);
+
+            room.docks.push( { name: 'Undiscovered Dock', discovered: false, x: curSpot.x, y: curSpot.y, size: islandSize, deal: [[good1, val1], [good2, val2]], myUnitType: 3 } );
+
+            // add this object into the map (only by index)
+            // also set the health of the tile (which controls WHATEVER BUILDING is on the tile)
+            curTile.dock = (room.docks.length - 1);
+            curTile.health = 100
+
+            console.log("Placing dock on island ", islandIndex);
+          } else {
+            // create new CITY OBJECT
+            room.cities.push( {name: 'Undiscovered City', discovered: false, x: curSpot.x, y: curSpot.y });
+
+            curTile.city = (room.cities.length - 1);
+            curTile.health = 100;
+
+            console.log("Placing city on island ", islandIndex);
+          }
+        }
+
+        
       }
     }
   }
@@ -2933,9 +2979,96 @@ function spiralSearch(room, x, y, searchType, terminator = 0) {
   }
 }
 
-function generateClue(room, x, y, clue) {
-  let num = clue.num;
-  let name = clue.name;
+function generatePirateName(existingNames) {
+  let nameParts = ["black", "beard", "sparrow", "thunder", "storm", "bird", "sun", "silver", "gold", "diamond", "hurricane",
+                   "finger", "death", "dance", "fighter", "breaker", "ship", "treasure", "wizard"]
+  let nameLength = Math.floor( Math.random() * 2) + 1;
+
+  // keep making new names, until we find one that hasn't already been used
+  // TO DO/IDEA: We can have longer names, but then they'll be split into two (first name + last name, or simply a double name)
+  let name;
+  do {
+    name = '';
+    for(let i = 0; i < nameLength; i++) {
+      name += nameParts[Math.floor( Math.random() * nameParts.length )];
+    }
+  } while(name in existingNames);
+
+  // return name CAPITALIZED
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function createTreasures(room) {
+  let clueLocations = room.cities.length; // clues (for now) are only inside a city
+  let numTreasures = room.playerShips.length * 3; // 3 treasures for each player
+
+  let cluesPerTreasure = Math.floor(clueLocations / numTreasures);
+
+  // first, place all treasures, give them enough clues, and place all of that in one array
+  let allClues = [];
+
+  for(let i = 0; i < numTreasures; i++) {
+    // determine the treasure name
+    let name = generatePirateName( Object.keys(room.treasures) );
+
+    // determine the treasure location
+    let x, y, tileAvailable;
+    do {
+      x = Math.floor( Math.random() * room.mapWidth );
+      y = Math.floor( Math.random() * room.mapHeight );
+
+      tileAvailable = (room.map[y][x].val < 0.2 && room.map[y][x].dock == null && room.map[y][x].city == null)
+    } while(!tileAvailable);
+
+    // add treasure to dictionary of treasures
+    room.treasures[name] = { x: x, y: y }
+    room.map[y][x].treasure = { name: name }
+
+    // generate "cluesPerTreasure" amount of clues
+    let cluesAlreadyUsed = [];
+    let totalNumClues = 6;
+    for(let c = 0; c < cluesPerTreasure; c++) {
+      // don't generate the same clue twice for a single treasure
+      let clueType;
+
+      do {
+        clueType = Math.floor( Math.random() * totalNumClues );
+      } while(cluesAlreadyUsed.includes(clueType))
+
+      // add clue, including X and Y (needed for variable gathering), to all clues
+      allClues.push({ num: clueType, name: name, x: x, y: y });
+    }
+  }
+
+  // once we have all the clues, shuffle them
+  shuffle(allClues);
+
+  // then distribute them over all cities, in order
+  // (because we shuffled, this is an easy way to randomly place a clue in each city, while ensuring we place ALL clues at least once)
+  for(let i = 0; i < room.cities.length; i++) {
+    if(i >= allClues.length) {
+      // once we're out of clues, just hand out a random clue
+      room.cities[i].clue = allClues[ Math.floor( Math.random() * allClues.length )];
+    } else {
+      // otherwise, give the clue at this index
+      room.cities[i].clue = allClues[i];      
+    }
+  }
+}
+
+function shuffle(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
+
+function generateClue(room, clue) {
+  let num = clue.num, name = clue.name, x = clue.x, y = clue.y;
 
   let info = [];
 
@@ -2957,7 +3090,7 @@ function generateClue(room, x, y, clue) {
 
       break;
 
-    // Get sector number
+    // Get sector number (1 t/m 9)
     case 2:
       return [ Math.floor(y / 3) * 3 + Math.floor(x / 3) ]
 
@@ -2966,7 +3099,7 @@ function generateClue(room, x, y, clue) {
     // Get number of docks within certain radius
     case 3:
       // determine random radius
-      let radius = Math.round(Math.random() * 5 + 3);
+      var radius = Math.round(Math.random() * 5 + 3);
 
       // search within that radius (terminator = square of radius)
       // TO DO: Is this even correct? It'd seem that it needs to be "(radius*2)*(radius*2) - 1"
@@ -2977,7 +3110,7 @@ function generateClue(room, x, y, clue) {
     // Get number of cities within certain radius
     case 4:
       // determine random radius
-      let radius = Math.round(Math.random() * 5 + 3);
+      var radius = Math.round(Math.random() * 5 + 3);
 
       // search within that radius
       return [ spiralSearch(room, x, y, 4, (radius*radius - 1)), radius]
@@ -2987,7 +3120,7 @@ function generateClue(room, x, y, clue) {
     // Get number of islands within certain radius
     case 5:
       // determine random radius
-      let radius = Math.round(Math.random() * 8 + 5);
+      var radius = Math.round(Math.random() * 8 + 5);
 
       // search within that radius
       return [ spiralSearch(room, x, y, 5, (radius*radius - 1)), radius]

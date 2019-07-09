@@ -70,6 +70,9 @@ class GamePlay extends Phaser.State {
 
     // docks
     this.game.load.image('dock', serverInfo.dockDrawing);
+
+    // cities
+    this.game.load.image('city', serverInfo.dockDrawing);
     
   }
 
@@ -81,9 +84,6 @@ class GamePlay extends Phaser.State {
 
       Recreate the map (based on the seed)
       This creates the 4D noise value on each location, and immediately displays the correct (colored) square
-
-      TO DO: Determine islands by myself? Or receive them from the server? (Might just as well send them, if we're sending this much information)
-             => Because, I need to know which tiles to "reveal" on the map, and where to put the text with the ISLAND NAME
 
     ***/
 
@@ -125,7 +125,8 @@ class GamePlay extends Phaser.State {
 
         // save the noise value
         let curVal = noise.perlin4(nx, ny, nz, nw);
-        this.map[y][x] = { val: curVal, checked: false, fog: true };
+        //this.map[y][x] = { val: curVal, checked: false, fog: true };
+        this.map[y][x] = { val: curVal, checked: false, fog: false }; // TO DO: Debugging
 
         // display the map
         let tileColor;
@@ -238,6 +239,36 @@ class GamePlay extends Phaser.State {
       newSprite.myFogDot = newDot;
     }
 
+    // Display cities
+    let cities = serverInfo.cities;
+    this.citySprites = [];
+    for(let i = 0; i < cities.length; i++) {
+      let x = cities[i].x, y = cities[i].y;
+
+      let cacheLabel = 'city';
+
+      // create the sprite
+      let newSprite = gm.add.sprite(x*tileSize, (y-0.5)*tileSize, cacheLabel);
+      newSprite.width = newSprite.height = tileSize;
+      
+      newSprite.visible = false;
+      newSprite.originalX = x;
+      newSprite.originalY = y;
+
+      this.citySprites.push(newSprite);
+
+      console.log(x, y);
+
+      // also create THE DOT!
+      let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
+      newDot.width = newDot.height = tileSize;
+
+      newSprite.myFogDot = newDot;
+    }
+
+    console.log(cities);
+    console.log(this.citySprites.length);
+
     // Display monsters
     console.log(serverInfo.monsters);
     let monsters = serverInfo.monsters;
@@ -274,8 +305,6 @@ class GamePlay extends Phaser.State {
       newSprite.visible = false;
       this.aiShipSprites.push(newSprite);
 
-
-
       // also create THE DOT!
       let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
@@ -309,6 +338,8 @@ class GamePlay extends Phaser.State {
     this.fogBmd.rect(0,0,gm.width,gm.height, '#CCCCCC');
 
     let fogSprite = gm.add.sprite(0,0, this.fogBmd);
+
+    fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
 
     // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
     this.moveUnits();
@@ -367,7 +398,7 @@ class GamePlay extends Phaser.State {
 
       // Add name on top of it
       // (give it a different color and wrap it sooner)
-      gm.add.text(x, y, data.name, mainStyle.mainText(150, '#FFFF00'))
+      gm.add.text(x*ths.tileSize, y*ths.tileSize, data.name, mainStyle.mainText(150, '#FFFF00'))
 
       // Clear the fog here
       this.map[y][x].fog = false;
@@ -379,9 +410,17 @@ class GamePlay extends Phaser.State {
 
     // Function that is activated when a CITY / TOWN is discovered
     socket.on('city-discovered', data => {
-      // TO DO
-      // Get city
-      // Reveal tile (remove fog; also a bit around it?)
+      // Get corresponding dock
+      let curCity = serverInfo.cities[data.index];
+      let x = curCity.x, y = curCity.y;
+
+      // Add name on top of it
+      // (give it a different color and wrap it sooner)
+      gm.add.text(x*ths.tileSize, y*ths.tileSize, data.name, mainStyle.mainText(150, '#FF00FF'))
+
+      // Clear the fog here
+      this.map[y][x].fog = false;
+      ths.fogBmd.clear(x*ths.tileSize, y*ths.tileSize, ths.tileSize, ths.tileSize);
     })
 
     // Function that is called whenever a new turn starts
@@ -421,6 +460,9 @@ class GamePlay extends Phaser.State {
         }
       }
 
+      // TO DO: Remove once night mode is active; now it's just annoying
+      this.lightSprite.visible = false;
+
       if(!serverInfo.dayTime) {
         // update NIGHT OVERLAY; Only if it's actually nighttime!
         this.updateShadowTexture();
@@ -450,6 +492,10 @@ class GamePlay extends Phaser.State {
     // Simultaneously, check how many units are on a certain tile
     for(let i = 0; i < this.dockSprites.length; i++) {
       this.unitsOnMap.push(this.dockSprites[i]);
+    }
+
+    for(let i = 0; i < this.citySprites.length; i++) {
+      this.unitsOnMap.push(this.citySprites[i]);
     }
 
     for(let i = 0; i < this.monsterSprites.length; i++) {
@@ -524,8 +570,8 @@ class GamePlay extends Phaser.State {
         curUnit.width = curUnit.height = newWidth;
 
         // place the unit
-        this.unitsOnMap[i].x = tempPos[0];
-        this.unitsOnMap[i].y = tempPos[1];
+        curUnit.x = tempPos[0];
+        curUnit.y = tempPos[1];
 
         // change color for player ships
         // this.unitShadows.context.fillStyle = SHIP_COLORS[i];

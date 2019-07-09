@@ -289,9 +289,9 @@ function loadExploreButton() {
     let curString = '<span class="upgradeButtonLabel">EXPLORE!</span>';
 
     // calculate the crew costs for exploration
-    // TO DO: For now, it always costs 4 crew
+    // TO DO: For now, it always costs 1 crew
     //        (also, don't forget to sync this between client and server)
-    let costs = { 1: 4 };
+    let costs = { 1: 1 };
 
     // display costs inside upgrade button
     for(let key in costs) {
@@ -572,6 +572,7 @@ export default function loadPlayInterface(num, cont) {
 
                         let btn5 = document.createElement("button")
                         btn5.setAttribute('data-taskid', i);
+                        btn5.classList.add('upgradeButton');
                         btn5.innerHTML = loadExploreButton();
                         span5.appendChild(btn5)
 
@@ -600,6 +601,7 @@ export default function loadPlayInterface(num, cont) {
 
                         let btn6 = document.createElement("button")
                         btn6.setAttribute('data-taskid', i);
+                        btn6.classList.add('upgradeButton');
                         btn6.innerHTML = loadExploreButton();
                         span6.appendChild(btn6)
 
@@ -889,6 +891,8 @@ export default function loadPlayInterface(num, cont) {
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
                     label = 'dock';
+                } else if(unit.myType == 4) {
+                    label = 'city';
                 }
 
                 let newSprite = canvas.myGame.add.sprite(unit.x*localTileSize, unit.y*localTileSize, label);
