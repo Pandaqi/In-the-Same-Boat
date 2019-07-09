@@ -617,11 +617,15 @@ io.on('connection', socket => {
   });
 
   socket.on('explore-city', cityIndex => {
+    console.log("City exploration requested");
+
     let costs = { 1: 1 }
     if(resourceCheck(socket, 0, 0, costs, 10)) {
       // The client reads the clue and transforms it back into a proper string. 
       // (generateClue does NOT turn it into a string; only gathers the necessary variables)
       let curCity = rooms[socket.mainRoom].cities[cityIndex];
+
+      console.log("Exploration request succeeded");
 
       socket.curShip.delayedClues.push( generateClue(rooms[socket.mainRoom], curCity.clue) );
     }
@@ -629,6 +633,8 @@ io.on('connection', socket => {
   });
 
   socket.on('explore-tile', function() {
+    console.log("Tile exploration requested");
+
     let costs = { 1: 1 }
     if(resourceCheck(socket, 0, 0, costs, 11)) {
       let s = socket.curShip;
@@ -1357,6 +1363,7 @@ function startTurn(room, gameStart = false) {
     //       => The "which drawing is it" is in the index
     // It's created as a flat 1D array, because that is probably more efficient. (There'll probably only be a few units around you, so no need for a large 2D array.)
 
+    let enemiesInRange = false;
     for(let y = 0; y < mapSize; y++) {
       for(let x = 0; x < mapSize; x++) {
         // transform coordinates so that our ship is centered
@@ -1389,6 +1396,7 @@ function startTurn(room, gameStart = false) {
           for(let aa = 0; aa < mapTile.aiShips.length; aa++) {
             const myIndex = mapTile.aiShips[aa];
             curShip.personalUnits.push({ myType: 2, index: curRoom.aiShips[myIndex].myShipType, x: x, y: y });
+            enemiesInRange = true;
           }
         }
 
@@ -1397,6 +1405,7 @@ function startTurn(room, gameStart = false) {
           for(let aa = 0; aa < mapTile.monsters.length; aa++) {
             const myIndex = mapTile.monsters[aa];
             curShip.personalUnits.push({ myType: 1, index: curRoom.monsters[myIndex].myMonsterType, x: x, y: y });
+            enemiesInRange = true;
           }
         }
 
@@ -1406,6 +1415,7 @@ function startTurn(room, gameStart = false) {
             const myIndex = mapTile.playerShips[aa];
             if(myIndex == curShip.num) { continue; } // if this is our own ship, ignore it
             curShip.personalUnits.push({ myType: 0, index: curRoom.playerShips[myIndex].num, x: x, y: y });
+            enemiesInRange = true;
           }
         }
       }
@@ -1413,7 +1423,7 @@ function startTurn(room, gameStart = false) {
 
     // This checks if we can fire or not (and sends the captain that task, if so)
     // If we can see enemies in our vicinity, the fire button appears
-    if(curShip.personalUnits.length > 0) {
+    if(enemiesInRange) {
       captainTasks.push([0,0])
       curShip.captainCanFire = true;
     } else {
@@ -1584,14 +1594,16 @@ function finishTurn(room) {
     curShip.errorMessages = [];
 
     // add delayed error messages (mostly treasure clues/info); then clear the array
-    curShip.errorMessages = curShip.delayedClues;
+    for(let c = 0; c < curShip.delayedClues.length; c++) {
+      curShip.errorMessages.push(curShip.delayedClues[c]);
+    }
     curShip.delayedClues = [];
 
     // stop firing!
     curShip.willFire = false;
 
     // count the average for this ship
-    // NOTE: "role = 1", because we IGNORE the captain
+    // NOTE: "role = 1", because we IGNORE the captain (which is "role 0")
     let tempAverage = 0;
     for(let role = 1; role < curShip.roleStats.length; role++) {
       tempAverage += curShip.roleStats[role].lvl;
@@ -2109,6 +2121,7 @@ function createShip(index) {
       { lvl: cannoneerLvl, lvlUp: false } ], 
     cannons: cannons,
     errorMessages: [],
+    delayedClues: [],
   }
 
 }
@@ -2348,16 +2361,12 @@ function discoverIslands(room) {
             // also set the health of the tile (which controls WHATEVER BUILDING is on the tile)
             curTile.dock = (room.docks.length - 1);
             curTile.health = 100
-
-            console.log("Placing dock on island ", islandIndex);
           } else {
             // create new CITY OBJECT
             room.cities.push( {name: 'Undiscovered City', discovered: false, x: curSpot.x, y: curSpot.y });
 
             curTile.city = (room.cities.length - 1);
             curTile.health = 100;
-
-            console.log("Placing city on island ", islandIndex);
           }
         }
 
@@ -3002,7 +3011,8 @@ function createTreasures(room) {
   let clueLocations = room.cities.length; // clues (for now) are only inside a city
   let numTreasures = room.playerShips.length * 3; // 3 treasures for each player
 
-  let cluesPerTreasure = Math.floor(clueLocations / numTreasures);
+  let totalNumClues = 6;
+  let cluesPerTreasure = Math.min( Math.floor(clueLocations / numTreasures), totalNumClues); // either we fill all locations with clues, or we get the maximum clues we can from a treasure
 
   // first, place all treasures, give them enough clues, and place all of that in one array
   let allClues = [];
@@ -3026,7 +3036,6 @@ function createTreasures(room) {
 
     // generate "cluesPerTreasure" amount of clues
     let cluesAlreadyUsed = [];
-    let totalNumClues = 6;
     for(let c = 0; c < cluesPerTreasure; c++) {
       // don't generate the same clue twice for a single treasure
       let clueType;
@@ -3037,6 +3046,11 @@ function createTreasures(room) {
 
       // add clue, including X and Y (needed for variable gathering), to all clues
       allClues.push({ num: clueType, name: name, x: x, y: y });
+
+      cluesAlreadyUsed.push(clueType);
+
+      // debugging
+      console.log("Created clue of type ", clueType, " for treasure ", name)
     }
   }
 
@@ -3068,6 +3082,8 @@ function shuffle(a) {
 }
 
 function generateClue(room, clue) {
+  console.log("generateClue function was succesfully called");
+
   let num = clue.num, name = clue.name, x = clue.x, y = clue.y;
 
   let info = [];
@@ -3086,13 +3102,13 @@ function generateClue(room, clue) {
 
     // Get distance to nearest island
     case 1:
-      return [ spiralSearch(room, x, y, 1) ];
+      info = [ spiralSearch(room, x, y, 1) ];
 
       break;
 
     // Get sector number (1 t/m 9)
     case 2:
-      return [ Math.floor(y / 3) * 3 + Math.floor(x / 3) ]
+      info = [ Math.floor(y / (room.mapHeight / 3)) * 3 + Math.floor(x / (room.mapWidth / 3)) ]
 
       break;
 
@@ -3103,7 +3119,7 @@ function generateClue(room, clue) {
 
       // search within that radius (terminator = square of radius)
       // TO DO: Is this even correct? It'd seem that it needs to be "(radius*2)*(radius*2) - 1"
-      return [ spiralSearch(room, x, y, 3, (radius*radius - 1)), radius]
+      info = [ spiralSearch(room, x, y, 3, (radius*radius - 1)), radius]
 
       break;
 
@@ -3113,7 +3129,7 @@ function generateClue(room, clue) {
       var radius = Math.round(Math.random() * 5 + 3);
 
       // search within that radius
-      return [ spiralSearch(room, x, y, 4, (radius*radius - 1)), radius]
+      info = [ spiralSearch(room, x, y, 4, (radius*radius - 1)), radius]
 
       break;
 
@@ -3123,7 +3139,7 @@ function generateClue(room, clue) {
       var radius = Math.round(Math.random() * 8 + 5);
 
       // search within that radius
-      return [ spiralSearch(room, x, y, 5, (radius*radius - 1)), radius]
+      info = [ spiralSearch(room, x, y, 5, (radius*radius - 1)), radius]
 
       break;
   }

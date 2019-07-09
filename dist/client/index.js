@@ -1891,11 +1891,22 @@ var GamePlay = function (_Phaser$State) {
                     }
 
                     // create square, color it, add it as a sprite, add it to group
-                    var tempTile = gm.add.bitmapData(this.tileSize, this.tileSize);
+                    var tempTile = gm.add.bitmapData(tileSize, tileSize);
                     tempTile.rect(0, 0, tileSize, tileSize, tileColor);
 
-                    var tempSprite = gm.add.sprite(x * this.tileSize, y * this.tileSize, tempTile);
+                    var tempSprite = gm.add.sprite(x * tileSize, y * tileSize, tempTile);
                     baseMapGroup.add(tempSprite);
+
+                    // if this is ocean, but the tile above us is land, display 3D-effect pop-out
+                    if (curVal < 0.2 && y >= 1 && this.map[y - 1][x].val >= 0.2) {
+                        // display a dark-brown rectangle, same width as tile, but small height ( = pop-out height)
+                        var tempPopout = gm.add.bitmapData(tileSize, tileSize * 0.2);
+                        tempPopout.rect(0, 0, tileSize, tileSize * 0.2, '#321C02');
+
+                        baseMapGroup.add(gm.add.sprite(x * tileSize, y * tileSize, tempPopout));
+
+                        // TO DO: Shadow underneath  
+                    }
 
                     /*
                     graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
@@ -1991,6 +2002,8 @@ var GamePlay = function (_Phaser$State) {
                 _newSprite.visible = false;
                 _newSprite.originalX = _x3;
                 _newSprite.originalY = _y3;
+
+                _newSprite.myType = 4;
 
                 this.citySprites.push(_newSprite);
 
@@ -2141,7 +2154,8 @@ var GamePlay = function (_Phaser$State) {
 
                 // Add name on top of it
                 // (give it a different color and wrap it sooner)
-                gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FFFF00'));
+                var dockTitle = gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FFFF00'));
+                dockTitle.anchor.setTo(0.5, 1.0);
 
                 // Clear the fog here
                 _this2.map[y][x].fog = false;
@@ -2160,7 +2174,8 @@ var GamePlay = function (_Phaser$State) {
 
                 // Add name on top of it
                 // (give it a different color and wrap it sooner)
-                gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FF00FF'));
+                var cityTitle = gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FF00FF'));
+                cityTitle.anchor.setTo(0.5, 1.0);
 
                 // Clear the fog here
                 _this2.map[y][x].fog = false;
@@ -2288,6 +2303,11 @@ var GamePlay = function (_Phaser$State) {
 
                 var tempPos = [curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize];
 
+                // docks and cities don't count towards units, but I OBVIOUSLY can't divide by zero
+                if (unitsOnTile <= 0) {
+                    unitsOnTile = 1;
+                }
+
                 // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
                 var newWidth = this.tileSize / Math.sqrt(unitsOnTile);
 
@@ -2327,6 +2347,14 @@ var GamePlay = function (_Phaser$State) {
                     this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
                     this.unitShadows.context.fill();
                 }
+
+                /*
+                if(curUnit.myType == 4) {
+                  console.log("Coordinates?", curUnit.x, curUnit.y);
+                  console.log("Size?", curUnit.width, curUnit.height);
+                  console.log("Is this city visible?", curUnit.visible);        
+                }
+                */
             }
 
             this.unitShadows.dirty = true;
@@ -3929,7 +3957,7 @@ function loadPlayInterface(num, cont) {
             cont.appendChild(svg1);
 
             // rotate the SVG to match current ship rotation
-            svg1.style.transform = 'rotate(' + (oldOrientation * 45 + deltaAngle) + 'deg)';
+            svg1.style.transform = 'rotate(' + (oldOrientation * 45 + deltaAngle + 10) + 'deg)';
 
             /***
                  END OF SVG ARC CODE

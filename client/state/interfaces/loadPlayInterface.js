@@ -679,7 +679,7 @@ export default function loadPlayInterface(num, cont) {
             svg1.style.position = "absolute";
 
             // get maximum steering angle + current orientation
-            let deltaAngle = UPGRADE_EFFECT_DICT[1][serverInfo.roleStats[1].lvl].angle;; 
+            let deltaAngle = UPGRADE_EFFECT_DICT[1][serverInfo.roleStats[1].lvl].angle;
             let oldOrientation = serverInfo.oldOrientation;
 
             // Don't display anything if we have full steering range
@@ -698,7 +698,7 @@ export default function loadPlayInterface(num, cont) {
               let startPos = { x: cx + rx, y: cy }
               let endPos = { x: cx + Math.cos(targetAngle) * rx, y: cy + Math.sin(targetAngle) * ry}
 
-                // determine large and sweep flags 
+              // determine large and sweep flags 
               // (to ensure the arc always follows a circle)
               let largeArc = 1;
               if(deltaAngle >= 90) {
@@ -728,6 +728,12 @@ export default function loadPlayInterface(num, cont) {
 
             // add complete SVG element to the container
             cont.appendChild(svg1)
+
+            // the SVG creates some overlap by rounding the arc stroke
+            // we need to offset this by adding 10 degrees to the final rotation, but only if there's actually a gap
+            if(deltaAngle != 0) {
+                deltaAngle += 10;
+            }
 
             // rotate the SVG to match current ship rotation
             svg1.style.transform = 'rotate(' + (oldOrientation * 45 + deltaAngle) + 'deg)';
