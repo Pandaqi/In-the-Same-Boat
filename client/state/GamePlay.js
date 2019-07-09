@@ -356,15 +356,32 @@ class GamePlay extends Phaser.State {
 
       // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
       // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
-      gm.add.text(averageX*ths.tileSize, averageY*ths.tileSize, data.name, mainStyle.timerText())
+      gm.add.text(averageX*ths.tileSize, averageY*ths.tileSize, data.name, mainStyle.mainText())
     })
 
-    // Function that is activated when a dock is discovered
+    // Function that is activated when a DOCK is discovered
     socket.on('dock-discovered', data => {
+      // Get corresponding dock
+      let curDock = serverInfo.docks[data.index];
+      let x = curDock.x, y = curDock.y;
+
+      // Add name on top of it
+      // (give it a different color and wrap it sooner)
+      gm.add.text(x, y, data.name, mainStyle.mainText(150, '#FFFF00'))
+
+      // Clear the fog here
+      this.map[y][x].fog = false;
+      ths.fogBmd.clear(x*ths.tileSize, y*ths.tileSize, ths.tileSize, ths.tileSize);
+
       // TO DO
-      // Get dock
+      // Always display the corresponding dock trade from now on
+    })
+
+    // Function that is activated when a CITY / TOWN is discovered
+    socket.on('city-discovered', data => {
+      // TO DO
+      // Get city
       // Reveal tile (remove fog; also a bit around it?)
-      // Always display dock trade from now on
     })
 
     // Function that is called whenever a new turn starts

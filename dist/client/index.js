@@ -1005,23 +1005,25 @@ var _serverInfo = __webpack_require__(0);
 
 var _roleDictionary = __webpack_require__(7);
 
+var _clueStrings = __webpack_require__(29);
+
 function loadErrorMessage(i) {
     var msgType = _serverInfo.serverInfo.errorMessages[i][0];
-    var msgRole = _roleDictionary.ROLE_DICTIONARY[_serverInfo.serverInfo.errorMessages[i][1]];
+    var msgParam = _serverInfo.serverInfo.errorMessages[i][1];
 
     var finalMsg = '';
     var msgVisualType = 0; // 0 = error message, 1 = reward/feedback message
     switch (msgType) {
         case 0:
-            finalMsg = 'Upgrade by <em>' + msgRole + '</em> failed!';
+            finalMsg = 'Upgrade by <em>' + _roleDictionary.ROLE_DICTIONARY[msgParam] + '</em> failed!';
             break;
 
         case 1:
-            finalMsg = 'Crew allocation by <em>' + msgRole + '</em> failed!';
+            finalMsg = 'Crew allocation by <em>' + _roleDictionary.ROLE_DICTIONARY[msgParam] + '</em> failed!';
             break;
 
         case 2:
-            finalMsg = 'Purchase by <em>' + msgRole + '</em> failed!';
+            finalMsg = 'Purchase by <em>' + _roleDictionary.ROLE_DICTIONARY[msgParam] + '</em> failed!';
             break;
 
         case 3:
@@ -1062,6 +1064,30 @@ function loadErrorMessage(i) {
         case 11:
             finalMsg = 'Searching for clues failed!';
             break;
+
+        case 12:
+            finalMsg = "Congratulations! You have found the treasure of " + msgParam;
+            msgVisualType = 1;
+            break;
+
+        // This one's special: it handles ALL possible clues
+        // msgParam is an object, containing the clue NUMBER, treasure NAME, and other necessary INFO
+        case 13:
+            // get clue from dictionary
+            finalMsg = _clueStrings.CLUE_STRINGS[msgParam.num];
+
+            // insert name (owner of treasure; unique identifier)
+            finalMsg = finalMsg.replace('@[name]', msgParam.name);
+
+            // insert all other variables/info
+            // (the right values for these are already calculated on the server)
+            for (var a = 0; a < msgParam.info.length; a++) {
+                finalMsg = finalMsg.replace('@[' + a + ']', msgParam.info[a]);
+            }
+
+            msgVisualType = 1;
+            break;
+
     }
 
     var errorMsg = document.createElement("span");
@@ -1123,11 +1149,11 @@ var _ControllerPrep = __webpack_require__(24);
 
 var _ControllerPrep2 = _interopRequireDefault(_ControllerPrep);
 
-var _ControllerPlay = __webpack_require__(29);
+var _ControllerPlay = __webpack_require__(30);
 
 var _ControllerPlay2 = _interopRequireDefault(_ControllerPlay);
 
-var _ControllerOver = __webpack_require__(31);
+var _ControllerOver = __webpack_require__(32);
 
 var _ControllerOver2 = _interopRequireDefault(_ControllerOver);
 
@@ -4490,6 +4516,27 @@ module.exports = UPGRADE_EFFECT_DICT;
 
 
 Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+var CLUE_STRINGS = exports.CLUE_STRINGS = ["They say @[name]'s treasure sank in the @[0] ocean", // 0 // deep or shallow
+"The Treasure of @[name] should be @[0] tiles from the nearest island", // 1 // integer
+"@[name] hid a treasure somewhere in sector @[0]", // 2 // sector number: 1 up to and including 9
+"There are @[0] docks within a @[1] tile radius of @[name]'s treasure", // 3 // integer, integer 
+"There are @[0] cities within a @[1] tile radius of @[name]'s treasure", // 4 // integer, integer 
+"There are @[0] unique islands within a @[1] tile radius of @[name]'s treasure", // 5 // integer, integer 
+"The dock nearest to @[name]'s treasure is @[0]", // 6 // dock name
+"The island nearest to @[name]'s treasure is @[0]", // 7 // island name
+"The city nearest to @[name]'s treasure is @[0]", // 8 // city name
+"@[0] is currently closest to @[name]'s treasure!"];
+
+/***/ }),
+/* 30 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
@@ -4509,7 +4556,7 @@ var _rejoinRoomModule2 = _interopRequireDefault(_rejoinRoomModule);
 
 var _roleDictionary = __webpack_require__(7);
 
-var _roleHelpText = __webpack_require__(30);
+var _roleHelpText = __webpack_require__(31);
 
 var _loadTab = __webpack_require__(14);
 
@@ -4831,7 +4878,7 @@ var ControllerWaiting = function (_Phaser$State) {
 exports.default = ControllerWaiting;
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4864,7 +4911,7 @@ var ROLE_HELP_TEXT = exports.ROLE_HELP_TEXT = [
 	<p>At the start, the ship has a small maximum speed and maximum change (acceleration/deceleration). By upgrading, you can raise this ceiling.</p>"];
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

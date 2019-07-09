@@ -615,13 +615,13 @@ io.on('connection', socket => {
   });
 
   socket.on('explore-city', cityIndex => {
-    let curCity = rooms[socket.mainRoom].cities[cityIndex];
-
     let costs = { 1: 4 }
     if(resourceCheck(socket, 0, 0, costs, 10)) {
       // TO DO: Write generateClue function, which gets the necessary info (such as island names or nearest player), then sets "message type" + "info"
       // The client reads the clue and transforms it back into a proper string. (generateClue does NOT turn it into a string)
-      socket.curShip.delayedClues.push( generateClue(curCity.x, curCity.y, curCity.clue) );
+      let curCity = rooms[socket.mainRoom].cities[cityIndex];
+
+      socket.curShip.delayedClues.push( generateClue(rooms[socket.mainRoom], curCity.x, curCity.y, curCity.clue) );
     }
     
   });
@@ -1906,7 +1906,7 @@ function finishTurn(room) {
           // here we actually check if there's something of value
           let curTile = curRoom.map[tempY][tempX];
 
-          // if we're one tile away, already find possible tiles
+          // if we're one tile away (from the MONSTER), already find possible tiles
           if(n < 8) {
             if(curTile.val <= -0.3) {
               if(bestDeepSeaTile == null || Math.random() >= 0.5) {
@@ -2828,7 +2828,112 @@ function distributeStartingUnits(room) {
 
 /*** == BEGIN of clue generation code == ***/
 
-function generateClue(x, y, clue) {
+function spiralSearch(room, x, y, searchType, terminator = 0) {
+  // curDir = direction in which we move right now
+  let curDir = [1,0]
+  // length of current segment
+  let segLength = 1;
+
+  let tempX = x;
+  let tempY = y;
+
+  // how much of current segment we passed
+  let segPassed = 0;
+  let doneSearching = false;
+
+  let n = 0;
+  let countUnits = 0; // only needed for some of the clues
+  let uniqueUnits = [];
+
+  while(!doneSearching) {
+      // make a step, add 'direction' vector to current position
+      tempX = wrapCoords(tempX + curDir[0], room.mapWidth);
+      tempY = wrapCoords(tempY + curDir[1], room.mapHeight);
+
+      // here we actually check if there's something of value
+      let curTile = room.map[tempY][tempX];
+
+      // there are different types of spiral searches in the game
+      // some clues search for land, some for ships, etc.
+      // this statement switches between them
+      switch(searchType) {
+        case 1:
+          // if we've found land, return distance from original position (x,y) to land tile (tempX,tempY)
+          if(curTile.val >= 0.2) {
+            doneSearching = true;
+            return Math.abs(tempX - x) + Math.abs(tempY - y);
+          }
+          break;
+
+        case 3:
+          // count number of docks
+          if(curTile.dock != null) {
+            countUnits++;
+          }
+
+          // stop loop once we reach terminator
+          if(n >= terminator) {
+            doneSearching = true;
+            return countUnits;
+          }
+
+          break;
+
+        case 4:
+          // count number of cities
+          if(curTile.city != null) {
+            countUnits++;
+          }
+
+          // stop loop once we reach terminator
+          if(n >= terminator) {
+            doneSearching = true;
+            return countUnits;
+          }
+
+          break;
+
+        case 5:
+          // count number of islands (only UNIQUE ones)
+          if(curTile.island != null) {
+            if(!(curTile.island in uniqueUnits)) {
+              countUnits++;
+              uniqueUnits.push(curTile.island);              
+            }
+          }
+
+          // stop loop once we reach terminator
+          if(n >= terminator) {
+            doneSearching = true;
+            return countUnits;
+          }
+
+          break;
+      }
+      
+
+      // this code is for switching to the next tile again.
+      // this is responsible for rotating to a new segment (and increasing length) once this one's finished
+      segPassed++;
+      if (segPassed == segLength) {
+          // done with current segment
+          segPassed = 0;
+
+          // 'rotate' directions
+          curDir = [-curDir[1], curDir[0]]
+
+          // increase segment length if necessary
+          if (curDir[1] == 0) {
+              segLength++;
+          }
+      }
+
+      // increase number of tiles we've looked at
+      n++;
+  }
+}
+
+function generateClue(room, x, y, clue) {
   let num = clue.num;
   let name = clue.name;
 
@@ -2836,6 +2941,59 @@ function generateClue(x, y, clue) {
 
   // this is a HUGE switch statement to generate the right information for a specific clue
   // TO DO
+  switch(num) {
+    // Shallow or deep ocean
+    case 0:
+      if(room.map[y][x].val < -0.2) {
+        info = ['deep'];
+      } else {
+        info = ['shallow'];
+      }
+      break;
+
+    // Get distance to nearest island
+    case 1:
+      return [ spiralSearch(room, x, y, 1) ];
+
+      break;
+
+    // Get sector number
+    case 2:
+      return [ Math.floor(y / 3) * 3 + Math.floor(x / 3) ]
+
+      break;
+
+    // Get number of docks within certain radius
+    case 3:
+      // determine random radius
+      let radius = Math.round(Math.random() * 5 + 3);
+
+      // search within that radius (terminator = square of radius)
+      // TO DO: Is this even correct? It'd seem that it needs to be "(radius*2)*(radius*2) - 1"
+      return [ spiralSearch(room, x, y, 3, (radius*radius - 1)), radius]
+
+      break;
+
+    // Get number of cities within certain radius
+    case 4:
+      // determine random radius
+      let radius = Math.round(Math.random() * 5 + 3);
+
+      // search within that radius
+      return [ spiralSearch(room, x, y, 4, (radius*radius - 1)), radius]
+
+      break;
+
+    // Get number of islands within certain radius
+    case 5:
+      // determine random radius
+      let radius = Math.round(Math.random() * 8 + 5);
+
+      // search within that radius
+      return [ spiralSearch(room, x, y, 5, (radius*radius - 1)), radius]
+
+      break;
+  }
 
   // error message 13 means a clue
   // the object contains the clue num, name, and list of input variables (info)
