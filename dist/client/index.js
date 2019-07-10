@@ -1706,7 +1706,7 @@ exports.default = GamePrep;
 
 
 Object.defineProperty(exports, "__esModule", {
-    value: true
+  value: true
 });
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -1754,711 +1754,745 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var GamePlay = function (_Phaser$State) {
-    _inherits(GamePlay, _Phaser$State);
+  _inherits(GamePlay, _Phaser$State);
 
-    function GamePlay() {
-        _classCallCheck(this, GamePlay);
+  function GamePlay() {
+    _classCallCheck(this, GamePlay);
 
-        return _possibleConstructorReturn(this, (GamePlay.__proto__ || Object.getPrototypeOf(GamePlay)).call(this));
+    return _possibleConstructorReturn(this, (GamePlay.__proto__ || Object.getPrototypeOf(GamePlay)).call(this));
+  }
+
+  _createClass(GamePlay, [{
+    key: 'preload',
+    value: function preload() {
+      this.game.stage.backgroundColor = "#FFFFFF";
+
+      /*
+          Load all images into the cache
+          The "preload" function waits until everything is loaded, before calling the create function
+        Which should give us time to load all images
+        */
+
+      // monsters
+      var mDrawings = _serverInfo.serverInfo.monsterDrawings;
+      for (var i = 0; i < mDrawings.length; i++) {
+        this.game.load.image('monsterNum' + i, mDrawings[i]);
+      }
+
+      if (mDrawings.length < 1) {
+        this.game.load.image('monsterNum0', _serverInfo.serverInfo.backupMonsterDrawing);
+        this.game.load.image('monsterNum1', _serverInfo.serverInfo.backupMonsterDrawing);
+        this.game.load.image('monsterNum2', _serverInfo.serverInfo.backupMonsterDrawing);
+      }
+
+      // player ships
+      var sDrawings = _serverInfo.serverInfo.shipDrawings;
+      for (var _i = 0; _i < sDrawings.length; _i++) {
+        this.game.load.image('shipNum' + _i, sDrawings[_i]);
+      }
+
+      if (sDrawings.length < 1) {
+        this.game.load.image('shipNum0', _serverInfo.serverInfo.backupShipDrawing);
+        this.game.load.image('shipNum1', _serverInfo.serverInfo.backupShipDrawing);
+        this.game.load.image('shipNum2', _serverInfo.serverInfo.backupShipDrawing);
+      }
+
+      // ai ships
+      var aiDrawings = _serverInfo.serverInfo.aiShipDrawings;
+      for (var _i2 = 0; _i2 < aiDrawings.length; _i2++) {
+        this.game.load.image('aiShipNum' + _i2, aiDrawings[_i2]);
+      }
+
+      if (aiDrawings.length < 1) {
+        this.game.load.image('aiShipNum0', _serverInfo.serverInfo.backupShipDrawing);
+        this.game.load.image('aiShipNum1', _serverInfo.serverInfo.backupShipDrawing);
+        this.game.load.image('aiShipNum2', _serverInfo.serverInfo.backupShipDrawing);
+        this.game.load.image('aiShipNum3', _serverInfo.serverInfo.backupShipDrawing);
+      }
+
+      // docks
+      this.game.load.image('dock_front', '/assets/lighthouse_front.png');
+      this.game.load.image('dock_back', '/assets/lighthouse_back.png');
+      this.game.load.image('dock_side', '/assets/lighthouse_side.png');
+
+      // cities
+      this.game.load.image('city', _serverInfo.serverInfo.dockDrawing);
     }
+  }, {
+    key: 'create',
+    value: function create() {
+      var _this2 = this;
 
-    _createClass(GamePlay, [{
-        key: 'preload',
-        value: function preload() {
-            this.game.stage.backgroundColor = "#FFFFFF";
+      var gm = this.game;
+      var socket = _serverInfo.serverInfo.socket;
 
-            /*
-                Load all images into the cache
-                The "preload" function waits until everything is loaded, before calling the create function
-              Which should give us time to load all images
-              */
+      /***
+          Recreate the map (based on the seed)
+        This creates the 4D noise value on each location, and immediately displays the correct (colored) square
+        ***/
 
-            // monsters
-            var mDrawings = _serverInfo.serverInfo.monsterDrawings;
-            for (var i = 0; i < mDrawings.length; i++) {
-                this.game.load.image('monsterNum' + i, mDrawings[i]);
-            }
+      // seed the noise object (with the mapSeed)
+      _perlinImproved2.default.seed(_serverInfo.serverInfo.mapSeed);
 
-            if (mDrawings.length < 1) {
-                this.game.load.image('monsterNum0', _serverInfo.serverInfo.backupMonsterDrawing);
-                this.game.load.image('monsterNum1', _serverInfo.serverInfo.backupMonsterDrawing);
-                this.game.load.image('monsterNum2', _serverInfo.serverInfo.backupMonsterDrawing);
-            }
+      // initialize some variables determining map size (and zoom level)
+      var x1 = 0,
+          y1 = 0,
+          x2 = 10,
+          y2 = 10;
+      var mapWidth = 60,
+          mapHeight = 30;
 
-            // player ships
-            var sDrawings = _serverInfo.serverInfo.shipDrawings;
-            for (var _i = 0; _i < sDrawings.length; _i++) {
-                this.game.load.image('shipNum' + _i, sDrawings[_i]);
-            }
+      this.mapWidth = mapWidth;
+      this.mapHeight = mapHeight;
 
-            if (sDrawings.length < 1) {
-                this.game.load.image('shipNum0', _serverInfo.serverInfo.backupShipDrawing);
-                this.game.load.image('shipNum1', _serverInfo.serverInfo.backupShipDrawing);
-                this.game.load.image('shipNum2', _serverInfo.serverInfo.backupShipDrawing);
-            }
+      this.map = []; //initialize map variable
 
-            // ai ships
-            var aiDrawings = _serverInfo.serverInfo.aiShipDrawings;
-            for (var _i2 = 0; _i2 < aiDrawings.length; _i2++) {
-                this.game.load.image('aiShipNum' + _i2, aiDrawings[_i2]);
-            }
+      //var graphics = this.add.graphics(0, 0);
+      var tileSize = Math.min(window.innerWidth / mapWidth, window.innerHeight / mapHeight);
+      this.tileSize = tileSize;
 
-            if (aiDrawings.length < 1) {
-                this.game.load.image('aiShipNum0', _serverInfo.serverInfo.backupShipDrawing);
-                this.game.load.image('aiShipNum1', _serverInfo.serverInfo.backupShipDrawing);
-                this.game.load.image('aiShipNum2', _serverInfo.serverInfo.backupShipDrawing);
-                this.game.load.image('aiShipNum3', _serverInfo.serverInfo.backupShipDrawing);
-            }
+      var baseMapGroup = gm.add.group();
 
-            // docks
-            this.game.load.image('dock_front', '/assets/lighthouse_front.png');
-            this.game.load.image('dock_back', '/assets/lighthouse_back.png');
+      // loop through all tiles, determine noise level, and save it
+      for (var y = 0; y < mapHeight; y++) {
+        this.map[y] = [];
+        for (var x = 0; x < mapWidth; x++) {
+          // 4D noise => wraps back to 2D map with seamless edges
+          var s = x / mapWidth;
+          var t = y / mapHeight;
+          var dx = x2 - x1;
+          var dy = y2 - y1;
+          var pi = Math.PI;
 
-            // cities
-            this.game.load.image('city', _serverInfo.serverInfo.dockDrawing);
+          // Walk over two independent circles (perpendicular to each other)
+          var nx = x1 + Math.cos(s * 2 * pi) * dx / (2 * pi);
+          var nz = y1 + Math.sin(s * 2 * pi) * dy / (2 * pi);
+
+          var ny = x1 + Math.cos(t * 2 * pi) * dx / (2 * pi);
+          var nw = y1 + Math.sin(t * 2 * pi) * dy / (2 * pi);
+
+          // save the noise value
+          var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
+          //this.map[y][x] = { val: curVal, checked: false, fog: true };
+          this.map[y][x] = { val: curVal, checked: false, fog: false }; // TO DO: Debugging
+
+          // display the map
+          var tileColor = void 0;
+          // DEEP OCEAN
+          if (curVal < -0.3) {
+            tileColor = '#1036CC';
+            // SHALLOW OCEAN
+          } else if (curVal < 0.2) {
+            tileColor = '#4169FF';
+            // BEACH
+          } else if (curVal < 0.25) {
+            tileColor = '#EED6AF';
+            // ISLAND
+          } else {
+            tileColor = '#228B22';
+          }
+
+          // create square, color it, add it as a sprite, add it to group
+          var tempTile = gm.add.bitmapData(tileSize, tileSize);
+          tempTile.rect(0, 0, tileSize, tileSize, tileColor);
+
+          var tempSprite = gm.add.sprite(x * tileSize, y * tileSize, tempTile);
+          baseMapGroup.add(tempSprite);
+
+          // if this is ocean, but the tile above us is land, display 3D-effect pop-out
+          if (curVal < 0.2 && y >= 1 && this.map[y - 1][x].val >= 0.2) {
+            // display a dark-brown rectangle, same width as tile, but small height ( = pop-out height)
+            var tempPopout = gm.add.bitmapData(tileSize, tileSize * 0.2);
+            tempPopout.rect(0, 0, tileSize, tileSize * 0.2, '#321C02');
+
+            baseMapGroup.add(gm.add.sprite(x * tileSize, y * tileSize, tempPopout));
+
+            // Shadow underneath (over the water)
+            var tempShadow = gm.add.bitmapData(tileSize, tileSize * 0.15);
+            tempShadow.rect(0, 0, tileSize, tileSize * 0.15, '#000000');
+
+            var tempShadowSprite = gm.add.sprite(x * tileSize, y * tileSize, tempShadow);
+            tempShadowSprite.alpha = 0.3;
+
+            baseMapGroup.add(tempShadowSprite);
+          }
+
+          /*
+          graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+            graphics.lineStyle(1, 0xF9E4B7, 1); // last parameter is transparency: might be too expensive for the computer to set this to something else than 0
+          graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
+          */
         }
-    }, {
-        key: 'create',
-        value: function create() {
-            var _this2 = this;
-
-            var gm = this.game;
-            var socket = _serverInfo.serverInfo.socket;
-
-            /***
-                Recreate the map (based on the seed)
-              This creates the 4D noise value on each location, and immediately displays the correct (colored) square
-              ***/
-
-            // seed the noise object (with the mapSeed)
-            _perlinImproved2.default.seed(_serverInfo.serverInfo.mapSeed);
-
-            // initialize some variables determining map size (and zoom level)
-            var x1 = 0,
-                y1 = 0,
-                x2 = 10,
-                y2 = 10;
-            var mapWidth = 60,
-                mapHeight = 30;
-
-            this.mapWidth = mapWidth;
-            this.mapHeight = mapHeight;
-
-            this.map = []; //initialize map variable
-
-            //var graphics = this.add.graphics(0, 0);
-            var tileSize = Math.min(window.innerWidth / mapWidth, window.innerHeight / mapHeight);
-            this.tileSize = tileSize;
-
-            var baseMapGroup = gm.add.group();
-
-            // loop through all tiles, determine noise level, and save it
-            for (var y = 0; y < mapHeight; y++) {
-                this.map[y] = [];
-                for (var x = 0; x < mapWidth; x++) {
-                    // 4D noise => wraps back to 2D map with seamless edges
-                    var s = x / mapWidth;
-                    var t = y / mapHeight;
-                    var dx = x2 - x1;
-                    var dy = y2 - y1;
-                    var pi = Math.PI;
-
-                    // Walk over two independent circles (perpendicular to each other)
-                    var nx = x1 + Math.cos(s * 2 * pi) * dx / (2 * pi);
-                    var nz = y1 + Math.sin(s * 2 * pi) * dy / (2 * pi);
-
-                    var ny = x1 + Math.cos(t * 2 * pi) * dx / (2 * pi);
-                    var nw = y1 + Math.sin(t * 2 * pi) * dy / (2 * pi);
-
-                    // save the noise value
-                    var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
-                    //this.map[y][x] = { val: curVal, checked: false, fog: true };
-                    this.map[y][x] = { val: curVal, checked: false, fog: false }; // TO DO: Debugging
-
-                    // display the map
-                    var tileColor = void 0;
-                    // DEEP OCEAN
-                    if (curVal < -0.3) {
-                        tileColor = '#1036CC';
-                        // SHALLOW OCEAN
-                    } else if (curVal < 0.2) {
-                        tileColor = '#4169FF';
-                        // BEACH
-                    } else if (curVal < 0.25) {
-                        tileColor = '#EED6AF';
-                        // ISLAND
-                    } else {
-                        tileColor = '#228B22';
-                    }
-
-                    // create square, color it, add it as a sprite, add it to group
-                    var tempTile = gm.add.bitmapData(tileSize, tileSize);
-                    tempTile.rect(0, 0, tileSize, tileSize, tileColor);
-
-                    var tempSprite = gm.add.sprite(x * tileSize, y * tileSize, tempTile);
-                    baseMapGroup.add(tempSprite);
-
-                    // if this is ocean, but the tile above us is land, display 3D-effect pop-out
-                    if (curVal < 0.2 && y >= 1 && this.map[y - 1][x].val >= 0.2) {
-                        // display a dark-brown rectangle, same width as tile, but small height ( = pop-out height)
-                        var tempPopout = gm.add.bitmapData(tileSize, tileSize * 0.2);
-                        tempPopout.rect(0, 0, tileSize, tileSize * 0.2, '#321C02');
-
-                        baseMapGroup.add(gm.add.sprite(x * tileSize, y * tileSize, tempPopout));
-
-                        // TO DO: Shadow underneath  
-                    }
-
-                    /*
-                    graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
-                      graphics.lineStyle(1, 0xF9E4B7, 1); // last parameter is transparency: might be too expensive for the computer to set this to something else than 0
-                    graphics.drawRect(x*tileSize, y*tileSize, tileSize, tileSize);
-                    */
-                }
-            }
-
-            // draw grid lines VERTICALLY
-            for (var _x = 0; _x < mapWidth; _x++) {
-                var _tempTile = gm.add.bitmapData(1, this.mapHeight * this.tileSize);
-                _tempTile.line(0, 0, 0, this.mapHeight * this.tileSize, '#CCCCCC', 1);
-
-                var _tempSprite = gm.add.sprite(_x * this.tileSize, 0, _tempTile);
-                baseMapGroup.add(_tempSprite);
-            }
-
-            // draw grid lines HORIZONTALLY
-            for (var _y = 0; _y < mapHeight; _y++) {
-                var _tempTile2 = gm.add.bitmapData(this.mapWidth * this.tileSize, 1);
-                _tempTile2.line(0, 0, this.mapWidth * this.tileSize, 0, '#CCCCCC', 1);
-
-                var _tempSprite2 = gm.add.sprite(0, _y * this.tileSize, _tempTile2);
-                baseMapGroup.add(_tempSprite2);
-            }
-
-            // put the complete base map into the cache
-            baseMapGroup.cacheAsBitmap = true;
-
-            /*
-                Discover islands (cheaper to do it locally than to get it from the server)
-              */
-            this.discoverIslands();
-
-            /*
-                Create texture that holds all the shadows
-              */
-            this.unitShadows = gm.add.bitmapData(gm.width, gm.height);
-            this.shadowSprite = gm.add.image(0, 0, this.unitShadows);
-            //this.shadowSprite.blendMode = Phaser.blendModes.MULTIPLY;
-            this.shadowSprite.alpha = 0.66;
-
-            /*
-                Display all units
-                Some of the units need to be saved as SPRITES, so they can be moved around later.
-              (These are the same units that need to load an image from a baseURI)
-              This means that dynamicLoadImage doesn't work. 
-                Instead, load all baseURIs into cache at the start, then just create sprites from them.
-              */
-            // Display docks
-            var dotBmd = gm.add.bitmapData(tileSize, tileSize);
-            dotBmd.circle(0.5 * tileSize, 0.5 * tileSize, 0.5 * tileSize, '#000000');
-
-            var docks = _serverInfo.serverInfo.docks;
-            this.dockSprites = [];
-            for (var i = 0; i < docks.length; i++) {
-                var _x2 = docks[i].x,
-                    _y2 = docks[i].y;
-
-                var cacheLabel = 'dock_front';
-                var dir = 'front';
-                // check if this dock is viewed from the front/back/left side/right side
-                if (this.map[this.wrapCoords(_y2 - 1, this.mapHeight)][_x2].val >= 0.2) {
-                    cacheLabel = 'dock_front';
-                    dir = 'front';
-                } else if (this.map[this.wrapCoords(_y2 + 1, this.mapHeight)][_x2].val >= 0.2) {
-                    cacheLabel = 'dock_back';
-                    dir = 'back';
-                } else {}
-                // TO DO: left and right side
-
-                // create the sprite
-                var newSprite = gm.add.sprite(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
-                newSprite.width = newSprite.height = tileSize;
-
-                newSprite.visible = false;
-                newSprite.originalX = _x2;
-                newSprite.originalY = _y2;
-
-                newSprite.myType = 3;
-                newSprite.dir = dir;
-
-                this.dockSprites.push(newSprite);
-
-                // also create THE DOT!
-                var newDot = gm.add.sprite(_x2 * tileSize, _y2 * tileSize, dotBmd);
-                newDot.width = newDot.height = tileSize;
-
-                newSprite.myFogDot = newDot;
-            }
-
-            // Display cities
-            var cities = _serverInfo.serverInfo.cities;
-            this.citySprites = [];
-            for (var _i3 = 0; _i3 < cities.length; _i3++) {
-                var _x3 = cities[_i3].x,
-                    _y3 = cities[_i3].y;
-
-                var _cacheLabel = 'city';
-
-                // create the sprite
-                var _newSprite = gm.add.sprite(_x3 * tileSize, (_y3 - 0.5) * tileSize, _cacheLabel);
-                _newSprite.width = _newSprite.height = tileSize;
-
-                _newSprite.visible = false;
-                _newSprite.originalX = _x3;
-                _newSprite.originalY = _y3;
-
-                _newSprite.myType = 4;
-
-                this.citySprites.push(_newSprite);
-
-                // also create THE DOT!
-                var _newDot = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, dotBmd);
-                _newDot.width = _newDot.height = tileSize;
-
-                _newSprite.myFogDot = _newDot;
-            }
-
-            // Display monsters
-            console.log(_serverInfo.serverInfo.monsters);
-            var monsters = _serverInfo.serverInfo.monsters;
-            this.monsterSprites = [];
-            for (var _i4 = 0; _i4 < monsters.length; _i4++) {
-                var _x4 = monsters[_i4].x,
-                    _y4 = monsters[_i4].y;
-
-                var _cacheLabel2 = 'monsterNum' + monsters[_i4].myMonsterType;
-
-                var _newSprite2 = gm.add.sprite(0, 0, _cacheLabel2);
-                _newSprite2.width = _newSprite2.height = tileSize;
-                _newSprite2.visible = false;
-                this.monsterSprites.push(_newSprite2);
-
-                // also create THE DOT!
-                var _newDot2 = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, dotBmd);
-                _newDot2.width = _newDot2.height = tileSize;
-
-                _newSprite2.myFogDot = _newDot2;
-            }
-
-            // Display AI Ships
-            console.log(_serverInfo.serverInfo.aiShips);
-
-            var aiShips = _serverInfo.serverInfo.aiShips;
-            this.aiShipSprites = [];
-            for (var _i5 = 0; _i5 < aiShips.length; _i5++) {
-                var _x5 = aiShips[_i5].x,
-                    _y5 = aiShips[_i5].y;
-
-                var _cacheLabel3 = 'aiShipNum' + aiShips[_i5].myShipType;
-
-                var _newSprite3 = gm.add.sprite(0, 0, _cacheLabel3);
-                _newSprite3.width = _newSprite3.height = tileSize;
-                _newSprite3.visible = false;
-                this.aiShipSprites.push(_newSprite3);
-
-                // also create THE DOT!
-                var _newDot3 = gm.add.sprite(_x5 * tileSize, _y5 * tileSize, dotBmd);
-                _newDot3.width = _newDot3.height = tileSize;
-
-                _newSprite3.myFogDot = _newDot3;
-            }
-
-            // Display player Ships
-            console.log(_serverInfo.serverInfo.playerShips);
-
-            var playerShips = _serverInfo.serverInfo.playerShips;
-            this.playerShipSprites = [];
-            for (var _i6 = 0; _i6 < playerShips.length; _i6++) {
-                var _x6 = playerShips[_i6].x,
-                    _y6 = playerShips[_i6].y;
-                var _cacheLabel4 = 'shipNum' + playerShips[_i6].num;
-
-                var _newSprite4 = gm.add.sprite(0, 0, _cacheLabel4);
-                _newSprite4.width = _newSprite4.height = tileSize;
-                _newSprite4.visible = false;
-                this.playerShipSprites.push(_newSprite4);
-
-                // also create THE DOT!
-                var _newDot4 = gm.add.sprite(_x6 * tileSize, _y6 * tileSize, dotBmd);
-                _newDot4.width = _newDot4.height = tileSize;
-
-                _newSprite4.myFogDot = _newDot4;
-            }
-
-            // Display fog
-            this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
-            this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
-
-            var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
-
-            fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
-
-            // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
-            this.moveUnits();
-
-            // Display the messages from the radio
-            // TO DO
-
-            // Display NIGHT OVERLAY (for nighttime)
-            this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
-            this.lightSprite = gm.add.image(0, 0, this.shadowTexture);
-            this.lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
-            this.lightSprite.visible = false;
-
-            // load timer; the first turn is always twice as long!
-            this.timerText = gm.add.text(gm.width * 0.5, 60, "", _styles.mainStyle.timerText());
-            this.timer = _serverInfo.serverInfo.timer * 2;
-
-            // load GUI overlay (displays room code and such)
-            (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
-
-            (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
-            (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
-
-            var ths = this;
-
-            // Function that is activated when a new island is discovered
-            socket.on('island-discovered', function (data) {
-                // get island with this index
-                var curIsland = _this2.islands[data.index];
-
-                // reveal all tiles associated with this island
-                var averageX = 0,
-                    averageY = 0;
-                for (var _i7 = 0; _i7 < curIsland.myTiles.length; _i7++) {
-                    var _x7 = curIsland.myTiles[_i7][0],
-                        _y7 = curIsland.myTiles[_i7][1];
-
-                    averageX += _x7;
-                    averageY += _y7;
-
-                    _this2.map[_y7][_x7].fog = false;
-                    ths.fogBmd.clear(_x7 * ths.tileSize, _y7 * ths.tileSize, ths.tileSize, ths.tileSize);
-                }
-
-                averageX /= curIsland.myTiles.length;
-                averageY /= curIsland.myTiles.length;
-
-                // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
-                // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
-                gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.mainText());
-            });
-
-            // Function that is activated when a DOCK is discovered
-            socket.on('dock-discovered', function (data) {
-                // Get corresponding dock
-                var curDock = _serverInfo.serverInfo.docks[data.index];
-                var x = curDock.x,
-                    y = curDock.y;
-
-                // Add name on top of it
-                // (give it a different color and wrap it sooner)
-                var dockTitle = gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FFFF00'));
-                dockTitle.anchor.setTo(0.5, 1.0);
-
-                // Clear the fog here
-                _this2.map[y][x].fog = false;
-                ths.fogBmd.clear(x * ths.tileSize, y * ths.tileSize, ths.tileSize, ths.tileSize);
-
-                // TO DO
-                // Always display the corresponding dock trade from now on
-            });
-
-            // Function that is activated when a CITY / TOWN is discovered
-            socket.on('city-discovered', function (data) {
-                // Get corresponding dock
-                var curCity = _serverInfo.serverInfo.cities[data.index];
-                var x = curCity.x,
-                    y = curCity.y;
-
-                // Add name on top of it
-                // (give it a different color and wrap it sooner)
-                var cityTitle = gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FF00FF'));
-                cityTitle.anchor.setTo(0.5, 1.0);
-
-                // Clear the fog here
-                _this2.map[y][x].fog = false;
-                ths.fogBmd.clear(x * ths.tileSize, y * ths.tileSize, ths.tileSize, ths.tileSize);
-            });
-
-            // Function that is called whenever a new turn starts
-            // Resets timer, resets other stuff, displays new situation, etc.
-            socket.on('new-turn', function (data) {
-                console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
-
-                // reset the timer 
-                ths.timer = _serverInfo.serverInfo.timer;
-
-                // update fog
-                // go through all discoveredTiles, remove the fog on them
-                for (var _i8 = 0; _i8 < _serverInfo.serverInfo.discoveredTiles.length; _i8++) {
-                    // get tile (by coordinates [x,y])
-                    var _x8 = _serverInfo.serverInfo.discoveredTiles[_i8].x,
-                        _y8 = _serverInfo.serverInfo.discoveredTiles[_i8].y;
-
-                    // remove the fog, both behind the scenes, and visually
-                    _this2.map[_y8][_x8].fog = false;
-                    ths.fogBmd.clear(_x8 * ths.tileSize, _y8 * ths.tileSize, ths.tileSize, ths.tileSize);
-                }
-
-                // move all units to their new positions
-                ths.moveUnits();
-
-                // switch to day/night if necessary
-                _serverInfo.serverInfo.turnCount++;
-                if (_serverInfo.serverInfo.turnCount % 10 == 0) {
-                    _serverInfo.serverInfo.dayTime = !_serverInfo.serverInfo.dayTime;
-
-                    // if night, the overlay is turned on
-                    // if day, the overlay is turned off
-                    if (!_serverInfo.serverInfo.dayTime) {
-                        _this2.lightSprite.visible = true;
-                        _this2.updateShadowTexture();
-                    } else {
-                        _this2.lightSprite.visible = false;
-                    }
-                }
-
-                // TO DO: Remove once night mode is active; now it's just annoying
-                _this2.lightSprite.visible = false;
-
-                if (!_serverInfo.serverInfo.dayTime) {
-                    // update NIGHT OVERLAY; Only if it's actually nighttime!
-                    _this2.updateShadowTexture();
-                }
-            });
-
-            console.log("Game Play state");
+      }
+
+      // draw grid lines VERTICALLY
+      for (var _x = 0; _x < mapWidth; _x++) {
+        var _tempTile = gm.add.bitmapData(1, this.mapHeight * this.tileSize);
+        _tempTile.line(0, 0, 0, this.mapHeight * this.tileSize, '#CCCCCC', 1);
+
+        var _tempSprite = gm.add.sprite(_x * this.tileSize, 0, _tempTile);
+        baseMapGroup.add(_tempSprite);
+      }
+
+      // draw grid lines HORIZONTALLY
+      for (var _y = 0; _y < mapHeight; _y++) {
+        var _tempTile2 = gm.add.bitmapData(this.mapWidth * this.tileSize, 1);
+        _tempTile2.line(0, 0, this.mapWidth * this.tileSize, 0, '#CCCCCC', 1);
+
+        var _tempSprite2 = gm.add.sprite(0, _y * this.tileSize, _tempTile2);
+        baseMapGroup.add(_tempSprite2);
+      }
+
+      // put the complete base map into the cache
+      baseMapGroup.cacheAsBitmap = true;
+
+      /*
+          Discover islands (cheaper to do it locally than to get it from the server)
+        */
+      this.discoverIslands();
+
+      /*
+          Create texture that holds all the shadows
+        */
+      this.unitShadows = gm.add.bitmapData(gm.width, gm.height);
+      this.shadowSprite = gm.add.image(0, 0, this.unitShadows);
+      //this.shadowSprite.blendMode = Phaser.blendModes.MULTIPLY;
+      this.shadowSprite.alpha = 0.66;
+
+      /*
+          Display all units
+          Some of the units need to be saved as SPRITES, so they can be moved around later.
+        (These are the same units that need to load an image from a baseURI)
+        This means that dynamicLoadImage doesn't work. 
+          Instead, load all baseURIs into cache at the start, then just create sprites from them.
+        */
+      // Display docks
+      var dotBmd = gm.add.bitmapData(tileSize, tileSize);
+      dotBmd.circle(0.5 * tileSize, 0.5 * tileSize, 0.5 * tileSize, '#000000');
+
+      var docks = _serverInfo.serverInfo.docks;
+      this.dockSprites = [];
+      for (var i = 0; i < docks.length; i++) {
+        var _x2 = docks[i].x,
+            _y2 = docks[i].y;
+
+        var cacheLabel = 'dock_front';
+        var dir = 'front';
+        // check if this dock is viewed from the front/back/left side/right side
+        if (this.map[this.wrapCoords(_y2 - 1, this.mapHeight)][_x2].val >= 0.2) {
+          cacheLabel = 'dock_front';
+          dir = 'front';
+        } else if (this.map[this.wrapCoords(_y2 + 1, this.mapHeight)][_x2].val >= 0.2) {
+          cacheLabel = 'dock_back';
+          dir = 'back';
+        } else if (this.map[_y2][this.wrapCoords(_x2 - 1)].val >= 0.2) {
+          cacheLabel = 'dock_side';
+          dir = 'right';
+        } else {
+          cacheLabel = 'dock_side';
+          dir = 'left';
         }
-    }, {
-        key: 'update',
-        value: function update() {
-            // Update timer
-            (0, _timers.gameTimer)(this, _serverInfo.serverInfo);
+
+        // create the sprite
+        var newSprite = gm.add.sprite(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
+        newSprite.width = newSprite.height = tileSize;
+
+        newSprite.visible = false;
+        newSprite.originalX = _x2;
+        newSprite.originalY = _y2;
+
+        newSprite.myType = 3;
+        newSprite.dir = dir;
+
+        this.dockSprites.push(newSprite);
+
+        // also create THE DOT!
+        var newDot = gm.add.sprite(_x2 * tileSize, _y2 * tileSize, dotBmd);
+        newDot.width = newDot.height = tileSize;
+
+        newSprite.myFogDot = newDot;
+      }
+
+      // Display cities
+      var cities = _serverInfo.serverInfo.cities;
+      this.citySprites = [];
+      for (var _i3 = 0; _i3 < cities.length; _i3++) {
+        var _x3 = cities[_i3].x,
+            _y3 = cities[_i3].y;
+
+        var _cacheLabel = 'city';
+
+        // create the sprite
+        var _newSprite = gm.add.sprite(_x3 * tileSize, (_y3 - 0.5) * tileSize, _cacheLabel);
+        _newSprite.width = _newSprite.height = tileSize;
+
+        _newSprite.visible = false;
+        _newSprite.originalX = _x3;
+        _newSprite.originalY = _y3;
+
+        _newSprite.myType = 4;
+
+        this.citySprites.push(_newSprite);
+
+        // also create THE DOT!
+        var _newDot = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, dotBmd);
+        _newDot.width = _newDot.height = tileSize;
+
+        _newSprite.myFogDot = _newDot;
+      }
+
+      // Display monsters
+      console.log(_serverInfo.serverInfo.monsters);
+      var monsters = _serverInfo.serverInfo.monsters;
+      this.monsterSprites = [];
+      for (var _i4 = 0; _i4 < monsters.length; _i4++) {
+        var _x4 = monsters[_i4].x,
+            _y4 = monsters[_i4].y;
+
+        var _cacheLabel2 = 'monsterNum' + monsters[_i4].myMonsterType;
+
+        var _newSprite2 = gm.add.sprite(0, 0, _cacheLabel2);
+        _newSprite2.width = _newSprite2.height = tileSize;
+        _newSprite2.visible = false;
+        this.monsterSprites.push(_newSprite2);
+
+        // also create THE DOT!
+        var _newDot2 = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, dotBmd);
+        _newDot2.width = _newDot2.height = tileSize;
+
+        _newSprite2.myFogDot = _newDot2;
+      }
+
+      // Display AI Ships
+      console.log(_serverInfo.serverInfo.aiShips);
+
+      var aiShips = _serverInfo.serverInfo.aiShips;
+      this.aiShipSprites = [];
+      for (var _i5 = 0; _i5 < aiShips.length; _i5++) {
+        var _x5 = aiShips[_i5].x,
+            _y5 = aiShips[_i5].y;
+
+        var _cacheLabel3 = 'aiShipNum' + aiShips[_i5].myShipType;
+
+        var _newSprite3 = gm.add.sprite(0, 0, _cacheLabel3);
+        _newSprite3.width = _newSprite3.height = tileSize;
+        _newSprite3.visible = false;
+        this.aiShipSprites.push(_newSprite3);
+
+        // also create THE DOT!
+        var _newDot3 = gm.add.sprite(_x5 * tileSize, _y5 * tileSize, dotBmd);
+        _newDot3.width = _newDot3.height = tileSize;
+
+        _newSprite3.myFogDot = _newDot3;
+      }
+
+      // Display player Ships
+      console.log(_serverInfo.serverInfo.playerShips);
+
+      var playerShips = _serverInfo.serverInfo.playerShips;
+      this.playerShipSprites = [];
+      for (var _i6 = 0; _i6 < playerShips.length; _i6++) {
+        var _x6 = playerShips[_i6].x,
+            _y6 = playerShips[_i6].y;
+        var _cacheLabel4 = 'shipNum' + playerShips[_i6].num;
+
+        var _newSprite4 = gm.add.sprite(0, 0, _cacheLabel4);
+        _newSprite4.width = _newSprite4.height = tileSize;
+        _newSprite4.visible = false;
+        this.playerShipSprites.push(_newSprite4);
+
+        // also create THE DOT!
+        var _newDot4 = gm.add.sprite(_x6 * tileSize, _y6 * tileSize, dotBmd);
+        _newDot4.width = _newDot4.height = tileSize;
+
+        _newSprite4.myFogDot = _newDot4;
+      }
+
+      // Display fog
+      this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
+      this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
+
+      var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
+
+      fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
+
+      // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
+      this.moveUnits();
+
+      // Display the messages from the radio
+      // TO DO
+
+      // Display NIGHT OVERLAY (for nighttime)
+      this.shadowTexture = gm.add.bitmapData(gm.width, gm.height);
+      this.lightSprite = gm.add.image(0, 0, this.shadowTexture);
+      this.lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+      this.lightSprite.visible = false;
+
+      // load timer; the first turn is always twice as long!
+      this.timerText = gm.add.text(gm.width * 0.5, 60, "", _styles.mainStyle.timerText());
+      this.timer = _serverInfo.serverInfo.timer * 2;
+
+      // load GUI overlay (displays room code and such)
+      (0, _loadGUIOverlay2.default)(gm, _serverInfo.serverInfo, _styles.mainStyle.mainText(), _styles.mainStyle.subText());
+
+      (0, _mainSocketsGame2.default)(socket, gm, _serverInfo.serverInfo);
+      (0, _watchRoomModule2.default)(socket, _serverInfo.serverInfo);
+
+      var ths = this;
+
+      // Function that is activated when a new island is discovered
+      socket.on('island-discovered', function (data) {
+        // get island with this index
+        var curIsland = _this2.islands[data.index];
+
+        // reveal all tiles associated with this island
+        var averageX = 0,
+            averageY = 0;
+        for (var _i7 = 0; _i7 < curIsland.myTiles.length; _i7++) {
+          var _x7 = curIsland.myTiles[_i7][0],
+              _y7 = curIsland.myTiles[_i7][1];
+
+          averageX += _x7;
+          averageY += _y7;
+
+          _this2.map[_y7][_x7].fog = false;
+          ths.fogBmd.clear(_x7 * ths.tileSize, _y7 * ths.tileSize, ths.tileSize, ths.tileSize);
         }
-    }, {
-        key: 'moveUnits',
-        value: function moveUnits() {
-            this.unitsOnMap = [];
 
-            this.tempMap = [];
-            for (var y = 0; y < this.mapHeight; y++) {
-                this.tempMap[y] = [];
-                for (var x = 0; x < this.mapWidth; x++) {
-                    this.tempMap[y][x] = [0, 0]; // index 0 = number of units on tile, index 1 = current counter (when displaying)
-                }
-            }
+        averageX /= curIsland.myTiles.length;
+        averageY /= curIsland.myTiles.length;
 
-            // create ONE array that holds all sprites
-            // Simultaneously, check how many units are on a certain tile
-            for (var i = 0; i < this.dockSprites.length; i++) {
-                this.unitsOnMap.push(this.dockSprites[i]);
-            }
+        // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
+        // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
+        gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.mainText());
+      });
 
-            for (var _i9 = 0; _i9 < this.citySprites.length; _i9++) {
-                this.unitsOnMap.push(this.citySprites[_i9]);
-            }
+      // Function that is activated when a DOCK is discovered
+      socket.on('dock-discovered', function (data) {
+        // Get corresponding dock
+        var curDock = _serverInfo.serverInfo.docks[data.index];
+        var x = curDock.x,
+            y = curDock.y;
 
-            for (var _i10 = 0; _i10 < this.monsterSprites.length; _i10++) {
-                this.monsterSprites[_i10].originalX = _serverInfo.serverInfo.monsters[_i10].x;
-                this.monsterSprites[_i10].originalY = _serverInfo.serverInfo.monsters[_i10].y;
+        // Add name on top of it
+        // (give it a different color and wrap it sooner)
+        var dockTitle = gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FFFF00'));
+        dockTitle.anchor.setTo(0.5, 1.0);
 
-                this.unitsOnMap.push(this.monsterSprites[_i10]);
-                this.tempMap[_serverInfo.serverInfo.monsters[_i10].y][_serverInfo.serverInfo.monsters[_i10].x][0]++;
-            }
+        // Clear the fog here
+        _this2.map[y][x].fog = false;
+        ths.fogBmd.clear(x * ths.tileSize, y * ths.tileSize, ths.tileSize, ths.tileSize);
 
-            for (var _i11 = 0; _i11 < this.aiShipSprites.length; _i11++) {
-                this.aiShipSprites[_i11].originalX = _serverInfo.serverInfo.aiShips[_i11].x;
-                this.aiShipSprites[_i11].originalY = _serverInfo.serverInfo.aiShips[_i11].y;
+        // TO DO
+        // Always display the corresponding dock trade from now on
+      });
 
-                this.unitsOnMap.push(this.aiShipSprites[_i11]);
-                this.tempMap[_serverInfo.serverInfo.aiShips[_i11].y][_serverInfo.serverInfo.aiShips[_i11].x][0]++;
-            }
+      // Function that is activated when a CITY / TOWN is discovered
+      socket.on('city-discovered', function (data) {
+        // Get corresponding dock
+        var curCity = _serverInfo.serverInfo.cities[data.index];
+        var x = curCity.x,
+            y = curCity.y;
 
-            for (var _i12 = 0; _i12 < this.playerShipSprites.length; _i12++) {
-                this.playerShipSprites[_i12].originalX = _serverInfo.serverInfo.playerShips[_i12].x;
-                this.playerShipSprites[_i12].originalY = _serverInfo.serverInfo.playerShips[_i12].y;
+        // Add name on top of it
+        // (give it a different color and wrap it sooner)
+        var cityTitle = gm.add.text(x * ths.tileSize, y * ths.tileSize, data.name, _styles.mainStyle.mainText(150, '#FF00FF'));
+        cityTitle.anchor.setTo(0.5, 1.0);
 
-                this.unitsOnMap.push(this.playerShipSprites[_i12]);
-                this.tempMap[_serverInfo.serverInfo.playerShips[_i12].y][_serverInfo.serverInfo.playerShips[_i12].x][0]++;
-            }
+        // Clear the fog here
+        _this2.map[y][x].fog = false;
+        ths.fogBmd.clear(x * ths.tileSize, y * ths.tileSize, ths.tileSize, ths.tileSize);
+      });
 
-            // reset the shadow canvas, set the fill style to transparent black
-            this.unitShadows.clear();
-            this.unitShadows.context.fillStyle = '#000000';
+      // Function that is called whenever a new turn starts
+      // Resets timer, resets other stuff, displays new situation, etc.
+      socket.on('new-turn', function (data) {
+        console.log("New turn => resetting timer to " + _serverInfo.serverInfo.timer);
 
-            var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
+        // reset the timer 
+        ths.timer = _serverInfo.serverInfo.timer;
 
-            // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
-            for (var _i13 = 0; _i13 < this.unitsOnMap.length; _i13++) {
-                // this code simply gets the current unit and checks if the tile is still in fog
-                var curUnit = this.unitsOnMap[_i13];
-                var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
+        // update fog
+        // go through all discoveredTiles, remove the fog on them
+        for (var _i8 = 0; _i8 < _serverInfo.serverInfo.discoveredTiles.length; _i8++) {
+          // get tile (by coordinates [x,y])
+          var _x8 = _serverInfo.serverInfo.discoveredTiles[_i8].x,
+              _y8 = _serverInfo.serverInfo.discoveredTiles[_i8].y;
 
-                // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
-                var getTile = this.tempMap[curUnit.originalY][curUnit.originalX];
-                var unitsOnTile = getTile[0];
-                var curCounter = getTile[1];
-
-                var tempPos = [curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize];
-
-                // docks and cities don't count towards units, but I OBVIOUSLY can't divide by zero
-                if (unitsOnTile <= 0) {
-                    unitsOnTile = 1;
-                }
-
-                // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
-                var newWidth = this.tileSize / Math.sqrt(unitsOnTile);
-
-                //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
-                var xDisp = 0;
-
-                // display as a column, with random horizontal placement
-                tempPos[1] += (curCounter + 0.5) / unitsOnTile * this.tileSize - newWidth;
-                tempPos[0] += this.tileSize - newWidth + xDisp;
-
-                // increase counter
-                this.tempMap[this.unitsOnMap[_i13].originalY][this.unitsOnMap[_i13].originalX][1]++;
-
-                if (isInFog) {
-                    // only display the dot
-                    curUnit.visible = false;
-                    curUnit.myFogDot.visible = true;
-                    this.game.world.bringToTop(curUnit.myFogDot);
-
-                    // set it to the right position and scale
-                    curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
-                    curUnit.myFogDot.x = tempPos[0];
-                    curUnit.myFogDot.y = tempPos[1];
-                } else {
-                    curUnit.myFogDot.visible = false;
-
-                    if (curUnit.myType == 3) {
-                        // if it's a DOCK, make sure we change proportions+placement accordingly
-                        curUnit.visible = true;
-
-                        if (curUnit.dir == 'front' || curUnit.dir == 'back') {
-                            curUnit.height = newWidth * 2;
-                            curUnit.width = newWidth;
-
-                            curUnit.x = tempPos[0];
-                            curUnit.y = tempPos[1] - 0.5 * newWidth;
-                        }
-                    } else {
-                        // display the sprite + the shadow
-                        curUnit.visible = true;
-                        curUnit.width = curUnit.height = newWidth;
-
-                        // place the unit
-                        curUnit.x = tempPos[0];
-                        curUnit.y = tempPos[1];
-
-                        // change color for player ships
-                        // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
-
-                        // draw the shadow
-                        this.unitShadows.context.beginPath();
-                        this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
-                        this.unitShadows.context.fill();
-                    }
-                }
-            }
-
-            this.unitShadows.dirty = true;
+          // remove the fog, both behind the scenes, and visually
+          _this2.map[_y8][_x8].fog = false;
+          ths.fogBmd.clear(_x8 * ths.tileSize, _y8 * ths.tileSize, ths.tileSize, ths.tileSize);
         }
-    }, {
-        key: 'updateShadowTexture',
-        value: function updateShadowTexture() {
-            this.shadowTexture.context.fillStyle = 'rgb(0, 0, 0)';
-            this.shadowTexture.context.fillRect(0, 0, this.game.width, this.game.height);
 
-            // For all docks, display a light
-            var docks = this.dockSprites;
-            for (var i = 0; i < docks.length; i++) {
-                var x = docks[i].x + 0.5 * this.tileSize,
-                    y = docks[i].y,
-                    radius = this.tileSize * 2 + Math.random() * 0.2 * this.tileSize;
+        // move all units to their new positions
+        ths.moveUnits();
 
-                var gradient = this.shadowTexture.context.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, 'rgba(255, 150, 150, 1.0)');
-                gradient.addColorStop(1, 'rgba(255, 150, 150, 0.0)');
+        // switch to day/night if necessary
+        _serverInfo.serverInfo.turnCount++;
+        if (_serverInfo.serverInfo.turnCount % 10 == 0) {
+          _serverInfo.serverInfo.dayTime = !_serverInfo.serverInfo.dayTime;
 
-                this.shadowTexture.context.beginPath();
-                this.shadowTexture.context.fillStyle = gradient;
-                this.shadowTexture.context.arc(x, y, radius, 0, Math.PI * 2, false);
-                this.shadowTexture.context.fill();
-            }
-
-            this.shadowTexture.dirty = true;
+          // if night, the overlay is turned on
+          // if day, the overlay is turned off
+          if (!_serverInfo.serverInfo.dayTime) {
+            _this2.lightSprite.visible = true;
+            _this2.updateShadowTexture();
+          } else {
+            _this2.lightSprite.visible = false;
+          }
         }
-    }, {
-        key: 'discoverIslands',
-        value: function discoverIslands() {
-            this.islands = []; // initialize islands variable
 
-            for (var y = 0; y < this.mapHeight; y++) {
-                for (var x = 0; x < this.mapWidth; x++) {
-                    var curTile = this.map[y][x];
+        // TO DO: Remove once night mode is active; now it's just annoying
+        _this2.lightSprite.visible = false;
 
-                    // if this tile is an island, but hasn't been checked yet, let's start a new island!
-                    if (curTile.val >= 0.2 && !curTile.checked) {
-
-                        // create new island (with unknown name, and no free spots/dock known)
-                        var islandIndex = this.islands.length;
-                        this.islands.push({ myTiles: [] });
-
-                        // explore this tile (which automatically leads to the whole island)
-                        this.exploreTile(curTile, x, y, islandIndex);
-                    }
-                }
-            }
+        if (!_serverInfo.serverInfo.dayTime) {
+          // update NIGHT OVERLAY; Only if it's actually nighttime!
+          _this2.updateShadowTexture();
         }
-    }, {
-        key: 'exploreTile',
-        value: function exploreTile(tile, x, y, islandIndex) {
-            // also save the tile in the island object, for quick reference
-            this.islands[islandIndex].myTiles.push([x, y]);
+      });
 
-            // mark this tile as checked
-            tile.checked = true;
+      console.log("Game Play state");
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      // Update timer
+      (0, _timers.gameTimer)(this, _serverInfo.serverInfo);
+    }
+  }, {
+    key: 'moveUnits',
+    value: function moveUnits() {
+      this.unitsOnMap = [];
 
-            // check tiles left/right/top/bottom
-            var positions = [[-1, 0], [1, 0], [0, 1], [0, -1]];
-
-            for (var a = 0; a < 4; a++) {
-                var tempX = this.wrapCoords(x + positions[a][0], this.mapWidth);
-                var tempY = this.wrapCoords(y + positions[a][1], this.mapHeight);
-
-                var newTile = this.map[tempY][tempX];
-                // if tile is an island, and hasn't been checked, explore it!
-                if (newTile.val >= 0.2 && !newTile.checked) {
-                    this.exploreTile(newTile, tempX, tempY, islandIndex);
-                }
-            }
+      this.tempMap = [];
+      for (var y = 0; y < this.mapHeight; y++) {
+        this.tempMap[y] = [];
+        for (var x = 0; x < this.mapWidth; x++) {
+          this.tempMap[y][x] = [0, 0]; // index 0 = number of units on tile, index 1 = current counter (when displaying)
         }
-    }, {
-        key: 'wrapCoords',
-        value: function wrapCoords(c, bound) {
-            if (c < 0) {
-                c += bound;
-            } else if (c >= bound) {
-                c -= bound;
-            }
-            return c;
-        }
-    }]);
+      }
 
-    return GamePlay;
+      // create ONE array that holds all sprites
+      // Simultaneously, check how many units are on a certain tile
+      for (var i = 0; i < this.dockSprites.length; i++) {
+        this.unitsOnMap.push(this.dockSprites[i]);
+      }
+
+      for (var _i9 = 0; _i9 < this.citySprites.length; _i9++) {
+        this.unitsOnMap.push(this.citySprites[_i9]);
+      }
+
+      for (var _i10 = 0; _i10 < this.monsterSprites.length; _i10++) {
+        this.monsterSprites[_i10].originalX = _serverInfo.serverInfo.monsters[_i10].x;
+        this.monsterSprites[_i10].originalY = _serverInfo.serverInfo.monsters[_i10].y;
+
+        this.unitsOnMap.push(this.monsterSprites[_i10]);
+        this.tempMap[_serverInfo.serverInfo.monsters[_i10].y][_serverInfo.serverInfo.monsters[_i10].x][0]++;
+      }
+
+      for (var _i11 = 0; _i11 < this.aiShipSprites.length; _i11++) {
+        this.aiShipSprites[_i11].originalX = _serverInfo.serverInfo.aiShips[_i11].x;
+        this.aiShipSprites[_i11].originalY = _serverInfo.serverInfo.aiShips[_i11].y;
+
+        this.unitsOnMap.push(this.aiShipSprites[_i11]);
+        this.tempMap[_serverInfo.serverInfo.aiShips[_i11].y][_serverInfo.serverInfo.aiShips[_i11].x][0]++;
+      }
+
+      for (var _i12 = 0; _i12 < this.playerShipSprites.length; _i12++) {
+        this.playerShipSprites[_i12].originalX = _serverInfo.serverInfo.playerShips[_i12].x;
+        this.playerShipSprites[_i12].originalY = _serverInfo.serverInfo.playerShips[_i12].y;
+
+        this.unitsOnMap.push(this.playerShipSprites[_i12]);
+        this.tempMap[_serverInfo.serverInfo.playerShips[_i12].y][_serverInfo.serverInfo.playerShips[_i12].x][0]++;
+      }
+
+      // reset the shadow canvas, set the fill style to transparent black
+      this.unitShadows.clear();
+      this.unitShadows.context.fillStyle = '#000000';
+
+      var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
+
+      // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
+      for (var _i13 = 0; _i13 < this.unitsOnMap.length; _i13++) {
+        // this code simply gets the current unit and checks if the tile is still in fog
+        var curUnit = this.unitsOnMap[_i13];
+        var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
+
+        // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
+        var getTile = this.tempMap[curUnit.originalY][curUnit.originalX];
+        var unitsOnTile = getTile[0];
+        var curCounter = getTile[1];
+
+        var tempPos = [curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize];
+
+        var newWidth = this.tileSize;
+        // docks and cities don't count towards units, and should always be displayed in full
+        if (curUnit.myType == 3 || curUnit.myType == 4) {
+          tempPos[1] -= 0.5 * newWidth;
+          tempPOs[0] += 0;
+        } else {
+          // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
+          newWidth = this.tileSize / Math.sqrt(unitsOnTile);
+
+          //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
+          var xDisp = 0;
+
+          // display as a column, with random horizontal placement
+          tempPos[1] += (curCounter + 0.5) / unitsOnTile * this.tileSize - newWidth;
+          tempPos[0] += this.tileSize - newWidth + xDisp;
+        }
+
+        // increase counter
+        this.tempMap[this.unitsOnMap[_i13].originalY][this.unitsOnMap[_i13].originalX][1]++;
+
+        if (isInFog) {
+          // only display the dot
+          curUnit.visible = false;
+          curUnit.myFogDot.visible = true;
+          this.game.world.bringToTop(curUnit.myFogDot);
+
+          // set it to the right position and scale
+          curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
+          curUnit.myFogDot.x = tempPos[0];
+          curUnit.myFogDot.y = tempPos[1];
+        } else {
+          curUnit.myFogDot.visible = false;
+
+          if (curUnit.myType == 3) {
+            // if it's a DOCK, make sure we change proportions+placement accordingly
+            curUnit.visible = true;
+
+            if (curUnit.dir == 'front') {
+              curUnit.height = newWidth * 2;
+              curUnit.width = newWidth;
+
+              curUnit.x = tempPos[0];
+              curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
+            } else if (curUnit.dir == 'back') {
+              curUnit.height = newWidth * 2;
+              curUnit.width = newWidth;
+
+              curUnit.x = tempPos[0];
+              curUnit.y = tempPos[1] + 0.2 * newWidth;
+            } else if (curUnit.dir == 'right') {
+              curUnit.height = curUnit.width = newWidth * 2;
+
+              curUnit.x = tempPos[0] - newWidth;
+              curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
+            } else if (curUnit.dir == 'left') {
+              curUnit.anchor.setTo(0.5, 0.5);
+
+              curUnit.height = newWidth * 2;
+              curUnit.width = -1 * newWidth * 2;
+
+              curUnit.x = tempPos[0] + newWidth;
+              curUnit.y = tempPos[1] + 0.5 * newWidth;
+            }
+          } else {
+            // display the sprite + the shadow
+            curUnit.visible = true;
+            curUnit.width = curUnit.height = newWidth;
+
+            // place the unit
+            curUnit.x = tempPos[0];
+            curUnit.y = tempPos[1];
+
+            // change color for player ships
+            // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+
+            // draw the shadow
+            this.unitShadows.context.beginPath();
+            this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
+            this.unitShadows.context.fill();
+          }
+        }
+      }
+
+      this.unitShadows.dirty = true;
+    }
+  }, {
+    key: 'updateShadowTexture',
+    value: function updateShadowTexture() {
+      this.shadowTexture.context.fillStyle = 'rgb(0, 0, 0)';
+      this.shadowTexture.context.fillRect(0, 0, this.game.width, this.game.height);
+
+      // For all docks, display a light
+      var docks = this.dockSprites;
+      for (var i = 0; i < docks.length; i++) {
+        var x = docks[i].x + 0.5 * this.tileSize,
+            y = docks[i].y,
+            radius = this.tileSize * 2 + Math.random() * 0.2 * this.tileSize;
+
+        var gradient = this.shadowTexture.context.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, 'rgba(255, 150, 150, 1.0)');
+        gradient.addColorStop(1, 'rgba(255, 150, 150, 0.0)');
+
+        this.shadowTexture.context.beginPath();
+        this.shadowTexture.context.fillStyle = gradient;
+        this.shadowTexture.context.arc(x, y, radius, 0, Math.PI * 2, false);
+        this.shadowTexture.context.fill();
+      }
+
+      this.shadowTexture.dirty = true;
+    }
+  }, {
+    key: 'discoverIslands',
+    value: function discoverIslands() {
+      this.islands = []; // initialize islands variable
+
+      for (var y = 0; y < this.mapHeight; y++) {
+        for (var x = 0; x < this.mapWidth; x++) {
+          var curTile = this.map[y][x];
+
+          // if this tile is an island, but hasn't been checked yet, let's start a new island!
+          if (curTile.val >= 0.2 && !curTile.checked) {
+
+            // create new island (with unknown name, and no free spots/dock known)
+            var islandIndex = this.islands.length;
+            this.islands.push({ myTiles: [] });
+
+            // explore this tile (which automatically leads to the whole island)
+            this.exploreTile(curTile, x, y, islandIndex);
+          }
+        }
+      }
+    }
+  }, {
+    key: 'exploreTile',
+    value: function exploreTile(tile, x, y, islandIndex) {
+      // also save the tile in the island object, for quick reference
+      this.islands[islandIndex].myTiles.push([x, y]);
+
+      // mark this tile as checked
+      tile.checked = true;
+
+      // check tiles left/right/top/bottom
+      var positions = [[-1, 0], [1, 0], [0, 1], [0, -1]];
+
+      for (var a = 0; a < 4; a++) {
+        var tempX = this.wrapCoords(x + positions[a][0], this.mapWidth);
+        var tempY = this.wrapCoords(y + positions[a][1], this.mapHeight);
+
+        var newTile = this.map[tempY][tempX];
+        // if tile is an island, and hasn't been checked, explore it!
+        if (newTile.val >= 0.2 && !newTile.checked) {
+          this.exploreTile(newTile, tempX, tempY, islandIndex);
+        }
+      }
+    }
+  }, {
+    key: 'wrapCoords',
+    value: function wrapCoords(c, bound) {
+      if (c < 0) {
+        c += bound;
+      } else if (c >= bound) {
+        c -= bound;
+      }
+      return c;
+    }
+  }]);
+
+  return GamePlay;
 }(Phaser.State);
 
 exports.default = GamePlay;

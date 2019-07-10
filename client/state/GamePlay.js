@@ -71,6 +71,7 @@ class GamePlay extends Phaser.State {
     // docks
     this.game.load.image('dock_front', '/assets/lighthouse_front.png');
     this.game.load.image('dock_back', '/assets/lighthouse_back.png');
+    this.game.load.image('dock_side', '/assets/lighthouse_side.png');
 
     // cities
     this.game.load.image('city', serverInfo.dockDrawing);
@@ -160,7 +161,14 @@ class GamePlay extends Phaser.State {
 
           baseMapGroup.add( gm.add.sprite(x*tileSize, y*tileSize, tempPopout) );
 
-          // TO DO: Shadow underneath  
+          // Shadow underneath (over the water)
+          let tempShadow = gm.add.bitmapData(tileSize, tileSize*0.15);
+          tempShadow.rect(0,0,tileSize, tileSize*0.15, '#000000')
+
+          let tempShadowSprite = gm.add.sprite(x*tileSize, y*tileSize, tempShadow);
+          tempShadowSprite.alpha = 0.3;
+
+          baseMapGroup.add( tempShadowSprite );
         }
 
         /*
@@ -241,9 +249,12 @@ class GamePlay extends Phaser.State {
       } else if(this.map[ this.wrapCoords(y + 1, this.mapHeight)][x].val >= 0.2) {
         cacheLabel = 'dock_back';
         dir = 'back';
+      } else if(this.map[y][ this.wrapCoords(x - 1) ].val >= 0.2) {
+        cacheLabel = 'dock_side'
+        dir = 'right';
       } else {
-        // TO DO: left and right side
-
+        cacheLabel = 'dock_side';
+        dir = 'left'
       }
 
       // create the sprite
@@ -569,20 +580,24 @@ class GamePlay extends Phaser.State {
 
       let tempPos = [ curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize]
 
-      // docks and cities don't count towards units, but I OBVIOUSLY can't divide by zero
-      if(unitsOnTile <= 0) {
-        unitsOnTile = 1;
+      let newWidth = this.tileSize;
+      // docks and cities don't count towards units, and should always be displayed in full
+      if(curUnit.myType == 3 || curUnit.myType == 4) {
+        tempPos[1] -= 0.5 * newWidth;
+        tempPOs[0] += 0 ;
+      } else {
+        // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
+        newWidth = ( this.tileSize / Math.sqrt(unitsOnTile) );
+
+        //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
+        let xDisp = 0;
+
+        // display as a column, with random horizontal placement
+        tempPos[1] += ( (curCounter + 0.5) / unitsOnTile) * this.tileSize - newWidth;
+        tempPos[0] += (this.tileSize - newWidth) + xDisp;
       }
       
-      // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
-      let newWidth = ( this.tileSize / Math.sqrt(unitsOnTile) );
-
-      //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
-      let xDisp = 0;
-
-      // display as a column, with random horizontal placement
-      tempPos[1] += ( (curCounter + 0.5) / unitsOnTile) * this.tileSize - newWidth;
-      tempPos[0] += (this.tileSize - newWidth) + xDisp;
+      
 
       // increase counter
       this.tempMap[ this.unitsOnMap[i].originalY ][ this.unitsOnMap[i].originalX ][1]++;
@@ -604,12 +619,31 @@ class GamePlay extends Phaser.State {
           // if it's a DOCK, make sure we change proportions+placement accordingly
           curUnit.visible = true;
 
-          if(curUnit.dir == 'front' || curUnit.dir == 'back') {
+          if(curUnit.dir == 'front') {
             curUnit.height = newWidth*2;
             curUnit.width = newWidth;
 
             curUnit.x = tempPos[0];
-            curUnit.y = tempPos[1] - 0.5*newWidth;
+            curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
+          } else if(curUnit.dir == 'back') {
+            curUnit.height = newWidth*2;
+            curUnit.width = newWidth;
+
+            curUnit.x = tempPos[0];
+            curUnit.y = tempPos[1] + 0.2*newWidth;
+          } else if(curUnit.dir == 'right') {
+            curUnit.height = curUnit.width = newWidth * 2;
+
+            curUnit.x = tempPos[0] - newWidth;
+            curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
+          } else if(curUnit.dir == 'left') {
+            curUnit.anchor.setTo(0.5, 0.5);
+
+            curUnit.height = newWidth * 2;
+            curUnit.width = -1 * newWidth * 2;
+
+            curUnit.x = tempPos[0] + newWidth;
+            curUnit.y = tempPos[1] + 0.5*newWidth;
           }
           
         } else {
