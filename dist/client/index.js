@@ -1816,7 +1816,9 @@ var GamePlay = function (_Phaser$State) {
       this.game.load.image('dock_side', '/assets/lighthouse_side.png');
 
       // cities
-      this.game.load.image('city', _serverInfo.serverInfo.dockDrawing);
+      this.game.load.image('city_front', '/assets/coastcity_front.png');
+      this.game.load.image('city_back', '/assets/coastcity_front.png');
+      this.game.load.image('city_side', '/assets/coastcity_front.png');
     }
   }, {
     key: 'create',
@@ -1911,7 +1913,7 @@ var GamePlay = function (_Phaser$State) {
             var tempShadow = gm.add.bitmapData(tileSize, tileSize * 0.15);
             tempShadow.rect(0, 0, tileSize, tileSize * 0.15, '#000000');
 
-            var tempShadowSprite = gm.add.sprite(x * tileSize, y * tileSize, tempShadow);
+            var tempShadowSprite = gm.add.sprite(x * tileSize, (y + 0.2) * tileSize, tempShadow);
             tempShadowSprite.alpha = 0.3;
 
             baseMapGroup.add(tempShadowSprite);
@@ -1985,7 +1987,7 @@ var GamePlay = function (_Phaser$State) {
         } else if (this.map[this.wrapCoords(_y2 + 1, this.mapHeight)][_x2].val >= 0.2) {
           cacheLabel = 'dock_back';
           dir = 'back';
-        } else if (this.map[_y2][this.wrapCoords(_x2 - 1)].val >= 0.2) {
+        } else if (this.map[_y2][this.wrapCoords(_x2 - 1, this.mapWidth)].val >= 0.2) {
           cacheLabel = 'dock_side';
           dir = 'right';
         } else {
@@ -2020,7 +2022,22 @@ var GamePlay = function (_Phaser$State) {
         var _x3 = cities[_i3].x,
             _y3 = cities[_i3].y;
 
-        var _cacheLabel = 'city';
+        var _cacheLabel = 'city_front';
+        var _dir = 'front';
+        // check if this city is viewed from the front/back/left side/right side
+        if (this.map[this.wrapCoords(_y3 - 1, this.mapHeight)][_x3].val >= 0.2) {
+          _cacheLabel = 'city_front';
+          _dir = 'front';
+        } else if (this.map[this.wrapCoords(_y3 + 1, this.mapHeight)][_x3].val >= 0.2) {
+          _cacheLabel = 'city_back';
+          _dir = 'back';
+        } else if (this.map[_y3][this.wrapCoords(_x3 - 1, this.mapWidth)].val >= 0.2) {
+          _cacheLabel = 'city_side';
+          _dir = 'right';
+        } else {
+          _cacheLabel = 'city_side';
+          _dir = 'left';
+        }
 
         // create the sprite
         var _newSprite = gm.add.sprite(_x3 * tileSize, (_y3 - 0.5) * tileSize, _cacheLabel);
@@ -2031,6 +2048,7 @@ var GamePlay = function (_Phaser$State) {
         _newSprite.originalY = _y3;
 
         _newSprite.myType = 4;
+        _newSprite.dir = _dir;
 
         this.citySprites.push(_newSprite);
 
@@ -2267,26 +2285,29 @@ var GamePlay = function (_Phaser$State) {
       this.tempMap = [];
       for (var y = 0; y < this.mapHeight; y++) {
         this.tempMap[y] = [];
+        this.unitsOnMap[y] = [];
         for (var x = 0; x < this.mapWidth; x++) {
           this.tempMap[y][x] = [0, 0]; // index 0 = number of units on tile, index 1 = current counter (when displaying)
         }
       }
 
+      // IMPORTANT: Sprites are saved based on y-coordinate, so that they are automatically ordered and overlap correctly
+
       // create ONE array that holds all sprites
       // Simultaneously, check how many units are on a certain tile
       for (var i = 0; i < this.dockSprites.length; i++) {
-        this.unitsOnMap.push(this.dockSprites[i]);
+        this.unitsOnMap[this.dockSprites[i].originalY].push(this.dockSprites[i]);
       }
 
       for (var _i9 = 0; _i9 < this.citySprites.length; _i9++) {
-        this.unitsOnMap.push(this.citySprites[_i9]);
+        this.unitsOnMap[this.citySprites[_i9].originalY].push(this.citySprites[_i9]);
       }
 
       for (var _i10 = 0; _i10 < this.monsterSprites.length; _i10++) {
         this.monsterSprites[_i10].originalX = _serverInfo.serverInfo.monsters[_i10].x;
         this.monsterSprites[_i10].originalY = _serverInfo.serverInfo.monsters[_i10].y;
 
-        this.unitsOnMap.push(this.monsterSprites[_i10]);
+        this.unitsOnMap[this.monsterSprites[_i10].originalY].push(this.monsterSprites[_i10]);
         this.tempMap[_serverInfo.serverInfo.monsters[_i10].y][_serverInfo.serverInfo.monsters[_i10].x][0]++;
       }
 
@@ -2294,7 +2315,7 @@ var GamePlay = function (_Phaser$State) {
         this.aiShipSprites[_i11].originalX = _serverInfo.serverInfo.aiShips[_i11].x;
         this.aiShipSprites[_i11].originalY = _serverInfo.serverInfo.aiShips[_i11].y;
 
-        this.unitsOnMap.push(this.aiShipSprites[_i11]);
+        this.unitsOnMap[this.aiShipSprites[_i11].originalY].push(this.aiShipSprites[_i11]);
         this.tempMap[_serverInfo.serverInfo.aiShips[_i11].y][_serverInfo.serverInfo.aiShips[_i11].x][0]++;
       }
 
@@ -2302,7 +2323,7 @@ var GamePlay = function (_Phaser$State) {
         this.playerShipSprites[_i12].originalX = _serverInfo.serverInfo.playerShips[_i12].x;
         this.playerShipSprites[_i12].originalY = _serverInfo.serverInfo.playerShips[_i12].y;
 
-        this.unitsOnMap.push(this.playerShipSprites[_i12]);
+        this.unitsOnMap[this.playerShipSprites[_i12].originalY].push(this.playerShipSprites[_i12]);
         this.tempMap[_serverInfo.serverInfo.playerShips[_i12].y][_serverInfo.serverInfo.playerShips[_i12].x][0]++;
       }
 
@@ -2313,97 +2334,101 @@ var GamePlay = function (_Phaser$State) {
       var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
 
       // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
-      for (var _i13 = 0; _i13 < this.unitsOnMap.length; _i13++) {
-        // this code simply gets the current unit and checks if the tile is still in fog
-        var curUnit = this.unitsOnMap[_i13];
-        var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
+      for (var _y9 = 0; _y9 < this.mapHeight; _y9++) {
+        for (var _i13 = 0; _i13 < this.unitsOnMap[_y9].length; _i13++) {
+          // this code simply gets the current unit and checks if the tile is still in fog
+          var curUnit = this.unitsOnMap[_y9][_i13];
+          var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
 
-        // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
-        var getTile = this.tempMap[curUnit.originalY][curUnit.originalX];
-        var unitsOnTile = getTile[0];
-        var curCounter = getTile[1];
+          // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
+          var getTile = this.tempMap[curUnit.originalY][curUnit.originalX];
+          var unitsOnTile = getTile[0];
+          var curCounter = getTile[1];
 
-        var tempPos = [curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize];
+          var tempPos = [curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize];
 
-        var newWidth = this.tileSize;
-        // docks and cities don't count towards units, and should always be displayed in full
-        if (curUnit.myType == 3 || curUnit.myType == 4) {
-          tempPos[1] -= 0.5 * newWidth;
-          tempPOs[0] += 0;
-        } else {
-          // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
-          newWidth = this.tileSize / Math.sqrt(unitsOnTile);
-
-          //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
-          var xDisp = 0;
-
-          // display as a column, with random horizontal placement
-          tempPos[1] += (curCounter + 0.5) / unitsOnTile * this.tileSize - newWidth;
-          tempPos[0] += this.tileSize - newWidth + xDisp;
-        }
-
-        // increase counter
-        this.tempMap[this.unitsOnMap[_i13].originalY][this.unitsOnMap[_i13].originalX][1]++;
-
-        if (isInFog) {
-          // only display the dot
-          curUnit.visible = false;
-          curUnit.myFogDot.visible = true;
-          this.game.world.bringToTop(curUnit.myFogDot);
-
-          // set it to the right position and scale
-          curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
-          curUnit.myFogDot.x = tempPos[0];
-          curUnit.myFogDot.y = tempPos[1];
-        } else {
-          curUnit.myFogDot.visible = false;
-
-          if (curUnit.myType == 3) {
-            // if it's a DOCK, make sure we change proportions+placement accordingly
-            curUnit.visible = true;
-
-            if (curUnit.dir == 'front') {
-              curUnit.height = newWidth * 2;
-              curUnit.width = newWidth;
-
-              curUnit.x = tempPos[0];
-              curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
-            } else if (curUnit.dir == 'back') {
-              curUnit.height = newWidth * 2;
-              curUnit.width = newWidth;
-
-              curUnit.x = tempPos[0];
-              curUnit.y = tempPos[1] + 0.2 * newWidth;
-            } else if (curUnit.dir == 'right') {
-              curUnit.height = curUnit.width = newWidth * 2;
-
-              curUnit.x = tempPos[0] - newWidth;
-              curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
-            } else if (curUnit.dir == 'left') {
-              curUnit.anchor.setTo(0.5, 0.5);
-
-              curUnit.height = newWidth * 2;
-              curUnit.width = -1 * newWidth * 2;
-
-              curUnit.x = tempPos[0] + newWidth;
-              curUnit.y = tempPos[1] + 0.5 * newWidth;
-            }
+          var newWidth = this.tileSize;
+          // docks and cities don't count towards units, and should always be displayed in full
+          if (curUnit.myType == 3 || curUnit.myType == 4) {
+            tempPos[1] -= 0.5 * newWidth;
+            tempPos[0] += 0;
           } else {
-            // display the sprite + the shadow
-            curUnit.visible = true;
-            curUnit.width = curUnit.height = newWidth;
+            // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
+            newWidth = this.tileSize / Math.sqrt(unitsOnTile);
 
-            // place the unit
-            curUnit.x = tempPos[0];
-            curUnit.y = tempPos[1];
+            //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
+            var xDisp = 0;
 
-            // change color for player ships
-            // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+            // display as a column, with random horizontal placement
+            tempPos[1] += (curCounter + 0.5) / unitsOnTile * this.tileSize - newWidth;
+            tempPos[0] += this.tileSize - newWidth + xDisp;
+          }
 
-            // draw the shadow
-            this.unitShadows.context.beginPath();
-            this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
-            this.unitShadows.context.fill();
+          // increase counter
+          this.tempMap[curUnit.originalY][curUnit.originalX][1]++;
+
+          if (isInFog) {
+            // only display the dot
+            curUnit.visible = false;
+            curUnit.myFogDot.visible = true;
+            this.game.world.bringToTop(curUnit.myFogDot);
+
+            // set it to the right position and scale
+            curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
+            curUnit.myFogDot.x = tempPos[0];
+            curUnit.myFogDot.y = tempPos[1];
+          } else {
+            curUnit.myFogDot.visible = false;
+
+            this.game.world.bringToTop(curUnit);
+
+            if (curUnit.myType == 3 || curUnit.myType == 4) {
+              // if it's a DOCK or a CITY, make sure we change proportions+placement accordingly
+              curUnit.visible = true;
+
+              if (curUnit.dir == 'front') {
+                curUnit.height = newWidth * 2;
+                curUnit.width = newWidth;
+
+                curUnit.x = tempPos[0];
+                curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
+              } else if (curUnit.dir == 'back') {
+                curUnit.height = newWidth * 2;
+                curUnit.width = newWidth;
+
+                curUnit.x = tempPos[0];
+                curUnit.y = tempPos[1] + 0.2 * newWidth;
+              } else if (curUnit.dir == 'right') {
+                curUnit.height = curUnit.width = newWidth * 2;
+
+                curUnit.x = tempPos[0] - newWidth;
+                curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
+              } else if (curUnit.dir == 'left') {
+                curUnit.anchor.setTo(0.5, 0.5);
+
+                curUnit.height = newWidth * 2;
+                curUnit.width = -1 * newWidth * 2;
+
+                curUnit.x = tempPos[0] + newWidth;
+                curUnit.y = tempPos[1] + 0.5 * newWidth;
+              }
+            } else {
+              // display the sprite + the shadow
+              curUnit.visible = true;
+              curUnit.width = curUnit.height = newWidth;
+
+              // place the unit
+              curUnit.x = tempPos[0];
+              curUnit.y = tempPos[1];
+
+              // change color for player ships
+              // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+
+              // draw the shadow
+              this.unitShadows.context.beginPath();
+              this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
+              this.unitShadows.context.fill();
+            }
           }
         }
       }

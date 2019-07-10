@@ -2181,7 +2181,8 @@ function placeUnit(room, obj, x, y, uType) {
   // if this object has a position ...
   if(obj.x >= 0 && obj.y >= 0) {
     // ... remove it from that position
-    let unitsList = map[obj.y][obj.x][uType];
+    let curTile = map[obj.y][obj.x];
+    let unitsList = curTile[uType];
 
     // search the units list, 
     // find one with the same INDEX (must be the same object; units of same type are stored in indexed array), 
@@ -2194,9 +2195,8 @@ function placeUnit(room, obj, x, y, uType) {
     }
 
     // check if this tile has any units left
-    let curTile = map[obj.y][obj.x];
-    if(curTile.monsters.length < 1 && curTile.playerShips.length < 1 && curTile.aiShips.length < 1 && curTile.dock == null) {
-      map[y][x].hasUnits = false;
+    if(curTile.monsters.length < 1 && curTile.playerShips.length < 1 && curTile.aiShips.length < 1) {
+      curTile.hasUnits = false;
     }
   }
 
@@ -2206,6 +2206,7 @@ function placeUnit(room, obj, x, y, uType) {
   map[y][x].hasUnits = true;
 
   // get the ACTUAL object, update its position as well
+  // (obj is only a skeleton of the real object with the info I need)
   let fullObj = room[uType][obj.index];
   fullObj.x = x;
   fullObj.y = y;

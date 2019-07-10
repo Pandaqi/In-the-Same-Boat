@@ -74,7 +74,11 @@ class GamePlay extends Phaser.State {
     this.game.load.image('dock_side', '/assets/lighthouse_side.png');
 
     // cities
-    this.game.load.image('city', serverInfo.dockDrawing);
+    this.game.load.image('city_front', '/assets/coastcity_front.png');
+    this.game.load.image('city_back', '/assets/coastcity_front.png');
+    this.game.load.image('city_side', '/assets/coastcity_front.png');
+    
+    
     
   }
 
@@ -165,7 +169,7 @@ class GamePlay extends Phaser.State {
           let tempShadow = gm.add.bitmapData(tileSize, tileSize*0.15);
           tempShadow.rect(0,0,tileSize, tileSize*0.15, '#000000')
 
-          let tempShadowSprite = gm.add.sprite(x*tileSize, y*tileSize, tempShadow);
+          let tempShadowSprite = gm.add.sprite(x*tileSize, (y + 0.2)*tileSize, tempShadow);
           tempShadowSprite.alpha = 0.3;
 
           baseMapGroup.add( tempShadowSprite );
@@ -249,7 +253,7 @@ class GamePlay extends Phaser.State {
       } else if(this.map[ this.wrapCoords(y + 1, this.mapHeight)][x].val >= 0.2) {
         cacheLabel = 'dock_back';
         dir = 'back';
-      } else if(this.map[y][ this.wrapCoords(x - 1) ].val >= 0.2) {
+      } else if(this.map[y][ this.wrapCoords(x - 1, this.mapWidth) ].val >= 0.2) {
         cacheLabel = 'dock_side'
         dir = 'right';
       } else {
@@ -284,7 +288,22 @@ class GamePlay extends Phaser.State {
     for(let i = 0; i < cities.length; i++) {
       let x = cities[i].x, y = cities[i].y;
 
-      let cacheLabel = 'city';
+      let cacheLabel = 'city_front';
+      let dir = 'front';
+      // check if this city is viewed from the front/back/left side/right side
+      if(this.map[ this.wrapCoords(y - 1, this.mapHeight)][x].val >= 0.2) {
+        cacheLabel = 'city_front';
+        dir = 'front';
+      } else if(this.map[ this.wrapCoords(y + 1, this.mapHeight)][x].val >= 0.2) {
+        cacheLabel = 'city_back';
+        dir = 'back';
+      } else if(this.map[y][ this.wrapCoords(x - 1, this.mapWidth) ].val >= 0.2) {
+        cacheLabel = 'city_side'
+        dir = 'right';
+      } else {
+        cacheLabel = 'city_side';
+        dir = 'left'
+      }
 
       // create the sprite
       let newSprite = gm.add.sprite(x*tileSize, (y-0.5)*tileSize, cacheLabel);
@@ -295,6 +314,7 @@ class GamePlay extends Phaser.State {
       newSprite.originalY = y;
 
       newSprite.myType = 4;
+      newSprite.dir = dir;
 
       this.citySprites.push(newSprite);
 
@@ -521,26 +541,29 @@ class GamePlay extends Phaser.State {
     this.tempMap = [];
     for(var y = 0; y < this.mapHeight; y++) {
       this.tempMap[y] = [];
+      this.unitsOnMap[y] = [];
       for(var x = 0; x < this.mapWidth; x++) {
         this.tempMap[y][x] = [0, 0]; // index 0 = number of units on tile, index 1 = current counter (when displaying)
       }
     }
 
+    // IMPORTANT: Sprites are saved based on y-coordinate, so that they are automatically ordered and overlap correctly
+
     // create ONE array that holds all sprites
     // Simultaneously, check how many units are on a certain tile
     for(let i = 0; i < this.dockSprites.length; i++) {
-      this.unitsOnMap.push(this.dockSprites[i]);
+      this.unitsOnMap[ this.dockSprites[i].originalY ].push(this.dockSprites[i]);
     }
 
     for(let i = 0; i < this.citySprites.length; i++) {
-      this.unitsOnMap.push(this.citySprites[i]);
+      this.unitsOnMap[ this.citySprites[i].originalY ].push(this.citySprites[i]);
     }
 
     for(let i = 0; i < this.monsterSprites.length; i++) {
       this.monsterSprites[i].originalX = serverInfo.monsters[i].x;
       this.monsterSprites[i].originalY = serverInfo.monsters[i].y;
 
-      this.unitsOnMap.push(this.monsterSprites[i]);
+      this.unitsOnMap[ this.monsterSprites[i].originalY ].push(this.monsterSprites[i]);
       this.tempMap[ serverInfo.monsters[i].y ][ serverInfo.monsters[i].x ][0]++;
     }
 
@@ -548,7 +571,7 @@ class GamePlay extends Phaser.State {
       this.aiShipSprites[i].originalX = serverInfo.aiShips[i].x;
       this.aiShipSprites[i].originalY = serverInfo.aiShips[i].y;
 
-      this.unitsOnMap.push(this.aiShipSprites[i]);
+      this.unitsOnMap[ this.aiShipSprites[i].originalY ].push(this.aiShipSprites[i]);
       this.tempMap[ serverInfo.aiShips[i].y ][ serverInfo.aiShips[i].x ][0]++;
     }
 
@@ -556,7 +579,7 @@ class GamePlay extends Phaser.State {
       this.playerShipSprites[i].originalX = serverInfo.playerShips[i].x;
       this.playerShipSprites[i].originalY = serverInfo.playerShips[i].y;
 
-      this.unitsOnMap.push(this.playerShipSprites[i]);
+      this.unitsOnMap[ this.playerShipSprites[i].originalY ].push(this.playerShipSprites[i]);
       this.tempMap[ serverInfo.playerShips[i].y ][ serverInfo.playerShips[i].x ][0]++;
     }
 
@@ -568,105 +591,109 @@ class GamePlay extends Phaser.State {
     let disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
 
     // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
-    for(let i = 0; i < this.unitsOnMap.length; i++) {
-      // this code simply gets the current unit and checks if the tile is still in fog
-      let curUnit = this.unitsOnMap[i];
-      let isInFog = this.map[ curUnit.originalY ][ curUnit.originalX ].fog;
+    for(let y = 0; y < this.mapHeight; y++) {
+      for(let i = 0; i < this.unitsOnMap[y].length; i++) {
+        // this code simply gets the current unit and checks if the tile is still in fog
+        let curUnit = this.unitsOnMap[y][i];
+        let isInFog = this.map[ curUnit.originalY ][ curUnit.originalX ].fog;
 
-      // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
-      let getTile = this.tempMap[ curUnit.originalY ][ curUnit.originalX ]
-      let unitsOnTile = getTile[0];
-      let curCounter = getTile[1];
+        // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
+        let getTile = this.tempMap[ curUnit.originalY ][ curUnit.originalX ]
+        let unitsOnTile = getTile[0];
+        let curCounter = getTile[1];
 
-      let tempPos = [ curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize]
+        let tempPos = [ curUnit.originalX * this.tileSize, curUnit.originalY * this.tileSize]
 
-      let newWidth = this.tileSize;
-      // docks and cities don't count towards units, and should always be displayed in full
-      if(curUnit.myType == 3 || curUnit.myType == 4) {
-        tempPos[1] -= 0.5 * newWidth;
-        tempPOs[0] += 0 ;
-      } else {
-        // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
-        newWidth = ( this.tileSize / Math.sqrt(unitsOnTile) );
-
-        //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
-        let xDisp = 0;
-
-        // display as a column, with random horizontal placement
-        tempPos[1] += ( (curCounter + 0.5) / unitsOnTile) * this.tileSize - newWidth;
-        tempPos[0] += (this.tileSize - newWidth) + xDisp;
-      }
-      
-      
-
-      // increase counter
-      this.tempMap[ this.unitsOnMap[i].originalY ][ this.unitsOnMap[i].originalX ][1]++;
-
-      if(isInFog) {
-        // only display the dot
-        curUnit.visible = false;
-        curUnit.myFogDot.visible = true;
-        this.game.world.bringToTop(curUnit.myFogDot);
-
-        // set it to the right position and scale
-        curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
-        curUnit.myFogDot.x = tempPos[0];
-        curUnit.myFogDot.y = tempPos[1];
-      } else {
-        curUnit.myFogDot.visible = false;
-
-        if(curUnit.myType == 3) {
-          // if it's a DOCK, make sure we change proportions+placement accordingly
-          curUnit.visible = true;
-
-          if(curUnit.dir == 'front') {
-            curUnit.height = newWidth*2;
-            curUnit.width = newWidth;
-
-            curUnit.x = tempPos[0];
-            curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
-          } else if(curUnit.dir == 'back') {
-            curUnit.height = newWidth*2;
-            curUnit.width = newWidth;
-
-            curUnit.x = tempPos[0];
-            curUnit.y = tempPos[1] + 0.2*newWidth;
-          } else if(curUnit.dir == 'right') {
-            curUnit.height = curUnit.width = newWidth * 2;
-
-            curUnit.x = tempPos[0] - newWidth;
-            curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
-          } else if(curUnit.dir == 'left') {
-            curUnit.anchor.setTo(0.5, 0.5);
-
-            curUnit.height = newWidth * 2;
-            curUnit.width = -1 * newWidth * 2;
-
-            curUnit.x = tempPos[0] + newWidth;
-            curUnit.y = tempPos[1] + 0.5*newWidth;
-          }
-          
+        let newWidth = this.tileSize;
+        // docks and cities don't count towards units, and should always be displayed in full
+        if(curUnit.myType == 3 || curUnit.myType == 4) {
+          tempPos[1] -= 0.5 * newWidth;
+          tempPos[0] += 0;
         } else {
-           // display the sprite + the shadow
-          curUnit.visible = true;
-          curUnit.width = curUnit.height = newWidth;
+          // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
+          newWidth = ( this.tileSize / Math.sqrt(unitsOnTile) );
 
-          // place the unit
-          curUnit.x = tempPos[0];
-          curUnit.y = tempPos[1];
+          //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
+          let xDisp = 0;
 
-          // change color for player ships
-          // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+          // display as a column, with random horizontal placement
+          tempPos[1] += ( (curCounter + 0.5) / unitsOnTile) * this.tileSize - newWidth;
+          tempPos[0] += (this.tileSize - newWidth) + xDisp;
+        }
+        
+        
 
-          // draw the shadow
-          this.unitShadows.context.beginPath();
-          this.unitShadows.context.ellipse(tempPos[0] + newWidth*0.5, tempPos[1] + newWidth, newWidth*0.5, newWidth*0.3, 0, 0, 2 * Math.PI);
-          this.unitShadows.context.fill();
+        // increase counter
+        this.tempMap[ curUnit.originalY ][ curUnit.originalX ][1]++;
+
+        if(isInFog) {
+          // only display the dot
+          curUnit.visible = false;
+          curUnit.myFogDot.visible = true;
+          this.game.world.bringToTop(curUnit.myFogDot);
+
+          // set it to the right position and scale
+          curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
+          curUnit.myFogDot.x = tempPos[0];
+          curUnit.myFogDot.y = tempPos[1];
+        } else {
+          curUnit.myFogDot.visible = false;
+
+          this.game.world.bringToTop(curUnit);
+
+          if(curUnit.myType == 3 || curUnit.myType == 4) {
+            // if it's a DOCK or a CITY, make sure we change proportions+placement accordingly
+            curUnit.visible = true;
+
+            if(curUnit.dir == 'front') {
+              curUnit.height = newWidth*2;
+              curUnit.width = newWidth;
+
+              curUnit.x = tempPos[0];
+              curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
+            } else if(curUnit.dir == 'back') {
+              curUnit.height = newWidth*2;
+              curUnit.width = newWidth;
+
+              curUnit.x = tempPos[0];
+              curUnit.y = tempPos[1] + 0.2*newWidth;
+            } else if(curUnit.dir == 'right') {
+              curUnit.height = curUnit.width = newWidth * 2;
+
+              curUnit.x = tempPos[0] - newWidth;
+              curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
+            } else if(curUnit.dir == 'left') {
+              curUnit.anchor.setTo(0.5, 0.5);
+
+              curUnit.height = newWidth * 2;
+              curUnit.width = -1 * newWidth * 2;
+
+              curUnit.x = tempPos[0] + newWidth;
+              curUnit.y = tempPos[1] + 0.5*newWidth;
+            }
+            
+          } else {
+             // display the sprite + the shadow
+            curUnit.visible = true;
+            curUnit.width = curUnit.height = newWidth;
+
+            // place the unit
+            curUnit.x = tempPos[0];
+            curUnit.y = tempPos[1];
+
+            // change color for player ships
+            // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+
+            // draw the shadow
+            this.unitShadows.context.beginPath();
+            this.unitShadows.context.ellipse(tempPos[0] + newWidth*0.5, tempPos[1] + newWidth, newWidth*0.5, newWidth*0.3, 0, 0, 2 * Math.PI);
+            this.unitShadows.context.fill();
+          }
+
+         
         }
 
-       
       }
-
     }
 
     this.unitShadows.dirty = true;
