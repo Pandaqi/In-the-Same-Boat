@@ -1687,10 +1687,10 @@ function finishTurn(room) {
     let spread = tempUpgradeEffects.spread;
 
     // if we're playing the beginner variant, set fixed cannon stats
-    // TO DO: Do an actual check
+    // TO DO: Do an actual check (if cannoneer is in the game)
     let cannoneerInGame = false;
     if(!cannoneerInGame) {
-      ammo = [0,3,0,3];
+      ammo = [3,3,3,3];
     }
 
     // establish the ship angle
@@ -1730,7 +1730,7 @@ function finishTurn(room) {
             continue;
 
           // if it's a dock, stop the bullet immediately
-          } else if(hasDock(tile)) {
+          } else if(hasDock(tile) || hasCity(tile)) {
             break;
 
           // if we're still here, this means there is something to hit
@@ -2098,7 +2098,7 @@ function createShip(index) {
   // if the cannoneer isn't in the game, set it to a fixed (near maximum) level
   let cannons = [2, -1, -1, -1], cannoneerLvl = 0, cannoneerInGame = false;
   if(!cannoneerInGame) {
-    cannons = [0, 3, 0, 3]
+    cannons = [3, 3, 3, 3]
     cannoneerLvl = 3;
   }
 
@@ -2964,6 +2964,48 @@ function spiralSearch(room, x, y, searchType, terminator = 0) {
           }
 
           break;
+
+        case 6:
+          if(curTile.dock != null) {
+            doneSearching = true;
+
+            let getObj = room.docks[curTile.dock];
+            if(getObj.discovered) {
+              return getObj.name;
+            } else {
+              return "some undiscovered dock";
+            }
+          }
+
+          break;
+
+        case 7:
+          if(curTile.island != null) {
+            doneSearching = true;
+
+            let getObj = room.islands[curTile.island];
+            if(getObj.discovered) {
+              return getObj.name;
+            } else {
+              return "some undiscovered island";
+            }
+          }
+
+          break;
+
+        case 8:
+          if(curTile.city != null) {
+            doneSearching = true;
+
+            let getObj = room.cities[curTile.city];
+            if(getObj.discovered) {
+              return getObj.name;
+            } else {
+              return "some undiscovered town";
+            }
+          }
+
+          break;
       }
       
 
@@ -3011,7 +3053,7 @@ function createTreasures(room) {
   let clueLocations = room.cities.length; // clues (for now) are only inside a city
   let numTreasures = room.playerShips.length * 3; // 3 treasures for each player
 
-  let totalNumClues = 6;
+  let totalNumClues = 10;
   let cluesPerTreasure = Math.min( Math.floor(clueLocations / numTreasures), totalNumClues); // either we fill all locations with clues, or we get the maximum clues we can from a treasure
 
   // first, place all treasures, give them enough clues, and place all of that in one array
@@ -3140,6 +3182,41 @@ function generateClue(room, clue) {
 
       // search within that radius
       info = [ spiralSearch(room, x, y, 5, (radius*radius - 1)), radius]
+
+      break;
+
+    // Get nearest dock
+    case 6:
+      info = [ spiralSearch(room, x, y, 6)]
+
+      break;
+
+    // Get nearest island
+    case 7:
+      info = [ spiralSearch(room, x, y, 7)]
+
+      break;
+
+    // Get nearest town
+    case 8:
+      info = [ spiralSearch(room, x, y, 8)]
+
+      break;
+
+    // Get nearest player
+    // (don't do a spiral search, as #players will almost always be small)
+    case 9:
+      let nearestPlayer = null, nearestDist = 100000
+      for(let i = 0; i < room.playerShips.length; i++) {
+        let curShip = room.playerShips[i];
+        let curDist = Math.abs(curShip.x - x) + Math.abs(curShip.y - y);
+        if(curDist < nearestDist) {
+          nearestDist = curDist;
+          nearestPlayer = curShip;
+        }
+      }
+
+      info = [nearestPlayer.shipTitle];
 
       break;
   }

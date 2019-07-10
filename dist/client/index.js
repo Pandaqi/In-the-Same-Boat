@@ -1811,7 +1811,8 @@ var GamePlay = function (_Phaser$State) {
             }
 
             // docks
-            this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
+            this.game.load.image('dock_front', '/assets/lighthouse_front.png');
+            this.game.load.image('dock_back', '/assets/lighthouse_back.png');
 
             // cities
             this.game.load.image('city', _serverInfo.serverInfo.dockDrawing);
@@ -1967,7 +1968,17 @@ var GamePlay = function (_Phaser$State) {
                 var _x2 = docks[i].x,
                     _y2 = docks[i].y;
 
-                var cacheLabel = 'dock';
+                var cacheLabel = 'dock_front';
+                var dir = 'front';
+                // check if this dock is viewed from the front/back/left side/right side
+                if (this.map[this.wrapCoords(_y2 - 1, this.mapHeight)][_x2].val >= 0.2) {
+                    cacheLabel = 'dock_front';
+                    dir = 'front';
+                } else if (this.map[this.wrapCoords(_y2 + 1, this.mapHeight)][_x2].val >= 0.2) {
+                    cacheLabel = 'dock_back';
+                    dir = 'back';
+                } else {}
+                // TO DO: left and right side
 
                 // create the sprite
                 var newSprite = gm.add.sprite(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
@@ -1976,6 +1987,9 @@ var GamePlay = function (_Phaser$State) {
                 newSprite.visible = false;
                 newSprite.originalX = _x2;
                 newSprite.originalY = _y2;
+
+                newSprite.myType = 3;
+                newSprite.dir = dir;
 
                 this.dockSprites.push(newSprite);
 
@@ -2007,17 +2021,12 @@ var GamePlay = function (_Phaser$State) {
 
                 this.citySprites.push(_newSprite);
 
-                console.log(_x3, _y3);
-
                 // also create THE DOT!
                 var _newDot = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, dotBmd);
                 _newDot.width = _newDot.height = tileSize;
 
                 _newSprite.myFogDot = _newDot;
             }
-
-            console.log(cities);
-            console.log(this.citySprites.length);
 
             // Display monsters
             console.log(_serverInfo.serverInfo.monsters);
@@ -2311,9 +2320,12 @@ var GamePlay = function (_Phaser$State) {
                 // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
                 var newWidth = this.tileSize / Math.sqrt(unitsOnTile);
 
+                //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
+                var xDisp = 0;
+
                 // display as a column, with random horizontal placement
                 tempPos[1] += (curCounter + 0.5) / unitsOnTile * this.tileSize - newWidth;
-                tempPos[0] += this.tileSize - newWidth + (Math.random() * 0.2 - 0.4) * this.tileSize;
+                tempPos[0] += this.tileSize - newWidth + xDisp;
 
                 // increase counter
                 this.tempMap[this.unitsOnMap[_i13].originalY][this.unitsOnMap[_i13].originalX][1]++;
@@ -2331,30 +2343,35 @@ var GamePlay = function (_Phaser$State) {
                 } else {
                     curUnit.myFogDot.visible = false;
 
-                    // display the sprite + the shadow
-                    curUnit.visible = true;
-                    curUnit.width = curUnit.height = newWidth;
+                    if (curUnit.myType == 3) {
+                        // if it's a DOCK, make sure we change proportions+placement accordingly
+                        curUnit.visible = true;
 
-                    // place the unit
-                    curUnit.x = tempPos[0];
-                    curUnit.y = tempPos[1];
+                        if (curUnit.dir == 'front' || curUnit.dir == 'back') {
+                            curUnit.height = newWidth * 2;
+                            curUnit.width = newWidth;
 
-                    // change color for player ships
-                    // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+                            curUnit.x = tempPos[0];
+                            curUnit.y = tempPos[1] - 0.5 * newWidth;
+                        }
+                    } else {
+                        // display the sprite + the shadow
+                        curUnit.visible = true;
+                        curUnit.width = curUnit.height = newWidth;
 
-                    // draw the shadow
-                    this.unitShadows.context.beginPath();
-                    this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
-                    this.unitShadows.context.fill();
+                        // place the unit
+                        curUnit.x = tempPos[0];
+                        curUnit.y = tempPos[1];
+
+                        // change color for player ships
+                        // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+
+                        // draw the shadow
+                        this.unitShadows.context.beginPath();
+                        this.unitShadows.context.ellipse(tempPos[0] + newWidth * 0.5, tempPos[1] + newWidth, newWidth * 0.5, newWidth * 0.3, 0, 0, 2 * Math.PI);
+                        this.unitShadows.context.fill();
+                    }
                 }
-
-                /*
-                if(curUnit.myType == 4) {
-                  console.log("Coordinates?", curUnit.x, curUnit.y);
-                  console.log("Size?", curUnit.width, curUnit.height);
-                  console.log("Is this city visible?", curUnit.visible);        
-                }
-                */
             }
 
             this.unitShadows.dirty = true;
@@ -3901,7 +3918,7 @@ function loadPlayInterface(num, cont) {
             svg1.style.position = "absolute";
 
             // get maximum steering angle + current orientation
-            var deltaAngle = _upgradeEffectsDictionary2.default[1][_serverInfo.serverInfo.roleStats[1].lvl].angle;;
+            var deltaAngle = _upgradeEffectsDictionary2.default[1][_serverInfo.serverInfo.roleStats[1].lvl].angle;
             var oldOrientation = _serverInfo.serverInfo.oldOrientation;
 
             // Don't display anything if we have full steering range
@@ -3956,8 +3973,14 @@ function loadPlayInterface(num, cont) {
             // add complete SVG element to the container
             cont.appendChild(svg1);
 
+            // the SVG creates some overlap by rounding the arc stroke
+            // we need to offset this by adding 10 degrees to the final rotation, but only if there's actually a gap
+            if (deltaAngle != 0) {
+                deltaAngle += 10;
+            }
+
             // rotate the SVG to match current ship rotation
-            svg1.style.transform = 'rotate(' + (oldOrientation * 45 + deltaAngle + 10) + 'deg)';
+            svg1.style.transform = 'rotate(' + (oldOrientation * 45 + deltaAngle) + 'deg)';
 
             /***
                  END OF SVG ARC CODE

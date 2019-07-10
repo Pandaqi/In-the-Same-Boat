@@ -69,7 +69,8 @@ class GamePlay extends Phaser.State {
     }
 
     // docks
-    this.game.load.image('dock', serverInfo.dockDrawing);
+    this.game.load.image('dock_front', '/assets/lighthouse_front.png');
+    this.game.load.image('dock_back', '/assets/lighthouse_back.png');
 
     // cities
     this.game.load.image('city', serverInfo.dockDrawing);
@@ -231,7 +232,19 @@ class GamePlay extends Phaser.State {
     for(let i = 0; i < docks.length; i++) {
       let x = docks[i].x, y = docks[i].y;
 
-      let cacheLabel = 'dock';
+      let cacheLabel = 'dock_front';
+      let dir = 'front';
+      // check if this dock is viewed from the front/back/left side/right side
+      if(this.map[ this.wrapCoords(y - 1, this.mapHeight)][x].val >= 0.2) {
+        cacheLabel = 'dock_front';
+        dir = 'front';
+      } else if(this.map[ this.wrapCoords(y + 1, this.mapHeight)][x].val >= 0.2) {
+        cacheLabel = 'dock_back';
+        dir = 'back';
+      } else {
+        // TO DO: left and right side
+
+      }
 
       // create the sprite
       let newSprite = gm.add.sprite(x*tileSize, (y-0.5)*tileSize, cacheLabel);
@@ -240,6 +253,10 @@ class GamePlay extends Phaser.State {
       newSprite.visible = false;
       newSprite.originalX = x;
       newSprite.originalY = y;
+
+      newSprite.myType = 3;
+      newSprite.dir = dir;
+
 
       this.dockSprites.push(newSprite);
 
@@ -270,17 +287,12 @@ class GamePlay extends Phaser.State {
 
       this.citySprites.push(newSprite);
 
-      console.log(x, y);
-
       // also create THE DOT!
       let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
 
       newSprite.myFogDot = newDot;
     }
-
-    console.log(cities);
-    console.log(this.citySprites.length);
 
     // Display monsters
     console.log(serverInfo.monsters);
@@ -565,9 +577,12 @@ class GamePlay extends Phaser.State {
       // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
       let newWidth = ( this.tileSize / Math.sqrt(unitsOnTile) );
 
+      //let xDisp =  (Math.random()*0.2 - 0.4)*this.tileSize;
+      let xDisp = 0;
+
       // display as a column, with random horizontal placement
       tempPos[1] += ( (curCounter + 0.5) / unitsOnTile) * this.tileSize - newWidth;
-      tempPos[0] += (this.tileSize - newWidth) + (Math.random()*0.2 - 0.4)*this.tileSize;
+      tempPos[0] += (this.tileSize - newWidth) + xDisp;
 
       // increase counter
       this.tempMap[ this.unitsOnMap[i].originalY ][ this.unitsOnMap[i].originalX ][1]++;
@@ -585,30 +600,38 @@ class GamePlay extends Phaser.State {
       } else {
         curUnit.myFogDot.visible = false;
 
-        // display the sprite + the shadow
-        curUnit.visible = true;
-        curUnit.width = curUnit.height = newWidth;
+        if(curUnit.myType == 3) {
+          // if it's a DOCK, make sure we change proportions+placement accordingly
+          curUnit.visible = true;
 
-        // place the unit
-        curUnit.x = tempPos[0];
-        curUnit.y = tempPos[1];
+          if(curUnit.dir == 'front' || curUnit.dir == 'back') {
+            curUnit.height = newWidth*2;
+            curUnit.width = newWidth;
 
-        // change color for player ships
-        // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+            curUnit.x = tempPos[0];
+            curUnit.y = tempPos[1] - 0.5*newWidth;
+          }
+          
+        } else {
+           // display the sprite + the shadow
+          curUnit.visible = true;
+          curUnit.width = curUnit.height = newWidth;
 
-        // draw the shadow
-        this.unitShadows.context.beginPath();
-        this.unitShadows.context.ellipse(tempPos[0] + newWidth*0.5, tempPos[1] + newWidth, newWidth*0.5, newWidth*0.3, 0, 0, 2 * Math.PI);
-        this.unitShadows.context.fill();
+          // place the unit
+          curUnit.x = tempPos[0];
+          curUnit.y = tempPos[1];
+
+          // change color for player ships
+          // this.unitShadows.context.fillStyle = SHIP_COLORS[i];
+
+          // draw the shadow
+          this.unitShadows.context.beginPath();
+          this.unitShadows.context.ellipse(tempPos[0] + newWidth*0.5, tempPos[1] + newWidth, newWidth*0.5, newWidth*0.3, 0, 0, 2 * Math.PI);
+          this.unitShadows.context.fill();
+        }
+
+       
       }
-
-      /*
-      if(curUnit.myType == 4) {
-        console.log("Coordinates?", curUnit.x, curUnit.y);
-        console.log("Size?", curUnit.width, curUnit.height);
-        console.log("Is this city visible?", curUnit.visible);        
-      }
-      */
 
     }
 
