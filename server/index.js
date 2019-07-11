@@ -1155,7 +1155,7 @@ function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
         room.aiShips[obj.index] = createAIShip(randRouteStart, routeIndex, room.averagePlayerLevel);
 
         // Start at one of the routes (placeUnit)
-        placeUnit(room, {x: obj.x, y: obj.y, index: obj.index}, randRoute[0], randRoute[1], 'aiShips');
+        placeUnit(room, {x: obj.x, y: obj.y, index: obj.index}, randRouteStart[0], randRouteStart[1], 'aiShips');
         break;
 
       // Docks (3) can't respawn.
@@ -1612,9 +1612,6 @@ function finishTurn(room) {
     }
     curShip.delayedClues = [];
 
-    // stop firing!
-    curShip.willFire = false;
-
     // count the average for this ship
     // NOTE: "role = 1", because we IGNORE the captain (which is "role 0")
     let tempAverage = 0;
@@ -1690,6 +1687,9 @@ function finishTurn(room) {
     if(!curShip.willFire) {
       continue;
     }
+
+    // stop firing (in the future)!
+    curShip.willFire = false;
 
     let ammo = curShip.cannons;
 
@@ -2062,22 +2062,22 @@ function finishTurn(room) {
       let val2 = (averageResources[good2] + Math.random()*3)
       const maxVal = Math.max(val1, val2) + 0.01;
 
-      // If they are the same good, val2 surely must be larger than val1
-      // (Otherwise we get bad deals, like "1 Wood for 0 Wood in return!")
-      if(good1 == good2 && val2 <= val1) {
-        val2 = val1 + 1 + Math.random()*3;
-      }
-
-      // If the second good is 0, also update it to be at least 1
-      if(val2 == 0) {
-        val2 = val2 + 1 + Math.random()*3;
-      }
-
       // this formula is similar to how we determine how many routes each dock gets
       // the larger the dock, the more I want to "compress" its size with a square root (or similar function)
       const dockSize = Math.sqrt(curRoom.docks[d].size)*0.5;
       val1 = Math.round( val1 / maxVal * dockSize );
       val2 = Math.round( val2 / maxVal * dockSize );
+
+      // If they are the same good, val2 surely must be larger than val1
+      // (Otherwise we get bad deals, like "1 Wood for 0 Wood in return!")
+      if(good1 == good2 && val2 <= val1) {
+        val2 = Math.round(val1 + 1 + Math.random()*3);
+      }
+
+      // If the second good is 0, also update it to be at least 1
+      if(val2 == 0) {
+        val2 = Math.round(1 + Math.random()*3);
+      }
 
       // this is the final deal, with the right goods and correctly scaled values
       const finalDeal = [[good1, val1], [good2, val2]];
@@ -2201,7 +2201,7 @@ function placeUnit(room, obj, x, y, uType) {
     // find one with the same INDEX (must be the same object; units of same type are stored in indexed array), 
     // splice it from the array
     for(let i = 0; i < unitsList.length; i++) {
-      if(unitsList[i].index == obj.index) {
+      if(unitsList[i] == obj.index) {
         unitsList.splice(i,1);
         break;
       }
@@ -2621,7 +2621,7 @@ function calculateRoute(room, start, end) {
       let tempY = wrapCoords(current[1] + positions[a][1], room.mapHeight);
 
       // don't consider tiles that aren't sea
-      if(isIsland(room.map[tempY][tempX].val >= 0.2)) {
+      if(isIsland(room.map[tempY][tempX])) {
         continue;
       }
 

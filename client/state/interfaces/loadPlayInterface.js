@@ -894,8 +894,10 @@ export default function loadPlayInterface(num, cont) {
                 } else if(unit.myType == 2) {
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
+                    if(unit.dir == 'left') { unit.dir = 'right';}
                     label = 'dock_' + unit.dir;
                 } else if(unit.myType == 4) {
+                    if(unit.dir == 'left') { unit.dir = 'right';}
                     label = 'city_' + unit.dir;
                 }
 
@@ -923,6 +925,8 @@ export default function loadPlayInterface(num, cont) {
                       newSprite.x += localTileSize;
                     }
                 }
+
+                canvas.myGame.add.text(newSprite.x, newSprite.y, unit.index);
             }
 
             // move camera to center on our player's ship (by default)

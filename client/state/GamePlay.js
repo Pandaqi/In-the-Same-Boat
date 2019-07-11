@@ -233,6 +233,8 @@ class GamePlay extends Phaser.State {
       Instead, load all baseURIs into cache at the start, then just create sprites from them.
 
     */
+    this.unitNums = [];
+
     // Display docks
     let dotBmd = gm.add.bitmapData(tileSize, tileSize);
     dotBmd.circle(0.5*tileSize, 0.5*tileSize, 0.5*tileSize, '#000000');
@@ -335,6 +337,8 @@ class GamePlay extends Phaser.State {
       let newSprite = gm.add.sprite(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       newSprite.visible = false;
+      newSprite.index = i;
+
       this.monsterSprites.push(newSprite);
 
       // also create THE DOT!
@@ -357,6 +361,8 @@ class GamePlay extends Phaser.State {
       let newSprite = gm.add.sprite(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       newSprite.visible = false;
+      newSprite.index = i;
+
       this.aiShipSprites.push(newSprite);
 
       // also create THE DOT!
@@ -378,6 +384,8 @@ class GamePlay extends Phaser.State {
       let newSprite = gm.add.sprite(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       newSprite.visible = false;
+      newSprite.index = i;
+
       this.playerShipSprites.push(newSprite);
 
       // also create THE DOT!
@@ -545,6 +553,12 @@ class GamePlay extends Phaser.State {
       }
     }
 
+    for(let i = 0; i < this.unitNums.length; i++) {
+      this.unitNums[i].destroy();
+    }
+
+    this.unitNums = [];
+
     // IMPORTANT: Sprites are saved based on y-coordinate, so that they are automatically ordered and overlap correctly
 
     // create ONE array that holds all sprites
@@ -691,6 +705,9 @@ class GamePlay extends Phaser.State {
          
         }
 
+        // DEBUGGING: Display index of unit
+        let newText = this.game.add.text(curUnit.x, curUnit.y, curUnit.index);
+        this.unitNums.push(newText);
       }
     }
 
