@@ -77,6 +77,13 @@ io.on('connection', socket => {
       cities: [],
 
       treasures: {},
+
+      config: {
+        mapWidth: 40,
+        mapHeight: 20,
+        dx: 10, 
+        dy: 10
+      }
     }
 
     // save the main room in the socket, for easy access later
@@ -1208,6 +1215,8 @@ function startTurn(room, gameStart = false) {
     // send the map seed
     mPack["mapSeed"] = curRoom.mapSeed;
 
+    mPack["config"] = curRoom.config;
+
     // create the actual BASE MAP (sea and islands)
     createBaseMap(curRoom)
 
@@ -1377,12 +1386,14 @@ function startTurn(room, gameStart = false) {
         // if this tile has a dock, add it
         // NOTE: The "index" parameter here is only used for unique images (right now, all docks and cities look the same)
         if(mapTile.dock != null) {
-          curShip.personalUnits.push({ myType: 3, index: 0, x: x, y: y });
+          let dir = determineSpriteDirection(curRoom, xTile, yTile);
+          curShip.personalUnits.push({ myType: 3, index: 0, dir: dir, x: x, y: y });
         }
 
         // if this tile has a city
         if(mapTile.city != null) {
-          curShip.personalUnits.push({ myType: 4, index: 0, x: x, y: y});
+          let dir = determineSpriteDirection(curRoom, xTile, yTile);
+          curShip.personalUnits.push({ myType: 4, index: 0, dir: dir, x: x, y: y});
         }
 
         // if this tile has no units (which we keep track of), immediately continue
@@ -1451,6 +1462,8 @@ function startTurn(room, gameStart = false) {
     if(gameStart) {
       pPack["shipTitle"] = curShip.shipTitle;
       pPack["shipFlag"] = curShip.shipFlag;
+
+      pPack["config"] = curRoom.config;
 
       // if preparation was skipped, we need to resend the essential information
       if(curRoom.prepSkip) {
@@ -2229,8 +2242,8 @@ function createBaseMap(room) {
   let tempSpawnPoints = [];
 
   // initialize some variables determining map size (and zoom level)
-  let x1 = 0, y1 = 0, x2 = 10, y2 = 10
-  let mapWidth = 60, mapHeight = 30;
+  let dx = room.config.dx, dy = room.config.dy;
+  let mapWidth = room.config.mapWidth, mapHeight = room.config.mapHeight;
 
   room.mapWidth = mapWidth;
   room.mapHeight = mapHeight;
@@ -2250,16 +2263,14 @@ function createBaseMap(room) {
       // 4D noise => wraps back to 2D map with seamless edges
       let s = x / mapWidth
       let t = y / mapHeight
-      let dx = (x2 - x1)
-      let dy = (y2 - y1)
       let pi = Math.PI
 
       // Walk over two independent circles (perpendicular to each other)
-      let nx = x1 + Math.cos(s*2*pi) * dx / (2*pi)
-      let nz = y1 + Math.sin(s*2*pi) * dy / (2*pi)
+      let nx = Math.cos(s*2*pi) * dx / (2*pi)
+      let nz = Math.sin(s*2*pi) * dy / (2*pi)
 
-      let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
-      let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
+      let ny = Math.cos(t*2*pi) * dx / (2*pi)
+      let nw = Math.sin(t*2*pi) * dy / (2*pi)
 
       // Save the noise value in the (huge) 2D map array
       // Also initialize empty variables for possible units that might be on this tile later
@@ -3228,3 +3239,15 @@ function generateClue(room, clue) {
 }
 
 /*** == END of clue generation code == ***/
+
+function determineSpriteDirection(room, x, y) {
+  if(room.map[ wrapCoords(y - 1, room.mapHeight)][x].val >= 0.2) {
+    return 'front';
+  } else if(room.map[ wrapCoords(y + 1, room.mapHeight)][x].val >= 0.2) {
+    return 'back';
+  } else if(room.map[y][ wrapCoords(x - 1, room.mapWidth) ].val >= 0.2) {
+    return 'right';
+  } else {
+    return 'left';
+  }
+}

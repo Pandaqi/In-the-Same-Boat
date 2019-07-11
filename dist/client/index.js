@@ -1817,8 +1817,8 @@ var GamePlay = function (_Phaser$State) {
 
       // cities
       this.game.load.image('city_front', '/assets/coastcity_front.png');
-      this.game.load.image('city_back', '/assets/coastcity_front.png');
-      this.game.load.image('city_side', '/assets/coastcity_front.png');
+      this.game.load.image('city_back', '/assets/coastcity_back.png');
+      this.game.load.image('city_side', '/assets/coastcity_side.png');
     }
   }, {
     key: 'create',
@@ -1837,12 +1837,10 @@ var GamePlay = function (_Phaser$State) {
       _perlinImproved2.default.seed(_serverInfo.serverInfo.mapSeed);
 
       // initialize some variables determining map size (and zoom level)
-      var x1 = 0,
-          y1 = 0,
-          x2 = 10,
-          y2 = 10;
-      var mapWidth = 60,
-          mapHeight = 30;
+      var dx = _serverInfo.serverInfo.config.dx,
+          dy = _serverInfo.serverInfo.config.dy;
+      var mapWidth = _serverInfo.serverInfo.config.mapWidth,
+          mapHeight = _serverInfo.serverInfo.config.mapHeight;
 
       this.mapWidth = mapWidth;
       this.mapHeight = mapHeight;
@@ -1862,16 +1860,14 @@ var GamePlay = function (_Phaser$State) {
           // 4D noise => wraps back to 2D map with seamless edges
           var s = x / mapWidth;
           var t = y / mapHeight;
-          var dx = x2 - x1;
-          var dy = y2 - y1;
           var pi = Math.PI;
 
           // Walk over two independent circles (perpendicular to each other)
-          var nx = x1 + Math.cos(s * 2 * pi) * dx / (2 * pi);
-          var nz = y1 + Math.sin(s * 2 * pi) * dy / (2 * pi);
+          var nx = Math.cos(s * 2 * pi) * dx / (2 * pi);
+          var nz = Math.sin(s * 2 * pi) * dy / (2 * pi);
 
-          var ny = x1 + Math.cos(t * 2 * pi) * dx / (2 * pi);
-          var nw = y1 + Math.sin(t * 2 * pi) * dy / (2 * pi);
+          var ny = Math.cos(t * 2 * pi) * dx / (2 * pi);
+          var nw = Math.sin(t * 2 * pi) * dy / (2 * pi);
 
           // save the noise value
           var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
@@ -2350,7 +2346,7 @@ var GamePlay = function (_Phaser$State) {
           var newWidth = this.tileSize;
           // docks and cities don't count towards units, and should always be displayed in full
           if (curUnit.myType == 3 || curUnit.myType == 4) {
-            tempPos[1] -= 0.5 * newWidth;
+            tempPos[1] += 0;
             tempPos[0] += 0;
           } else {
             // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
@@ -2391,18 +2387,18 @@ var GamePlay = function (_Phaser$State) {
                 curUnit.width = newWidth;
 
                 curUnit.x = tempPos[0];
-                curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
+                curUnit.y = tempPos[1] - newWidth;
               } else if (curUnit.dir == 'back') {
                 curUnit.height = newWidth * 2;
                 curUnit.width = newWidth;
 
                 curUnit.x = tempPos[0];
-                curUnit.y = tempPos[1] + 0.2 * newWidth;
+                curUnit.y = tempPos[1];
               } else if (curUnit.dir == 'right') {
                 curUnit.height = curUnit.width = newWidth * 2;
 
                 curUnit.x = tempPos[0] - newWidth;
-                curUnit.y = tempPos[1] - newWidth + 0.5 * newWidth;
+                curUnit.y = tempPos[1] - newWidth;
               } else if (curUnit.dir == 'left') {
                 curUnit.anchor.setTo(0.5, 0.5);
 
@@ -2410,7 +2406,7 @@ var GamePlay = function (_Phaser$State) {
                 curUnit.width = -1 * newWidth * 2;
 
                 curUnit.x = tempPos[0] + newWidth;
-                curUnit.y = tempPos[1] + 0.5 * newWidth;
+                curUnit.y = tempPos[1];
               }
             } else {
               // display the sprite + the shadow
@@ -4119,8 +4115,8 @@ function loadPlayInterface(num, cont) {
             // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
-            var globalMapWidth = 60;
-            var globalMapHeight = 30;
+            var globalMapWidth = _serverInfo.serverInfo.config.mapWidth;
+            var globalMapHeight = _serverInfo.serverInfo.config.mapHeight;
 
             // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
             // the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
@@ -4129,10 +4125,8 @@ function loadPlayInterface(num, cont) {
             // Loop through our visible tiles
             // Make sure we center this around our ship!
             // Get the right noise value, color it correctly, display square of that color
-            var x1 = 0,
-                y1 = 0,
-                x2 = 10,
-                y2 = 10;
+            var dx = _serverInfo.serverInfo.config.dx,
+                dy = _serverInfo.serverInfo.config.dy;
             for (var y = 0; y < mapSize; y++) {
                 for (var x = 0; x < mapSize; x++) {
                     var xTile = _serverInfo.serverInfo.x - Math.floor(0.5 * mapSize) + x;
@@ -4152,16 +4146,14 @@ function loadPlayInterface(num, cont) {
                     // 4D noise => wraps back to 2D map with seamless edges
                     var s = xTile / globalMapWidth;
                     var t = yTile / globalMapHeight;
-                    var dx = x2 - x1;
-                    var dy = y2 - y1;
                     var pi = Math.PI;
 
                     // Walk over two independent circles (perpendicular to each other)
-                    var nx = x1 + Math.cos(s * 2 * pi) * dx / (2 * pi);
-                    var nz = y1 + Math.sin(s * 2 * pi) * dy / (2 * pi);
+                    var nx = Math.cos(s * 2 * pi) * dx / (2 * pi);
+                    var nz = Math.sin(s * 2 * pi) * dy / (2 * pi);
 
-                    var ny = x1 + Math.cos(t * 2 * pi) * dx / (2 * pi);
-                    var nw = y1 + Math.sin(t * 2 * pi) * dy / (2 * pi);
+                    var ny = Math.cos(t * 2 * pi) * dx / (2 * pi);
+                    var nw = Math.sin(t * 2 * pi) * dy / (2 * pi);
 
                     // save the noise value
                     var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
@@ -4208,13 +4200,35 @@ function loadPlayInterface(num, cont) {
                 } else if (unit.myType == 2) {
                     label = 'aiShipNum' + unit.index;
                 } else if (unit.myType == 3) {
-                    label = 'dock';
+                    label = 'dock_' + unit.dir;
                 } else if (unit.myType == 4) {
-                    label = 'city';
+                    label = 'city_' + unit.dir;
                 }
 
                 var newSprite = canvas.myGame.add.sprite(unit.x * localTileSize, unit.y * localTileSize, label);
                 newSprite.width = newSprite.height = localTileSize;
+
+                // scale / position / reflect sprite correctly based on direction
+                if (unit.dir != null) {
+                    if (unit.dir == 'front') {
+                        newSprite.height = localTileSize * 2;
+                        newSprite.y -= localTileSize;
+                    } else if (unit.dir == 'back') {
+                        newSprite.height = localTileSize * 2;
+                    } else if (unit.dir == 'right') {
+                        newSprite.height = newSprite.width = localTileSize * 2;
+
+                        newSprite.x -= localTileSize;
+                        newSprite.y -= localTileSize;
+                    } else if (unit.dir == 'left') {
+                        newSprite.anchor.setTo(0.5, 0.5);
+
+                        newSprite.height = localTileSize * 2;
+                        newSprite.width = -1 * localTileSize * 2;
+
+                        newSprite.x += localTileSize;
+                    }
+                }
             }
 
             // move camera to center on our player's ship (by default)
@@ -4819,7 +4833,14 @@ var ControllerWaiting = function (_Phaser$State) {
         }
 
         // docks
-        this.game.load.image('dock', _serverInfo.serverInfo.dockDrawing);
+        this.game.load.image('dock_front', '/assets/lighthouse_front.png');
+        this.game.load.image('dock_back', '/assets/lighthouse_back.png');
+        this.game.load.image('dock_side', '/assets/lighthouse_side.png');
+
+        // cities
+        this.game.load.image('city_front', '/assets/coastcity_front.png');
+        this.game.load.image('city_back', '/assets/coastcity_back.png');
+        this.game.load.image('city_side', '/assets/coastcity_side.png');
       }
     }
   }, {

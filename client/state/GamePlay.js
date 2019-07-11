@@ -75,8 +75,8 @@ class GamePlay extends Phaser.State {
 
     // cities
     this.game.load.image('city_front', '/assets/coastcity_front.png');
-    this.game.load.image('city_back', '/assets/coastcity_front.png');
-    this.game.load.image('city_side', '/assets/coastcity_front.png');
+    this.game.load.image('city_back', '/assets/coastcity_back.png');
+    this.game.load.image('city_side', '/assets/coastcity_side.png');
     
     
     
@@ -97,8 +97,8 @@ class GamePlay extends Phaser.State {
     noise.seed(serverInfo.mapSeed);
 
     // initialize some variables determining map size (and zoom level)
-    let x1 = 0, y1 = 0, x2 = 10, y2 = 10
-    let mapWidth = 60, mapHeight = 30;
+    let dx = serverInfo.config.dx, dy = serverInfo.config.dy;
+    let mapWidth = serverInfo.config.mapWidth, mapHeight = serverInfo.config.mapHeight;
 
     this.mapWidth = mapWidth;
     this.mapHeight = mapHeight;
@@ -118,16 +118,14 @@ class GamePlay extends Phaser.State {
         // 4D noise => wraps back to 2D map with seamless edges
         let s = x / mapWidth
         let t = y / mapHeight
-        let dx = (x2 - x1)
-        let dy = (y2 - y1)
         let pi = Math.PI
 
         // Walk over two independent circles (perpendicular to each other)
-        let nx = x1 + Math.cos(s*2*pi) * dx / (2*pi)
-        let nz = y1 + Math.sin(s*2*pi) * dy / (2*pi)
+        let nx = Math.cos(s*2*pi) * dx / (2*pi)
+        let nz = Math.sin(s*2*pi) * dy / (2*pi)
 
-        let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
-        let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
+        let ny = Math.cos(t*2*pi) * dx / (2*pi)
+        let nw = Math.sin(t*2*pi) * dy / (2*pi)
 
         // save the noise value
         let curVal = noise.perlin4(nx, ny, nz, nw);
@@ -607,7 +605,7 @@ class GamePlay extends Phaser.State {
         let newWidth = this.tileSize;
         // docks and cities don't count towards units, and should always be displayed in full
         if(curUnit.myType == 3 || curUnit.myType == 4) {
-          tempPos[1] -= 0.5 * newWidth;
+          tempPos[1] += 0;
           tempPos[0] += 0;
         } else {
           // scale down sprites, but not linearly (/unitsOnTile) => allow overlap, bigger sprites
@@ -650,18 +648,18 @@ class GamePlay extends Phaser.State {
               curUnit.width = newWidth;
 
               curUnit.x = tempPos[0];
-              curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
+              curUnit.y = tempPos[1] - newWidth;
             } else if(curUnit.dir == 'back') {
               curUnit.height = newWidth*2;
               curUnit.width = newWidth;
 
               curUnit.x = tempPos[0];
-              curUnit.y = tempPos[1] + 0.2*newWidth;
+              curUnit.y = tempPos[1];
             } else if(curUnit.dir == 'right') {
               curUnit.height = curUnit.width = newWidth * 2;
 
               curUnit.x = tempPos[0] - newWidth;
-              curUnit.y = tempPos[1] - newWidth + 0.5*newWidth;
+              curUnit.y = tempPos[1] - newWidth;
             } else if(curUnit.dir == 'left') {
               curUnit.anchor.setTo(0.5, 0.5);
 
@@ -669,7 +667,7 @@ class GamePlay extends Phaser.State {
               curUnit.width = -1 * newWidth * 2;
 
               curUnit.x = tempPos[0] + newWidth;
-              curUnit.y = tempPos[1] + 0.5*newWidth;
+              curUnit.y = tempPos[1];
             }
             
           } else {

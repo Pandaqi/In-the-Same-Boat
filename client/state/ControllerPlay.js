@@ -61,7 +61,14 @@ class ControllerWaiting extends Phaser.State {
       }
 
       // docks
-      this.game.load.image('dock', serverInfo.dockDrawing);
+      this.game.load.image('dock_front', '/assets/lighthouse_front.png');
+      this.game.load.image('dock_back', '/assets/lighthouse_back.png');
+      this.game.load.image('dock_side', '/assets/lighthouse_side.png');
+
+      // cities
+      this.game.load.image('city_front', '/assets/coastcity_front.png');
+      this.game.load.image('city_back', '/assets/coastcity_back.png');
+      this.game.load.image('city_side', '/assets/coastcity_side.png');
     }
   }
   

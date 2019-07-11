@@ -818,8 +818,8 @@ export default function loadPlayInterface(num, cont) {
             // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
-            let globalMapWidth = 60;
-            let globalMapHeight = 30;
+            let globalMapWidth = serverInfo.config.mapWidth;
+            let globalMapHeight = serverInfo.config.mapHeight;
 
             // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
             // the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
@@ -828,7 +828,7 @@ export default function loadPlayInterface(num, cont) {
             // Loop through our visible tiles
             // Make sure we center this around our ship!
             // Get the right noise value, color it correctly, display square of that color
-            let x1 = 0, y1 = 0, x2 = 10, y2 = 10
+            let dx = serverInfo.config.dx, dy = serverInfo.config.dy;
             for (let y = 0; y < mapSize; y++) {
                 for (let x = 0; x < mapSize; x++) {
                     let xTile = serverInfo.x - Math.floor(0.5*mapSize) + x
@@ -840,16 +840,14 @@ export default function loadPlayInterface(num, cont) {
                     // 4D noise => wraps back to 2D map with seamless edges
                     let s = xTile / globalMapWidth
                     let t = yTile / globalMapHeight
-                    let dx = (x2 - x1)
-                    let dy = (y2 - y1)
                     let pi = Math.PI
 
                     // Walk over two independent circles (perpendicular to each other)
-                    let nx = x1 + Math.cos(s*2*pi) * dx / (2*pi)
-                    let nz = y1 + Math.sin(s*2*pi) * dy / (2*pi)
+                    let nx = Math.cos(s*2*pi) * dx / (2*pi)
+                    let nz = Math.sin(s*2*pi) * dy / (2*pi)
 
-                    let ny = x1 + Math.cos(t*2*pi) * dx / (2*pi)
-                    let nw = y1 + Math.sin(t*2*pi) * dy / (2*pi)
+                    let ny = Math.cos(t*2*pi) * dx / (2*pi)
+                    let nw = Math.sin(t*2*pi) * dy / (2*pi)
 
                     // save the noise value
                     let curVal = noise.perlin4(nx, ny, nz, nw);
@@ -896,13 +894,35 @@ export default function loadPlayInterface(num, cont) {
                 } else if(unit.myType == 2) {
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
-                    label = 'dock';
+                    label = 'dock_' + unit.dir;
                 } else if(unit.myType == 4) {
-                    label = 'city';
+                    label = 'city_' + unit.dir;
                 }
 
                 let newSprite = canvas.myGame.add.sprite(unit.x*localTileSize, unit.y*localTileSize, label);
                 newSprite.width = newSprite.height = localTileSize;
+
+                // scale / position / reflect sprite correctly based on direction
+                if(unit.dir != null) {
+                    if(unit.dir == 'front') {
+                      newSprite.height = localTileSize*2;
+                      newSprite.y -= localTileSize;
+                    } else if(unit.dir == 'back') {
+                      newSprite.height = localTileSize*2;
+                    } else if(unit.dir == 'right') {
+                      newSprite.height = newSprite.width = localTileSize * 2;
+
+                      newSprite.x -= localTileSize;
+                      newSprite.y -= localTileSize;
+                    } else if(unit.dir == 'left') {
+                      newSprite.anchor.setTo(0.5, 0.5);
+
+                      newSprite.height = localTileSize * 2;
+                      newSprite.width = -1 * localTileSize * 2;
+
+                      newSprite.x += localTileSize;
+                    }
+                }
             }
 
             // move camera to center on our player's ship (by default)
