@@ -954,7 +954,7 @@ export default function loadPlayInterface(num, cont) {
                     }
                 }
 
-                canvas.myGame.add.text(newSprite.x, newSprite.y, unit.index);
+                // for debugging: canvas.myGame.add.text(newSprite.x, newSprite.y, unit.index);
             }
 
             // move camera to center on our player's ship (by default)

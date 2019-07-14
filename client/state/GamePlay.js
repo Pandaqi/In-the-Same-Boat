@@ -148,6 +148,17 @@ class GamePlay extends Phaser.State {
             tileColor = '#228B22';
         }
 
+        // check if there's a treasure here
+        for(var key in serverInfo.treasures) {
+          let curTres = serverInfo.treasures[key];
+
+          if(curTres.x == x && curTres.y == y) {
+            tileColor = '#FF0000';
+
+            this.game.add.text(x*tileSize, y*tileSize, key);
+          }
+        }
+
         // create square, color it, add it as a sprite, add it to group
         let tempTile = gm.add.bitmapData(tileSize, tileSize);
         tempTile.rect(0, 0, tileSize, tileSize, tileColor);
@@ -233,7 +244,7 @@ class GamePlay extends Phaser.State {
       Instead, load all baseURIs into cache at the start, then just create sprites from them.
 
     */
-    this.unitNums = [];
+    //this.unitNums = [];
 
     this.unitGroup = gm.add.group();
 
@@ -555,11 +566,13 @@ class GamePlay extends Phaser.State {
       }
     }
 
+    /* FOR DEBUGGING (displays unit numbers)
     for(let i = 0; i < this.unitNums.length; i++) {
       this.unitNums[i].destroy();
     }
 
     this.unitNums = [];
+    */
 
     // IMPORTANT: Sprites are saved based on y-coordinate, so that they are automatically ordered and overlap correctly
 
@@ -707,8 +720,8 @@ class GamePlay extends Phaser.State {
         }
 
         // DEBUGGING: Display index of unit
-        let newText = this.game.add.text(curUnit.x, curUnit.y, curUnit.index);
-        this.unitNums.push(newText);
+        //let newText = this.game.add.text(curUnit.x, curUnit.y, curUnit.index);
+        //this.unitNums.push(newText);
       }
     }
 

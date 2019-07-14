@@ -1902,6 +1902,17 @@ var GamePlay = function (_Phaser$State) {
             tileColor = '#228B22';
           }
 
+          // check if there's a treasure here
+          for (var key in _serverInfo.serverInfo.treasures) {
+            var curTres = _serverInfo.serverInfo.treasures[key];
+
+            if (curTres.x == x && curTres.y == y) {
+              tileColor = '#FF0000';
+
+              this.game.add.text(x * tileSize, y * tileSize, key);
+            }
+          }
+
           // create square, color it, add it as a sprite, add it to group
           var tempTile = gm.add.bitmapData(tileSize, tileSize);
           tempTile.rect(0, 0, tileSize, tileSize, tileColor);
@@ -1976,7 +1987,7 @@ var GamePlay = function (_Phaser$State) {
         This means that dynamicLoadImage doesn't work. 
           Instead, load all baseURIs into cache at the start, then just create sprites from them.
         */
-      this.unitNums = [];
+      //this.unitNums = [];
 
       this.unitGroup = gm.add.group();
 
@@ -2309,46 +2320,47 @@ var GamePlay = function (_Phaser$State) {
         }
       }
 
-      for (var i = 0; i < this.unitNums.length; i++) {
+      /* FOR DEBUGGING (displays unit numbers)
+      for(let i = 0; i < this.unitNums.length; i++) {
         this.unitNums[i].destroy();
       }
-
-      this.unitNums = [];
+        this.unitNums = [];
+      */
 
       // IMPORTANT: Sprites are saved based on y-coordinate, so that they are automatically ordered and overlap correctly
 
       // create ONE array that holds all sprites
       // Simultaneously, check how many units are on a certain tile
-      for (var _i9 = 0; _i9 < this.dockSprites.length; _i9++) {
-        this.unitsOnMap[this.dockSprites[_i9].originalY].push(this.dockSprites[_i9]);
+      for (var i = 0; i < this.dockSprites.length; i++) {
+        this.unitsOnMap[this.dockSprites[i].originalY].push(this.dockSprites[i]);
       }
 
-      for (var _i10 = 0; _i10 < this.citySprites.length; _i10++) {
-        this.unitsOnMap[this.citySprites[_i10].originalY].push(this.citySprites[_i10]);
+      for (var _i9 = 0; _i9 < this.citySprites.length; _i9++) {
+        this.unitsOnMap[this.citySprites[_i9].originalY].push(this.citySprites[_i9]);
       }
 
-      for (var _i11 = 0; _i11 < this.monsterSprites.length; _i11++) {
-        this.monsterSprites[_i11].originalX = _serverInfo.serverInfo.monsters[_i11].x;
-        this.monsterSprites[_i11].originalY = _serverInfo.serverInfo.monsters[_i11].y;
+      for (var _i10 = 0; _i10 < this.monsterSprites.length; _i10++) {
+        this.monsterSprites[_i10].originalX = _serverInfo.serverInfo.monsters[_i10].x;
+        this.monsterSprites[_i10].originalY = _serverInfo.serverInfo.monsters[_i10].y;
 
-        this.unitsOnMap[this.monsterSprites[_i11].originalY].push(this.monsterSprites[_i11]);
-        this.tempMap[_serverInfo.serverInfo.monsters[_i11].y][_serverInfo.serverInfo.monsters[_i11].x][0]++;
+        this.unitsOnMap[this.monsterSprites[_i10].originalY].push(this.monsterSprites[_i10]);
+        this.tempMap[_serverInfo.serverInfo.monsters[_i10].y][_serverInfo.serverInfo.monsters[_i10].x][0]++;
       }
 
-      for (var _i12 = 0; _i12 < this.aiShipSprites.length; _i12++) {
-        this.aiShipSprites[_i12].originalX = _serverInfo.serverInfo.aiShips[_i12].x;
-        this.aiShipSprites[_i12].originalY = _serverInfo.serverInfo.aiShips[_i12].y;
+      for (var _i11 = 0; _i11 < this.aiShipSprites.length; _i11++) {
+        this.aiShipSprites[_i11].originalX = _serverInfo.serverInfo.aiShips[_i11].x;
+        this.aiShipSprites[_i11].originalY = _serverInfo.serverInfo.aiShips[_i11].y;
 
-        this.unitsOnMap[this.aiShipSprites[_i12].originalY].push(this.aiShipSprites[_i12]);
-        this.tempMap[_serverInfo.serverInfo.aiShips[_i12].y][_serverInfo.serverInfo.aiShips[_i12].x][0]++;
+        this.unitsOnMap[this.aiShipSprites[_i11].originalY].push(this.aiShipSprites[_i11]);
+        this.tempMap[_serverInfo.serverInfo.aiShips[_i11].y][_serverInfo.serverInfo.aiShips[_i11].x][0]++;
       }
 
-      for (var _i13 = 0; _i13 < this.playerShipSprites.length; _i13++) {
-        this.playerShipSprites[_i13].originalX = _serverInfo.serverInfo.playerShips[_i13].x;
-        this.playerShipSprites[_i13].originalY = _serverInfo.serverInfo.playerShips[_i13].y;
+      for (var _i12 = 0; _i12 < this.playerShipSprites.length; _i12++) {
+        this.playerShipSprites[_i12].originalX = _serverInfo.serverInfo.playerShips[_i12].x;
+        this.playerShipSprites[_i12].originalY = _serverInfo.serverInfo.playerShips[_i12].y;
 
-        this.unitsOnMap[this.playerShipSprites[_i13].originalY].push(this.playerShipSprites[_i13]);
-        this.tempMap[_serverInfo.serverInfo.playerShips[_i13].y][_serverInfo.serverInfo.playerShips[_i13].x][0]++;
+        this.unitsOnMap[this.playerShipSprites[_i12].originalY].push(this.playerShipSprites[_i12]);
+        this.tempMap[_serverInfo.serverInfo.playerShips[_i12].y][_serverInfo.serverInfo.playerShips[_i12].x][0]++;
       }
 
       // reset the shadow canvas, set the fill style to transparent black
@@ -2359,9 +2371,9 @@ var GamePlay = function (_Phaser$State) {
 
       // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
       for (var _y9 = 0; _y9 < this.mapHeight; _y9++) {
-        for (var _i14 = 0; _i14 < this.unitsOnMap[_y9].length; _i14++) {
+        for (var _i13 = 0; _i13 < this.unitsOnMap[_y9].length; _i13++) {
           // this code simply gets the current unit and checks if the tile is still in fog
-          var curUnit = this.unitsOnMap[_y9][_i14];
+          var curUnit = this.unitsOnMap[_y9][_i13];
           var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
 
           // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
@@ -2455,8 +2467,8 @@ var GamePlay = function (_Phaser$State) {
           }
 
           // DEBUGGING: Display index of unit
-          var newText = this.game.add.text(curUnit.x, curUnit.y, curUnit.index);
-          this.unitNums.push(newText);
+          //let newText = this.game.add.text(curUnit.x, curUnit.y, curUnit.index);
+          //this.unitNums.push(newText);
         }
       }
 
@@ -4291,7 +4303,7 @@ function loadPlayInterface(num, cont) {
                     }
                 }
 
-                canvas.myGame.add.text(newSprite.x, newSprite.y, unit.index);
+                // for debugging: canvas.myGame.add.text(newSprite.x, newSprite.y, unit.index);
             }
 
             // move camera to center on our player's ship (by default)

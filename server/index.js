@@ -527,7 +527,7 @@ io.on('connection', socket => {
   // @parameter cannon = index of the cannon to be loaded up
   socket.on('load-up', cannon => {
     // If we have a single cannonball to spare ...
-    if( resourceCheck(socket, 4, -1, { 3: 1} )) {
+    if( resourceCheck(socket, 4, -1, { 4: 1} )) {
       // ... update cannon directly
       socket.curShip.cannons[cannon]++;
     }
@@ -627,20 +627,12 @@ io.on('connection', socket => {
     let ind = data.ind;
     let name = data.name;
 
-    // convert name to lowercase, capitalize first letter
-    name = name.toLowerCase();
-    name = name.charAt(0).toUpperCase() + name.slice(1);
-
-    console.log("City exploration requested");
-
     let costs = { 1: 1 }
     if(resourceCheck(socket, 0, 0, costs, 10)) {
       // The client reads the clue and transforms it back into a proper string. 
       // (generateClue does NOT turn it into a string; only gathers the necessary variables)
       let room = rooms[socket.mainRoom];
       let curCity = room.cities[ind];
-
-      console.log("Exploration request succeeded");
 
       // if the "name" part is empty... 
       if(name == null || name.length <= 0) {
@@ -672,8 +664,12 @@ io.on('connection', socket => {
       } else {
         // if a name has been specified ...
 
+        // convert name to lowercase, capitalize first letter
+        name = name.toLowerCase();
+        name = name.charAt(0).toUpperCase() + name.slice(1);
+
         // check if this name is among the list of treasures (at all)
-        if( !(name in Object.keys(room.treasures)) ) {
+        if( !(name in room.treasures) ) {
           // if not, send a fail message
           socket.curShip.delayedClues.push( [14, name] );
           return;
@@ -681,10 +677,6 @@ io.on('connection', socket => {
 
         // get the treasure object
         let curTres = room.treasures[name];
-
-        console.log(room.treasures);
-        console.log(name);
-        console.log(curTres);
 
         // check if this name is within the city's dictionary of clues
         if(name in Object.keys(curCity.clues)) {
@@ -698,8 +690,8 @@ io.on('connection', socket => {
           // check if the treasure in question is close enough to this city
           let dist = wrapDist(room, curCity.x, curCity.y, curTres.x, curTres.y)
 
-          // within 10 tiles? Close enough! Get a clue, save it in the city, return it
-          if(dist <= 10) {
+          // within 15 tiles? Close enough! Get a clue, save it in the city, return it
+          if(dist <= 15) {
             // get a clue that hasn't been used yet (always pop off the last one, as the array has been shuffled before)
             // by popping, we already remove it from the array
             let clueType = curTres.cluesUsed.pop();
@@ -723,7 +715,7 @@ io.on('connection', socket => {
             return;
 
           } else {
-            // not within 10 tiles? Never heard of that treasure then!
+            // not within 15 tiles? Never heard of that treasure then!
             socket.curShip.delayedClues.push( [14, name] );
             return;
 
@@ -749,7 +741,9 @@ io.on('connection', socket => {
         curTile.treasure = null;
 
         // increase treasure counter on ship
-        // TO DO: ^^^
+        socket.curShip.resources[3]++;
+
+        // TO DO: Check if the game should end?? (#treasures >= 3)
       } else {
         // if there's no treasure here, inform the player about that
         socket.curShip.delayedClues.push( [15, ""] );
@@ -1192,6 +1186,13 @@ function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
     // respawn (based on unit type)
     let uType = obj.myUnitType;
 
+    // if the PLAYER killed something
+    // they should get a message
+    // right now, it's just a vague "You killed something! Check your resources for loot"
+    if(attacker.myUnitType == 0) {
+      attacker.errorMessages.push([7,0]);
+    }
+
     switch(uType) {
       // Player ship: no respawning, inform of game over
       case 0:
@@ -1313,6 +1314,8 @@ function startTurn(room, gameStart = false) {
     mPack["mapSeed"] = curRoom.mapSeed;
 
     mPack["config"] = curRoom.config;
+
+    mPack["treasures"] = curRoom.treasures;
 
     // create the actual BASE MAP (sea and islands)
     createBaseMap(curRoom)
@@ -2155,6 +2158,8 @@ function finishTurn(room) {
 
       // TO DO (QUESTION): Is this a good concept?
       if(good1 == 1) { good1 = 0; } // you cannot trade away your crew, instead it ensures more deals start with you spending gold
+      if(good1 == 3) { good1 = 0; } // you cannot trade away your treasures
+      if(good2 == 3) { good2 = 0; } // you cannot gain treasures by trading at the docks
 
       let val1 = Math.max( averageResources[good1] - Math.random()*3, 0);
       let val2 = (averageResources[good2] + Math.random()*3)
@@ -2220,7 +2225,7 @@ function createShip(index) {
     myUnitType: 0, 
     players: [], 
     shipTitle: 'Unnamed Ship',
-    resources: [10, 0, 5, 5], // [5,1,1,0], 
+    resources: [10, 0, 5, 0], // [5,1,1,0], 
     workingCrew: 2,
     x: 0, 
     y: 0, 
@@ -2670,7 +2675,7 @@ function createAIShip(pos, routeIndex, averageLevel) {
   let speedPerType = [1, 2, 2, 3];
   let attackPerType = [5, 0, 20, 30];
   let rangePerType = [1, 0, 2, 3];
-  let lootPerType = [ [0,1,0,0], [2,0,2,0] , [4,1,2,1] , [3,3,2,5] ];
+  let lootPerType = [ [0,1,0,0,0], [2,0,2,0,0] , [4,1,2,0,1] , [3,3,2,0,5] ];
 
   // determine the level
   const randLevel = Math.max( Math.round( averageLevel + Math.random()*1.5 - 0.75 ), 0)
@@ -2684,10 +2689,23 @@ function createAIShip(pos, routeIndex, averageLevel) {
   // loot has a more difficult calculation
   // get base loot, make a small adjustment (at most 0.5 up or down), multiply by randLevel
   // "Math.max" ensures that the value doesn't become negative
+  /*
+
+  ACTUAL CODE (takes level into account)
+
   let loot = [0,0,0,0];
   for(let res = 0; res < 4; res++) {
     loot[res] = Math.round( Math.max( (lootPerType[shipType][res] + Math.random()*1.0 - 0.5), 0) * randLevel );
   }
+
+  */
+
+  /*
+
+  CURRENT CODE (gives lots of resources, always, just to make it easier to test/play the game)
+
+  */
+  let loot = [2, 1, 2, 0];
 
   return { 
     myUnitType: 2,
@@ -2907,7 +2925,7 @@ function createMonster(myType, index, averageLevel) {
   // calculate loot
   // each monster gives 1 base gold + 1-4 for high HEALTH + 1-4 for high LOOT
   // always multiplied by level
-  let loot = Math.round( (1 + (Math.random() * 3 + 1) * dna[2] + (Math.random() * 3 + 1) * dna[4]) * randLevel );
+  let loot = Math.round( (1 + (Math.random() * 3 + 1) * dna[2] + (Math.random() * 3 + 1) * dna[4]) * randLevel ) + 2;
 
   // Attack RANGE (dna[1]), attack SIGHT (dna[1]), attack STRENGTH (dna[0]), chase SPEED (dna[3])
   let chaseSpeed = Math.round( Math.random() * (randLevel/2) + 1) + dna[3] * 3;
@@ -3229,8 +3247,6 @@ function shuffle(a) {
 }
 
 function generateClue(room, clue, location) {
-  console.log("generateClue function was succesfully called");
-
   let num = clue.num, name = clue.name, x = clue.x, y = clue.y;
 
   let info = [];
@@ -3262,11 +3278,11 @@ function generateClue(room, clue, location) {
     // Get number of docks within certain radius
     case 3:
       // determine random radius
-      var radius = Math.round(Math.random() * 5 + 3);
+      var radius = Math.round(Math.random() * 4 + 2);
 
       // search within that radius (terminator = square of radius)
       // TO DO: Is this even correct? It'd seem that it needs to be "(radius*2)*(radius*2) - 1"
-      info = [ spiralSearch(room, x, y, 3, (radius*radius - 1)), radius]
+      info = [ spiralSearch(room, x, y, 3, (4*radius*radius - 1)), radius]
 
       break;
 
@@ -3276,7 +3292,7 @@ function generateClue(room, clue, location) {
       var radius = Math.round(Math.random() * 4 + 2);
 
       // search within that radius
-      info = [ spiralSearch(room, x, y, 4, (radius*radius - 1)), radius]
+      info = [ spiralSearch(room, x, y, 4, (4*radius*radius - 1)), radius]
 
       break;
 
@@ -3286,7 +3302,7 @@ function generateClue(room, clue, location) {
       var radius = Math.round(Math.random() * 5 + 3);
 
       // search within that radius
-      info = [ spiralSearch(room, x, y, 5, (radius*radius - 1)), radius]
+      info = [ spiralSearch(room, x, y, 5, (4*radius*radius - 1)), radius]
 
       break;
 
