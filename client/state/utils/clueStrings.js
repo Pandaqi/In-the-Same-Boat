@@ -9,5 +9,6 @@ export const CLUE_STRINGS = [
 	"The island nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 7 // island name
 	"The town nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 8 // city name
 	"<em>@[0]</em> is currently closest to <strong>@[name]'s treasure</strong>!", // 9 // player ship name
-
+	"<strong>@[name]'s treasure</strong> is exactly @[0] tiles from here", // 10 // integer
+	
 ]

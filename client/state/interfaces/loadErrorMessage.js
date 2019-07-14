@@ -83,7 +83,21 @@ export default function loadErrorMessage(i) {
             msgVisualType = 1;
             break;
 
+        // This one's also special: it handles all possible clue FAILURES
+        // Everytime, it just picks a different sentence to display
         case 14:
+            let clueFailMsg = ["<strong>@[name]</strong>? Never heard of 'em!", 
+                                "Did you say <strong>@[name]</strong>? You're talking nonsense!", 
+                                "Everyone ignores your requests about <strong>@[name]</strong>"];
+
+            // pick a random clue fail message
+            finalMsg = clueFailMsg[ Math.floor( Math.random() * clueFailMsg.length )]
+
+            // insert name (owner of treasure; unique identifier)
+            finalMsg = finalMsg.replace('@[name]', msgParam);
+            break;
+
+        case 15:
             finalMsg = 'Unfortunately, there was no treasure here';
             break;
 

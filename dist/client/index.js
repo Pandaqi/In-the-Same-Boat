@@ -1088,7 +1088,19 @@ function loadErrorMessage(i) {
             msgVisualType = 1;
             break;
 
+        // This one's also special: it handles all possible clue FAILURES
+        // Everytime, it just picks a different sentence to display
         case 14:
+            var clueFailMsg = ["<strong>@[name]</strong>? Never heard of 'em!", "Did you say <strong>@[name]</strong>? You're talking nonsense!", "Everyone ignores your requests about <strong>@[name]</strong>"];
+
+            // pick a random clue fail message
+            finalMsg = clueFailMsg[Math.floor(Math.random() * clueFailMsg.length)];
+
+            // insert name (owner of treasure; unique identifier)
+            finalMsg = finalMsg.replace('@[name]', msgParam);
+            break;
+
+        case 15:
             finalMsg = 'Unfortunately, there was no treasure here';
             break;
 
@@ -1966,6 +1978,16 @@ var GamePlay = function (_Phaser$State) {
         */
       this.unitNums = [];
 
+      this.unitGroup = gm.add.group();
+
+      // Display fog
+      this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
+      this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
+      var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
+      fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
+
+      this.dotGroup = gm.add.group();
+
       // Display docks
       var dotBmd = gm.add.bitmapData(tileSize, tileSize);
       dotBmd.circle(0.5 * tileSize, 0.5 * tileSize, 0.5 * tileSize, '#000000');
@@ -1994,7 +2016,7 @@ var GamePlay = function (_Phaser$State) {
         }
 
         // create the sprite
-        var newSprite = gm.add.sprite(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
+        var newSprite = this.unitGroup.create(_x2 * tileSize, (_y2 - 0.5) * tileSize, cacheLabel);
         newSprite.width = newSprite.height = tileSize;
 
         newSprite.visible = false;
@@ -2007,7 +2029,7 @@ var GamePlay = function (_Phaser$State) {
         this.dockSprites.push(newSprite);
 
         // also create THE DOT!
-        var newDot = gm.add.sprite(_x2 * tileSize, _y2 * tileSize, dotBmd);
+        var newDot = this.dotGroup.create(_x2 * tileSize, _y2 * tileSize, dotBmd);
         newDot.width = newDot.height = tileSize;
 
         newSprite.myFogDot = newDot;
@@ -2038,7 +2060,7 @@ var GamePlay = function (_Phaser$State) {
         }
 
         // create the sprite
-        var _newSprite = gm.add.sprite(_x3 * tileSize, (_y3 - 0.5) * tileSize, _cacheLabel);
+        var _newSprite = this.unitGroup.create(_x3 * tileSize, (_y3 - 0.5) * tileSize, _cacheLabel);
         _newSprite.width = _newSprite.height = tileSize;
 
         _newSprite.visible = false;
@@ -2051,7 +2073,7 @@ var GamePlay = function (_Phaser$State) {
         this.citySprites.push(_newSprite);
 
         // also create THE DOT!
-        var _newDot = gm.add.sprite(_x3 * tileSize, _y3 * tileSize, dotBmd);
+        var _newDot = this.dotGroup.create(_x3 * tileSize, _y3 * tileSize, dotBmd);
         _newDot.width = _newDot.height = tileSize;
 
         _newSprite.myFogDot = _newDot;
@@ -2067,7 +2089,7 @@ var GamePlay = function (_Phaser$State) {
 
         var _cacheLabel2 = 'monsterNum' + monsters[_i4].myMonsterType;
 
-        var _newSprite2 = gm.add.sprite(0, 0, _cacheLabel2);
+        var _newSprite2 = this.unitGroup.create(0, 0, _cacheLabel2);
         _newSprite2.width = _newSprite2.height = tileSize;
         _newSprite2.visible = false;
         _newSprite2.index = _i4;
@@ -2075,7 +2097,7 @@ var GamePlay = function (_Phaser$State) {
         this.monsterSprites.push(_newSprite2);
 
         // also create THE DOT!
-        var _newDot2 = gm.add.sprite(_x4 * tileSize, _y4 * tileSize, dotBmd);
+        var _newDot2 = this.dotGroup.create(_x4 * tileSize, _y4 * tileSize, dotBmd);
         _newDot2.width = _newDot2.height = tileSize;
 
         _newSprite2.myFogDot = _newDot2;
@@ -2092,7 +2114,7 @@ var GamePlay = function (_Phaser$State) {
 
         var _cacheLabel3 = 'aiShipNum' + aiShips[_i5].myShipType;
 
-        var _newSprite3 = gm.add.sprite(0, 0, _cacheLabel3);
+        var _newSprite3 = this.unitGroup.create(0, 0, _cacheLabel3);
         _newSprite3.width = _newSprite3.height = tileSize;
         _newSprite3.visible = false;
         _newSprite3.index = _i5;
@@ -2100,7 +2122,7 @@ var GamePlay = function (_Phaser$State) {
         this.aiShipSprites.push(_newSprite3);
 
         // also create THE DOT!
-        var _newDot3 = gm.add.sprite(_x5 * tileSize, _y5 * tileSize, dotBmd);
+        var _newDot3 = this.dotGroup.create(_x5 * tileSize, _y5 * tileSize, dotBmd);
         _newDot3.width = _newDot3.height = tileSize;
 
         _newSprite3.myFogDot = _newDot3;
@@ -2116,7 +2138,7 @@ var GamePlay = function (_Phaser$State) {
             _y6 = playerShips[_i6].y;
         var _cacheLabel4 = 'shipNum' + playerShips[_i6].num;
 
-        var _newSprite4 = gm.add.sprite(0, 0, _cacheLabel4);
+        var _newSprite4 = this.unitGroup.create(0, 0, _cacheLabel4);
         _newSprite4.width = _newSprite4.height = tileSize;
         _newSprite4.visible = false;
         _newSprite4.index = _i6;
@@ -2124,19 +2146,11 @@ var GamePlay = function (_Phaser$State) {
         this.playerShipSprites.push(_newSprite4);
 
         // also create THE DOT!
-        var _newDot4 = gm.add.sprite(_x6 * tileSize, _y6 * tileSize, dotBmd);
+        var _newDot4 = this.dotGroup.create(_x6 * tileSize, _y6 * tileSize, dotBmd);
         _newDot4.width = _newDot4.height = tileSize;
 
         _newSprite4.myFogDot = _newDot4;
       }
-
-      // Display fog
-      this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
-      this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
-
-      var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
-
-      fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
 
       // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
       this.moveUnits();
@@ -2381,7 +2395,6 @@ var GamePlay = function (_Phaser$State) {
             // only display the dot
             curUnit.visible = false;
             curUnit.myFogDot.visible = true;
-            this.game.world.bringToTop(curUnit.myFogDot);
 
             // set it to the right position and scale
             curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
@@ -2390,7 +2403,7 @@ var GamePlay = function (_Phaser$State) {
           } else {
             curUnit.myFogDot.visible = false;
 
-            this.game.world.bringToTop(curUnit);
+            this.unitGroup.bringToTop(curUnit);
 
             if (curUnit.myType == 3 || curUnit.myType == 4) {
               // if it's a DOCK or a CITY, make sure we change proportions+placement accordingly
@@ -3592,6 +3605,23 @@ function loadFireButton() {
     return curString;
 }
 
+function loadAskAroundButton() {
+    // display the word 'EXPLORE!' (this button controls both exploring parts of the ocean and asking around in cities)
+    var curString = '<span class="upgradeButtonLabel">ASK AROUND!</span>';
+
+    // calculate the crew costs for asking around
+    // TO DO: For now, it always costs 1 crew
+    //        (also, don't forget to sync this between client and server)
+    var costs = { 1: 1 };
+
+    // display costs inside upgrade button
+    for (var key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    }
+
+    return curString;
+}
+
 function loadExploreButton() {
     // display the word 'EXPLORE!' (this button controls both exploring parts of the ocean and asking around in cities)
     var curString = '<span class="upgradeButtonLabel">EXPLORE!</span>';
@@ -3876,17 +3906,22 @@ function loadPlayInterface(num, cont) {
                     case 5:
                         var span5 = document.createElement("span");
                         span5.classList.add("captain-task");
-                        span5.innerHTML = "<p>The people in this town might know something. Want to ask around?</p>";
+                        span5.innerHTML = "<p>The people in this town might know something. Do you want to ask around? (Leave empty for a random clue.)</p>";
+
+                        var inp5 = document.createElement("input");
+                        inp5.type = 'text';
+                        inp5.placeholder = '... name of treasure here ...';
+                        span5.appendChild(inp5);
 
                         var btn5 = document.createElement("button");
                         btn5.setAttribute('data-taskid', _i2);
                         btn5.classList.add('upgradeButton');
-                        btn5.innerHTML = loadExploreButton();
+                        btn5.innerHTML = loadAskAroundButton();
                         span5.appendChild(btn5);
 
                         btn5.addEventListener('click', function () {
                             // send signal to server
-                            socket.emit('explore-city', param);
+                            socket.emit('explore-city', { ind: param, name: inp5.value });
 
                             // pop this task off the list
                             // set it to null; it will just be ignored from now on
@@ -4218,15 +4253,17 @@ function loadPlayInterface(num, cont) {
                 } else if (unit.myType == 2) {
                     label = 'aiShipNum' + unit.index;
                 } else if (unit.myType == 3) {
-                    if (unit.dir == 'left') {
-                        unit.dir = 'right';
+                    if (unit.dir == 'left' || unit.dir == 'right') {
+                        label = 'dock_side';
+                    } else {
+                        label = 'dock_' + unit.dir;
                     }
-                    label = 'dock_' + unit.dir;
                 } else if (unit.myType == 4) {
-                    if (unit.dir == 'left') {
-                        unit.dir = 'right';
+                    if (unit.dir == 'left' || unit.dir == 'right') {
+                        label = 'city_side';
+                    } else {
+                        label = 'city_' + unit.dir;
                     }
-                    label = 'city_' + unit.dir;
                 }
 
                 var newSprite = canvas.myGame.add.sprite(unit.x * localTileSize, unit.y * localTileSize, label);
@@ -4705,9 +4742,9 @@ function loadPlayInterface(num, cont) {
 //        - 3rd level = object, key is the resource, value is how many of them are needed
 
 var UPGRADE_DICT = [[], // captain (has no upgrades)
-[{}, { 2: 4 }, { 2: 6 }, { 0: 2, 2: 8 }, { 0: 5, 2: 10 }, { 0: 10, 2: 10 }], // first mate
+[{}, { 2: 2 }, { 2: 4 }, { 0: 2, 2: 6 }, { 0: 5, 2: 8 }, { 0: 10, 2: 10 }], // first mate
 [{}, { 2: 2 }, { 0: 2, 2: 5 }, { 0: 4, 2: 8 }, { 0: 6, 1: 1, 2: 10 }, { 0: 10, 1: 2, 2: 10 }], // cartographer
-[{}, { 2: 4 }, { 1: 1, 2: 6 }, { 1: 2, 2: 8 }, { 0: 2, 1: 2, 2: 10 }, { 0: 5, 1: 3, 2: 10 }], // sailor
+[{}, { 2: 2 }, { 1: 1, 2: 6 }, { 1: 2, 2: 8 }, { 0: 2, 1: 2, 2: 10 }, { 0: 5, 1: 3, 2: 10 }], // sailor
 [{ 0: 5, 1: 1, 2: 10 }, { 2: 4 }, { 1: 1, 2: 7 }, { 0: 5, 2: 10 }, { 0: 5, 1: 1, 2: 10 }, { 0: 10, 1: 2, 2: 10 }] // weapon specialist
 ];
 
@@ -4754,7 +4791,8 @@ var CLUE_STRINGS = exports.CLUE_STRINGS = ["They say <strong>@[name]'s treasure<
 "The dock nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 6 // dock name
 "The island nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 7 // island name
 "The town nearest to <strong>@[name]'s treasure</strong> is <em>@[0]</em>", // 8 // city name
-"<em>@[0]</em> is currently closest to <strong>@[name]'s treasure</strong>!"];
+"<em>@[0]</em> is currently closest to <strong>@[name]'s treasure</strong>!", // 9 // player ship name
+"<strong>@[name]'s treasure</strong> is exactly @[0] tiles from here"];
 
 /***/ }),
 /* 30 */
@@ -4920,9 +4958,6 @@ var ControllerWaiting = function (_Phaser$State) {
           // Set compass level to 0; set (and save) orientation
           case 1:
             _serverInfo.serverInfo.roleStats[1].lvl = 0;
-
-            _serverInfo.serverInfo.oldOrientation = 0;
-            _serverInfo.serverInfo.orientation = 0;
 
             break;
 

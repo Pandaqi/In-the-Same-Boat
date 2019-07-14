@@ -123,10 +123,7 @@ class ControllerWaiting extends Phaser.State {
         // Set compass level to 0; set (and save) orientation
         case 1:
           serverInfo.roleStats[1].lvl = 0;
-
-          serverInfo.oldOrientation = 0;
-          serverInfo.orientation = 0;
-
+          
           break;
 
         // Cartographer

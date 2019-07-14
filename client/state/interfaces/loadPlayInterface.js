@@ -284,6 +284,23 @@ function loadFireButton() {
     return curString;
 }
 
+function loadAskAroundButton() {
+    // display the word 'EXPLORE!' (this button controls both exploring parts of the ocean and asking around in cities)
+    let curString = '<span class="upgradeButtonLabel">ASK AROUND!</span>';
+
+    // calculate the crew costs for asking around
+    // TO DO: For now, it always costs 1 crew
+    //        (also, don't forget to sync this between client and server)
+    let costs = { 1: 1 };
+
+    // display costs inside upgrade button
+    for(let key in costs) {
+        curString += '<span class="upgradeResourcesNeeded"><img src="assets/resourceIcon' + key + '.png" /><span>x' + costs[key] + '</span></span>';
+    }
+
+    return curString;
+}
+
 function loadExploreButton() {
     // display the word 'EXPLORE!' (this button controls both exploring parts of the ocean and asking around in cities)
     let curString = '<span class="upgradeButtonLabel">EXPLORE!</span>';
@@ -568,17 +585,22 @@ export default function loadPlayInterface(num, cont) {
                     case 5:
                         let span5 = document.createElement("span")
                         span5.classList.add("captain-task")
-                        span5.innerHTML = "<p>The people in this town might know something. Want to ask around?</p>"
+                        span5.innerHTML = "<p>The people in this town might know something. Do you want to ask around? (Leave empty for a random clue.)</p>"
+
+                        let inp5 = document.createElement("input")
+                        inp5.type = 'text';
+                        inp5.placeholder = '... name of treasure here ...';
+                        span5.appendChild(inp5);
 
                         let btn5 = document.createElement("button")
                         btn5.setAttribute('data-taskid', i);
                         btn5.classList.add('upgradeButton');
-                        btn5.innerHTML = loadExploreButton();
+                        btn5.innerHTML = loadAskAroundButton();
                         span5.appendChild(btn5)
 
                         btn5.addEventListener('click', function() {
                             // send signal to server
-                            socket.emit('explore-city', param);
+                            socket.emit('explore-city', { ind: param, name: inp5.value });
 
                             // pop this task off the list
                             // set it to null; it will just be ignored from now on
@@ -894,11 +916,17 @@ export default function loadPlayInterface(num, cont) {
                 } else if(unit.myType == 2) {
                     label = 'aiShipNum' + unit.index;
                 } else if(unit.myType == 3) {
-                    if(unit.dir == 'left') { unit.dir = 'right';}
-                    label = 'dock_' + unit.dir;
+                    if(unit.dir == 'left' || unit.dir == 'right') { 
+                        label = 'dock_side';
+                    } else {
+                        label = 'dock_' + unit.dir;                        
+                    }
                 } else if(unit.myType == 4) {
-                    if(unit.dir == 'left') { unit.dir = 'right';}
-                    label = 'city_' + unit.dir;
+                    if(unit.dir == 'left' || unit.dir == 'right') { 
+                        label = 'city_side';
+                    } else {
+                        label = 'city_' + unit.dir;                        
+                    }
                 }
 
                 let newSprite = canvas.myGame.add.sprite(unit.x*localTileSize, unit.y*localTileSize, label);

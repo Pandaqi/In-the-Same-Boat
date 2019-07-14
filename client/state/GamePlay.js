@@ -235,6 +235,16 @@ class GamePlay extends Phaser.State {
     */
     this.unitNums = [];
 
+    this.unitGroup = gm.add.group();
+
+    // Display fog
+    this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
+    this.fogBmd.rect(0,0,gm.width,gm.height, '#CCCCCC');
+    let fogSprite = gm.add.sprite(0,0, this.fogBmd);
+    fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
+
+    this.dotGroup = gm.add.group();
+
     // Display docks
     let dotBmd = gm.add.bitmapData(tileSize, tileSize);
     dotBmd.circle(0.5*tileSize, 0.5*tileSize, 0.5*tileSize, '#000000');
@@ -262,7 +272,7 @@ class GamePlay extends Phaser.State {
       }
 
       // create the sprite
-      let newSprite = gm.add.sprite(x*tileSize, (y-0.5)*tileSize, cacheLabel);
+      let newSprite = this.unitGroup.create(x*tileSize, (y-0.5)*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       
       newSprite.visible = false;
@@ -276,7 +286,7 @@ class GamePlay extends Phaser.State {
       this.dockSprites.push(newSprite);
 
       // also create THE DOT!
-      let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
+      let newDot = this.dotGroup.create(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
 
       newSprite.myFogDot = newDot;
@@ -306,7 +316,7 @@ class GamePlay extends Phaser.State {
       }
 
       // create the sprite
-      let newSprite = gm.add.sprite(x*tileSize, (y-0.5)*tileSize, cacheLabel);
+      let newSprite = this.unitGroup.create(x*tileSize, (y-0.5)*tileSize, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       
       newSprite.visible = false;
@@ -319,7 +329,7 @@ class GamePlay extends Phaser.State {
       this.citySprites.push(newSprite);
 
       // also create THE DOT!
-      let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
+      let newDot = this.dotGroup.create(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
 
       newSprite.myFogDot = newDot;
@@ -334,7 +344,7 @@ class GamePlay extends Phaser.State {
 
       let cacheLabel = 'monsterNum' + monsters[i].myMonsterType;
 
-      let newSprite = gm.add.sprite(0,0, cacheLabel);
+      let newSprite = this.unitGroup.create(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       newSprite.visible = false;
       newSprite.index = i;
@@ -342,7 +352,7 @@ class GamePlay extends Phaser.State {
       this.monsterSprites.push(newSprite);
 
       // also create THE DOT!
-      let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
+      let newDot = this.dotGroup.create(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
 
       newSprite.myFogDot = newDot;
@@ -358,7 +368,7 @@ class GamePlay extends Phaser.State {
 
       let cacheLabel = 'aiShipNum' + aiShips[i].myShipType;
 
-      let newSprite = gm.add.sprite(0,0, cacheLabel);
+      let newSprite = this.unitGroup.create(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       newSprite.visible = false;
       newSprite.index = i;
@@ -366,7 +376,7 @@ class GamePlay extends Phaser.State {
       this.aiShipSprites.push(newSprite);
 
       // also create THE DOT!
-      let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
+      let newDot = this.dotGroup.create(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
 
       newSprite.myFogDot = newDot;
@@ -381,7 +391,7 @@ class GamePlay extends Phaser.State {
       let x = playerShips[i].x, y = playerShips[i].y;
       let cacheLabel = 'shipNum' + playerShips[i].num;
 
-      let newSprite = gm.add.sprite(0,0, cacheLabel);
+      let newSprite = this.unitGroup.create(0,0, cacheLabel);
       newSprite.width = newSprite.height = tileSize;
       newSprite.visible = false;
       newSprite.index = i;
@@ -389,19 +399,11 @@ class GamePlay extends Phaser.State {
       this.playerShipSprites.push(newSprite);
 
       // also create THE DOT!
-      let newDot = gm.add.sprite(x*tileSize, y*tileSize, dotBmd);
+      let newDot = this.dotGroup.create(x*tileSize, y*tileSize, dotBmd);
       newDot.width = newDot.height = tileSize;
 
       newSprite.myFogDot = newDot;
     }
-
-    // Display fog
-    this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
-    this.fogBmd.rect(0,0,gm.width,gm.height, '#CCCCCC');
-
-    let fogSprite = gm.add.sprite(0,0, this.fogBmd);
-
-    fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
 
     // move units to correct location, draw extras (shadows, etc.), or a dot if not visible
     this.moveUnits();
@@ -642,7 +644,6 @@ class GamePlay extends Phaser.State {
           // only display the dot
           curUnit.visible = false;
           curUnit.myFogDot.visible = true;
-          this.game.world.bringToTop(curUnit.myFogDot);
 
           // set it to the right position and scale
           curUnit.myFogDot.width = curUnit.myFogDot.height = newWidth;
@@ -651,7 +652,7 @@ class GamePlay extends Phaser.State {
         } else {
           curUnit.myFogDot.visible = false;
 
-          this.game.world.bringToTop(curUnit);
+          this.unitGroup.bringToTop(curUnit);
 
           if(curUnit.myType == 3 || curUnit.myType == 4) {
             // if it's a DOCK or a CITY, make sure we change proportions+placement accordingly
