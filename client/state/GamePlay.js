@@ -20,6 +20,21 @@ class GamePlay extends Phaser.State {
   }
 
   preload () {
+    /*
+      
+      Load debug settings
+
+      These can switch some parts of the game on/off (such as fog), to help debug
+
+    */
+
+    this.debugSettings = {
+      removeFog: false,
+      showTreasure: false,
+    }
+
+
+
     this.game.stage.backgroundColor = "#FFFFFF";
 
     /*
@@ -129,8 +144,11 @@ class GamePlay extends Phaser.State {
 
         // save the noise value
         let curVal = noise.perlin4(nx, ny, nz, nw);
-        //this.map[y][x] = { val: curVal, checked: false, fog: true };
-        this.map[y][x] = { val: curVal, checked: false, fog: false }; // TO DO: Debugging
+        this.map[y][x] = { val: curVal, checked: false, fog: true };
+        
+        if(this.debugSettings.removeFog) {
+          this.map[y][x].fog = false;          
+        }
 
         // display the map
         let tileColor;
@@ -148,14 +166,16 @@ class GamePlay extends Phaser.State {
             tileColor = '#228B22';
         }
 
-        // check if there's a treasure here
-        for(var key in serverInfo.treasures) {
-          let curTres = serverInfo.treasures[key];
+        if(this.debugSettings.showTreasure) {
+          // check if there's a treasure here
+          for(var key in serverInfo.treasures) {
+            let curTres = serverInfo.treasures[key];
 
-          if(curTres.x == x && curTres.y == y) {
-            tileColor = '#FF0000';
+            if(curTres.x == x && curTres.y == y) {
+              tileColor = '#FF0000';
 
-            this.game.add.text(x*tileSize, y*tileSize, key);
+              this.game.add.text(x*tileSize, y*tileSize, key);
+            }
           }
         }
 
@@ -252,7 +272,10 @@ class GamePlay extends Phaser.State {
     this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
     this.fogBmd.rect(0,0,gm.width,gm.height, '#CCCCCC');
     let fogSprite = gm.add.sprite(0,0, this.fogBmd);
-    fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
+
+    if(this.debugSettings.removeFog) {
+      fogSprite.visible = false;      
+    }
 
     this.dotGroup = gm.add.group();
 
@@ -445,24 +468,92 @@ class GamePlay extends Phaser.State {
       // get island with this index
       let curIsland = this.islands[data.index];
 
-      // reveal all tiles associated with this island
-      let averageX = 0, averageY = 0;
-      for(let i = 0; i < curIsland.myTiles.length; i++) {
-        let x = curIsland.myTiles[i][0], y = curIsland.myTiles[i][1]
+      // this variable determines if the island wraps around the edges
+      // and if so, on which side the island name should be displayed then
+      let tilesQuadrant = [0,0,0,0] // "more to the left", "more to the right", "more to the top", "more to the bottom"
 
-        averageX += x;
-        averageY += y;
+      // reveal all tiles associated with this island
+      // also count on which side most of the tiles are
+      let averageX = 0, averageY = 0;
+      let wrapsX = false, wrapsY = true;
+      let curTiles = curIsland.myTiles;
+      for(let i = 0; i < curTiles.length; i++) {
+        let x = curTiles[i][0], y = curTiles[i][1]
+
+        if(x == 0 || x == (this.mapWidth - 1)) {
+          wrapsX = true;
+        }
+
+        if(y == 0 || y == (this.mapHeight - 1)) {
+          wrapsY = true;
+        }
+
+        if(x < 0.5*this.mapWidth) { tilesQuadrant[0]++; }
+        else { tilesQuadrant[1]++; }
+
+        if(y < 0.5*this.mapHeight) { tilesQuadrant[2]++; }
+        else { tilesQuadrant[3]++; }
 
         this.map[y][x].fog = false;
         ths.fogBmd.clear(x*ths.tileSize, y*ths.tileSize, ths.tileSize, ths.tileSize);
       }
 
-      averageX /= curIsland.myTiles.length;
-      averageY /= curIsland.myTiles.length;
+      let wrapSideX = 'none', wrapSideY = 'none';
+
+      // determine which is the dominant side (both X and Y)
+      if(wrapsX) {
+        if(tilesQuadrant[0] > tilesQuadrant[1]) {
+          wrapSideX = 'left';
+        } else {
+          wrapSideX = 'right';
+        }
+      }
+
+      if(wrapsY) {
+        if(tilesQuadrant[2] > tilesQuadrant[3]) {
+          wrapSideY = 'top';
+        } else {
+          wrapSideY = 'bottom';
+        }
+      }
+
+      // calculate the position of the island
+      // average all locations
+      // but, change locations on the wrapside, so they match
+      // finally, ensure the text stays on screen, at all times
+      for(let i = 0; i < curTiles.length; i++) {
+        let x = curTiles[i][0], y = curTiles[i][1]
+
+        // transform X
+        if(x >= this.mapwidth*0.5 && wrapSideX == 'left') {
+          x -= this.mapWidth;
+        } else if(x < this.mapWidth*0.5 && wrapSideX == 'right') {
+          x += this.mapWidth;
+        }
+
+        // transform Y
+        if(y >= this.mapHeight*0.5 && wrapSideY == 'top') {
+          y -= this.mapHeight;
+        } else if(y < this.mapWidth*0.5 && wrapSideY == 'bottom') {
+          y += this.mapHeight;
+        }
+
+        // add final coordinates to average
+        averageX += x;
+        averageY += y;
+      }
+
+      // keep the text on screen
+      // ?? Just bound it to the map rectangle, and perhaps change the anchor to match?  (e.g. if the text is pushed against the left edge, the anchor should be (0, 0.5))
+
+      // divide by total, to get the actual average
+      averageX /= curTiles.length;
+      averageY /= curTiles.length;
 
       // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
       // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
-      gm.add.text(averageX*ths.tileSize, averageY*ths.tileSize, data.name, mainStyle.mainText())
+      let islandName = gm.add.text(averageX*ths.tileSize, averageY*ths.tileSize, data.name, mainStyle.mainText())
+      islandName.anchor.setTo(0.5, 0.5)
     })
 
     // Function that is activated when a DOCK is discovered

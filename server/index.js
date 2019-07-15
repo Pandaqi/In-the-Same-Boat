@@ -56,7 +56,7 @@ io.on('connection', socket => {
       timerLeft: 0,
 
       prepProgress: 0,
-      prepSkip: true,
+      prepSkip: false,
 
       monsterDrawings: [],
       monsterTypes: [],
@@ -904,7 +904,7 @@ io.on('connection', socket => {
         startTurn(room, true);
         
         // set turn timer
-        timer = 20;
+        timer = 35;
         break;
 
       // If the next state is the game over state ...
@@ -2930,7 +2930,7 @@ function createMonster(myType, index, averageLevel) {
   // Attack RANGE (dna[1]), attack SIGHT (dna[1]), attack STRENGTH (dna[0]), chase SPEED (dna[3])
   let chaseSpeed = Math.round( Math.random() * (randLevel/2) + 1) + dna[3] * 3;
 
-  let attackStrength = Math.round( Math.random() * (randLevel/3) * 10 + dna[0] * 20); 
+  let attackStrength = Math.round( Math.random() * (randLevel/3) * 10 + dna[0] * 20) + 5; // TO DO: the +5 is just for testing right now, so monsters actually do damage
   let sightRange = Math.round( Math.random()*randLevel + 2) + dna[1] * 3;
   let attackRange = Math.min( Math.round(sightRange/3), 1);
 

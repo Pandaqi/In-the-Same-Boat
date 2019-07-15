@@ -76,7 +76,7 @@ Object.defineProperty(exports, "__esModule", {
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 var serverInfo = {
-  SERVER_IP: 'http://localhost:8000', /* 'https://in-the-same-boat.herokuapp.com', */
+  SERVER_IP: /*'http://localhost:8000',*/'https://in-the-same-boat.herokuapp.com',
   socket: null,
   server: null,
   roomCode: '',
@@ -1777,6 +1777,17 @@ var GamePlay = function (_Phaser$State) {
   _createClass(GamePlay, [{
     key: 'preload',
     value: function preload() {
+      /*
+        
+        Load debug settings
+          These can switch some parts of the game on/off (such as fog), to help debug
+        */
+
+      this.debugSettings = {
+        removeFog: false,
+        showTreasure: false
+      };
+
       this.game.stage.backgroundColor = "#FFFFFF";
 
       /*
@@ -1883,8 +1894,11 @@ var GamePlay = function (_Phaser$State) {
 
           // save the noise value
           var curVal = _perlinImproved2.default.perlin4(nx, ny, nz, nw);
-          //this.map[y][x] = { val: curVal, checked: false, fog: true };
-          this.map[y][x] = { val: curVal, checked: false, fog: false }; // TO DO: Debugging
+          this.map[y][x] = { val: curVal, checked: false, fog: true };
+
+          if (this.debugSettings.removeFog) {
+            this.map[y][x].fog = false;
+          }
 
           // display the map
           var tileColor = void 0;
@@ -1902,14 +1916,16 @@ var GamePlay = function (_Phaser$State) {
             tileColor = '#228B22';
           }
 
-          // check if there's a treasure here
-          for (var key in _serverInfo.serverInfo.treasures) {
-            var curTres = _serverInfo.serverInfo.treasures[key];
+          if (this.debugSettings.showTreasure) {
+            // check if there's a treasure here
+            for (var key in _serverInfo.serverInfo.treasures) {
+              var curTres = _serverInfo.serverInfo.treasures[key];
 
-            if (curTres.x == x && curTres.y == y) {
-              tileColor = '#FF0000';
+              if (curTres.x == x && curTres.y == y) {
+                tileColor = '#FF0000';
 
-              this.game.add.text(x * tileSize, y * tileSize, key);
+                this.game.add.text(x * tileSize, y * tileSize, key);
+              }
             }
           }
 
@@ -1995,7 +2011,10 @@ var GamePlay = function (_Phaser$State) {
       this.fogBmd = gm.add.bitmapData(gm.width, gm.height);
       this.fogBmd.rect(0, 0, gm.width, gm.height, '#CCCCCC');
       var fogSprite = gm.add.sprite(0, 0, this.fogBmd);
-      fogSprite.visible = false; // TO DO: Remove on deployment; just for debugging
+
+      if (this.debugSettings.removeFog) {
+        fogSprite.visible = false;
+      }
 
       this.dotGroup = gm.add.group();
 
@@ -2192,26 +2211,103 @@ var GamePlay = function (_Phaser$State) {
         // get island with this index
         var curIsland = _this2.islands[data.index];
 
+        // this variable determines if the island wraps around the edges
+        // and if so, on which side the island name should be displayed then
+        var tilesQuadrant = [0, 0, 0, 0]; // "more to the left", "more to the right", "more to the top", "more to the bottom"
+
         // reveal all tiles associated with this island
+        // also count on which side most of the tiles are
         var averageX = 0,
             averageY = 0;
-        for (var _i7 = 0; _i7 < curIsland.myTiles.length; _i7++) {
-          var _x7 = curIsland.myTiles[_i7][0],
-              _y7 = curIsland.myTiles[_i7][1];
+        var wrapsX = false,
+            wrapsY = true;
+        var curTiles = curIsland.myTiles;
+        for (var _i7 = 0; _i7 < curTiles.length; _i7++) {
+          var _x7 = curTiles[_i7][0],
+              _y7 = curTiles[_i7][1];
 
-          averageX += _x7;
-          averageY += _y7;
+          if (_x7 == 0 || _x7 == _this2.mapWidth - 1) {
+            wrapsX = true;
+          }
+
+          if (_y7 == 0 || _y7 == _this2.mapHeight - 1) {
+            wrapsY = true;
+          }
+
+          if (_x7 < 0.5 * _this2.mapWidth) {
+            tilesQuadrant[0]++;
+          } else {
+            tilesQuadrant[1]++;
+          }
+
+          if (_y7 < 0.5 * _this2.mapHeight) {
+            tilesQuadrant[2]++;
+          } else {
+            tilesQuadrant[3]++;
+          }
 
           _this2.map[_y7][_x7].fog = false;
           ths.fogBmd.clear(_x7 * ths.tileSize, _y7 * ths.tileSize, ths.tileSize, ths.tileSize);
         }
 
-        averageX /= curIsland.myTiles.length;
-        averageY /= curIsland.myTiles.length;
+        var wrapSideX = 'none',
+            wrapSideY = 'none';
+
+        // determine which is the dominant side (both X and Y)
+        if (wrapsX) {
+          if (tilesQuadrant[0] > tilesQuadrant[1]) {
+            wrapSideX = 'left';
+          } else {
+            wrapSideX = 'right';
+          }
+        }
+
+        if (wrapsY) {
+          if (tilesQuadrant[2] > tilesQuadrant[3]) {
+            wrapSideY = 'top';
+          } else {
+            wrapSideY = 'bottom';
+          }
+        }
+
+        // calculate the position of the island
+        // average all locations
+        // but, change locations on the wrapside, so they match
+        // finally, ensure the text stays on screen, at all times
+        for (var _i8 = 0; _i8 < curTiles.length; _i8++) {
+          var _x8 = curTiles[_i8][0],
+              _y8 = curTiles[_i8][1];
+
+          // transform X
+          if (_x8 >= _this2.mapwidth * 0.5 && wrapSideX == 'left') {
+            _x8 -= _this2.mapWidth;
+          } else if (_x8 < _this2.mapWidth * 0.5 && wrapSideX == 'right') {
+            _x8 += _this2.mapWidth;
+          }
+
+          // transform Y
+          if (_y8 >= _this2.mapHeight * 0.5 && wrapSideY == 'top') {
+            _y8 -= _this2.mapHeight;
+          } else if (_y8 < _this2.mapWidth * 0.5 && wrapSideY == 'bottom') {
+            _y8 += _this2.mapHeight;
+          }
+
+          // add final coordinates to average
+          averageX += _x8;
+          averageY += _y8;
+        }
+
+        // keep the text on screen
+        // ?? Just bound it to the map rectangle, and perhaps change the anchor to match?  (e.g. if the text is pushed against the left edge, the anchor should be (0, 0.5))
+
+        // divide by total, to get the actual average
+        averageX /= curTiles.length;
+        averageY /= curTiles.length;
 
         // display the island name on top of the island (add up and AVERAGE all x and y coordinates to get the center position)
         // TO DO: Averaging doesn't work with world wrapping. Find a solution for this
-        gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.mainText());
+        var islandName = gm.add.text(averageX * ths.tileSize, averageY * ths.tileSize, data.name, _styles.mainStyle.mainText());
+        islandName.anchor.setTo(0.5, 0.5);
       });
 
       // Function that is activated when a DOCK is discovered
@@ -2261,14 +2357,14 @@ var GamePlay = function (_Phaser$State) {
 
         // update fog
         // go through all discoveredTiles, remove the fog on them
-        for (var _i8 = 0; _i8 < _serverInfo.serverInfo.discoveredTiles.length; _i8++) {
+        for (var _i9 = 0; _i9 < _serverInfo.serverInfo.discoveredTiles.length; _i9++) {
           // get tile (by coordinates [x,y])
-          var _x8 = _serverInfo.serverInfo.discoveredTiles[_i8].x,
-              _y8 = _serverInfo.serverInfo.discoveredTiles[_i8].y;
+          var _x9 = _serverInfo.serverInfo.discoveredTiles[_i9].x,
+              _y9 = _serverInfo.serverInfo.discoveredTiles[_i9].y;
 
           // remove the fog, both behind the scenes, and visually
-          _this2.map[_y8][_x8].fog = false;
-          ths.fogBmd.clear(_x8 * ths.tileSize, _y8 * ths.tileSize, ths.tileSize, ths.tileSize);
+          _this2.map[_y9][_x9].fog = false;
+          ths.fogBmd.clear(_x9 * ths.tileSize, _y9 * ths.tileSize, ths.tileSize, ths.tileSize);
         }
 
         // move all units to their new positions
@@ -2335,32 +2431,32 @@ var GamePlay = function (_Phaser$State) {
         this.unitsOnMap[this.dockSprites[i].originalY].push(this.dockSprites[i]);
       }
 
-      for (var _i9 = 0; _i9 < this.citySprites.length; _i9++) {
-        this.unitsOnMap[this.citySprites[_i9].originalY].push(this.citySprites[_i9]);
+      for (var _i10 = 0; _i10 < this.citySprites.length; _i10++) {
+        this.unitsOnMap[this.citySprites[_i10].originalY].push(this.citySprites[_i10]);
       }
 
-      for (var _i10 = 0; _i10 < this.monsterSprites.length; _i10++) {
-        this.monsterSprites[_i10].originalX = _serverInfo.serverInfo.monsters[_i10].x;
-        this.monsterSprites[_i10].originalY = _serverInfo.serverInfo.monsters[_i10].y;
+      for (var _i11 = 0; _i11 < this.monsterSprites.length; _i11++) {
+        this.monsterSprites[_i11].originalX = _serverInfo.serverInfo.monsters[_i11].x;
+        this.monsterSprites[_i11].originalY = _serverInfo.serverInfo.monsters[_i11].y;
 
-        this.unitsOnMap[this.monsterSprites[_i10].originalY].push(this.monsterSprites[_i10]);
-        this.tempMap[_serverInfo.serverInfo.monsters[_i10].y][_serverInfo.serverInfo.monsters[_i10].x][0]++;
+        this.unitsOnMap[this.monsterSprites[_i11].originalY].push(this.monsterSprites[_i11]);
+        this.tempMap[_serverInfo.serverInfo.monsters[_i11].y][_serverInfo.serverInfo.monsters[_i11].x][0]++;
       }
 
-      for (var _i11 = 0; _i11 < this.aiShipSprites.length; _i11++) {
-        this.aiShipSprites[_i11].originalX = _serverInfo.serverInfo.aiShips[_i11].x;
-        this.aiShipSprites[_i11].originalY = _serverInfo.serverInfo.aiShips[_i11].y;
+      for (var _i12 = 0; _i12 < this.aiShipSprites.length; _i12++) {
+        this.aiShipSprites[_i12].originalX = _serverInfo.serverInfo.aiShips[_i12].x;
+        this.aiShipSprites[_i12].originalY = _serverInfo.serverInfo.aiShips[_i12].y;
 
-        this.unitsOnMap[this.aiShipSprites[_i11].originalY].push(this.aiShipSprites[_i11]);
-        this.tempMap[_serverInfo.serverInfo.aiShips[_i11].y][_serverInfo.serverInfo.aiShips[_i11].x][0]++;
+        this.unitsOnMap[this.aiShipSprites[_i12].originalY].push(this.aiShipSprites[_i12]);
+        this.tempMap[_serverInfo.serverInfo.aiShips[_i12].y][_serverInfo.serverInfo.aiShips[_i12].x][0]++;
       }
 
-      for (var _i12 = 0; _i12 < this.playerShipSprites.length; _i12++) {
-        this.playerShipSprites[_i12].originalX = _serverInfo.serverInfo.playerShips[_i12].x;
-        this.playerShipSprites[_i12].originalY = _serverInfo.serverInfo.playerShips[_i12].y;
+      for (var _i13 = 0; _i13 < this.playerShipSprites.length; _i13++) {
+        this.playerShipSprites[_i13].originalX = _serverInfo.serverInfo.playerShips[_i13].x;
+        this.playerShipSprites[_i13].originalY = _serverInfo.serverInfo.playerShips[_i13].y;
 
-        this.unitsOnMap[this.playerShipSprites[_i12].originalY].push(this.playerShipSprites[_i12]);
-        this.tempMap[_serverInfo.serverInfo.playerShips[_i12].y][_serverInfo.serverInfo.playerShips[_i12].x][0]++;
+        this.unitsOnMap[this.playerShipSprites[_i13].originalY].push(this.playerShipSprites[_i13]);
+        this.tempMap[_serverInfo.serverInfo.playerShips[_i13].y][_serverInfo.serverInfo.playerShips[_i13].x][0]++;
       }
 
       // reset the shadow canvas, set the fill style to transparent black
@@ -2370,10 +2466,10 @@ var GamePlay = function (_Phaser$State) {
       var disp = [0, -0.5]; // displacement of the unit; usually slightly above the tile, so it sticks out
 
       // for all sprites (monsters, AI ships, player ships), move the sprite, then draw the shadow underneath it
-      for (var _y9 = 0; _y9 < this.mapHeight; _y9++) {
-        for (var _i13 = 0; _i13 < this.unitsOnMap[_y9].length; _i13++) {
+      for (var _y10 = 0; _y10 < this.mapHeight; _y10++) {
+        for (var _i14 = 0; _i14 < this.unitsOnMap[_y10].length; _i14++) {
           // this code simply gets the current unit and checks if the tile is still in fog
-          var curUnit = this.unitsOnMap[_y9][_i13];
+          var curUnit = this.unitsOnMap[_y10][_i14];
           var isInFog = this.map[curUnit.originalY][curUnit.originalX].fog;
 
           // the code below is for repositioning and rescaling sprites, in case there are multiple on a single tile
