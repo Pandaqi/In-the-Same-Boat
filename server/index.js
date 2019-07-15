@@ -465,7 +465,7 @@ io.on('connection', socket => {
     curPlayer.profile = state.dataURI
 
     // update the waiting screen
-    sendSignal(curRoom, true, 'player-updated-profile', curPlayer)
+    sendSignal(socket.mainRoom, true, 'player-updated-profile', curPlayer)
   })
 
   /***
