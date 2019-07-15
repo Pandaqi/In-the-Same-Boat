@@ -833,7 +833,8 @@ io.on('connection', socket => {
 
     // if everyone has submitted their preparation, start the game immediately!
     // preparation needed = number of ships * number of roles per ship
-    let prepNeeded = curRoom.playerShips.length * 5;
+    let numberOfRoles = 4;
+    let prepNeeded = curRoom.playerShips.length * numberOfRoles;
 
     if(tempProgress == prepNeeded) {
       // START THE GAME!
