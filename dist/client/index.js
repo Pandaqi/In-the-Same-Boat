@@ -76,7 +76,7 @@ Object.defineProperty(exports, "__esModule", {
 // replace this with 'http://localhost:8000' to test locally
 // use 'https://trampolinedraak.herokuapp.com' for production
 var serverInfo = {
-  SERVER_IP: /*'http://localhost:8000',*/'https://in-the-same-boat.herokuapp.com',
+  SERVER_IP: 'http://localhost:8000', /*'https://in-the-same-boat.herokuapp.com',*/
   socket: null,
   server: null,
   roomCode: '',
@@ -1308,10 +1308,25 @@ var Menu = function (_Phaser$State) {
         _serverInfo.serverInfo.socket = io(_serverInfo.serverInfo.SERVER_IP);
         var socket = _serverInfo.serverInfo.socket;
 
+        // Get the chosen game settings from the menu screen
+        var config = {};
+
+        // Skip preperation?
+        var prepSkip = document.getElementsByName('skipPreparation');
+        for (var i = 0; i < prepSkip.length; i++) {
+          if (prepSkip[i].checked) {
+            config.prepSkip = prepSkip[i].value == 'yes' ? true : false;
+            break;
+          }
+        }
+
+        // How long should turns be?
+        config.turnLength = document.getElementById('turnLength').value;
+
         // Creates game room on server
         socket.on('connect', function () {
           document.getElementById("err-message").innerHTML = 'Creating room ...';
-          socket.emit('new-room', {});
+          socket.emit('new-room', config);
         });
 
         // Once the room has been succesfully created
@@ -3622,7 +3637,7 @@ function disableForbiddenMoves() {
         }
     }
 
-    // check peddle levels (assuming current peddle stays constant)
+    // check peddle levels (assuming current sail stays constant)
     for (var _i = -changeRange; _i <= changeRange; _i++) {
         var _newSpeed = oldSpeed + (curSail - oldSail) + _i;
 
@@ -4273,15 +4288,15 @@ function loadPlayInterface(num, cont) {
             // TO DO: Not used at the moment (might only be needed at the server)
             var detailSize = _upgradeEffectsDictionary2.default[2][_serverInfo.serverInfo.roleStats[2].lvl].detail * 2 + 1;
 
-            // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
             var globalMapWidth = _serverInfo.serverInfo.config.mapWidth;
             var globalMapHeight = _serverInfo.serverInfo.config.mapHeight;
 
             // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
-            // the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
-            var localTileSize = 120 - mapSize * 5;
+            // FIRST PARAMETER: the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
+            // SECOND PARAMETER: however, the width of a player's screen can vary, and thus the canvas size can be larger than tiles allow => calculate the minimum tile size to fill the whole canvas
+            var localTileSize = Math.max(120 - mapSize * 5, Math.ceil(maxWidth / mapSize) + 10);
 
             // Loop through our visible tiles
             // Make sure we center this around our ship!
