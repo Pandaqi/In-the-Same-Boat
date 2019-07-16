@@ -86,6 +86,9 @@ io.on('connection', socket => {
       }
     }
 
+    rooms[id].prepSkip = state.prepSkip;
+    rooms[id].turnLength = state.turnLength;
+
     // save the main room in the socket, for easy access later
     socket.mainRoom = id
 
@@ -404,8 +407,8 @@ io.on('connection', socket => {
     rooms[socket.mainRoom].destroyingGame = true
 
     // disconnect everyone
-    sendSignal(room, true, 'force-disconnect', {}, false, false)
-    sendSignal(room, false, 'force-disconnect', {}, false, false)
+    sendSignal(socket.mainRoom, true, 'force-disconnect', {}, false, false)
+    sendSignal(socket.mainRoom, false, 'force-disconnect', {}, false, false)
 
     // room should be automatically destroyed when last player is removed (see "disconnect" eventListener)
   })
@@ -490,16 +493,16 @@ io.on('connection', socket => {
 
     // NEW SYSTEM: It always COSTS crew to change the sails;
     let deltaCrew = Math.abs(lvl - socket.curShip.roleStats[3].sailLvl);
-    let deltaSpeed = lvl - socket.curShip.roleStats[3].sailLvl
-
-    // this also indicates the difference in SPEED
-    socket.curShip.speed += deltaSpeed;
 
     // check if we can "spend" the extra crew
     // (this should automatically work for a negative delta, in which case resources will just be added)
     if( resourceCheck(socket, 3, -1, { 1: deltaCrew }, 1) ) {
       // update sails to the new level
       socket.curShip.roleStats[3].sailLvl = lvl;
+
+      // sail level directly indicates the difference in SPEED
+      let deltaSpeed = lvl - socket.curShip.roleStats[3].sailLvl
+      socket.curShip.speed += deltaSpeed;
     }
     
   })
@@ -512,13 +515,14 @@ io.on('connection', socket => {
     let deltaSpeed = (lvl - socket.curShip.roleStats[3].peddleLvl);
     let deltaCrew = 2 * deltaSpeed;
 
-    // this also indicates the difference in SPEED, but halved (because each change costs 2 crew)
-    socket.curShip.speed += deltaSpeed;
-
     // check if we can "spend" the extra crew
+    // REMARK: Yes, resourceCheck works with negative numbers, especially for crew
     if( resourceCheck(socket, 3, -1, { 1: deltaCrew }, 1) ) {
       // update sails to the new level
       socket.curShip.roleStats[3].peddleLvl = lvl;
+
+      // this also indicates the difference in SPEED, but halved (because each change costs 2 crew)
+      socket.curShip.speed += deltaSpeed;
     }
 
   })
@@ -905,7 +909,7 @@ io.on('connection', socket => {
         startTurn(room, true);
         
         // set turn timer
-        timer = 35;
+        timer = curRoom.turnLength;
         break;
 
       // If the next state is the game over state ...
@@ -1620,9 +1624,12 @@ function startTurn(room, gameStart = false) {
 
         // First Mate
         case 1:
-          // Current ship orientation
-          pPack["orientation"] = curShip.orientation;
-          pPack["oldOrientation"] = curShip.orientation;
+          // Send current ship orientation (and previous orientation), only at game start
+          if(gameStart) {
+            pPack["orientation"] = curShip.orientation;
+            pPack["oldOrientation"] = curShip.orientation;
+          }
+          
           break;
 
         // Cartographer
@@ -3270,9 +3277,9 @@ function generateClue(room, clue, location) {
 
       break;
 
-    // Get sector number (1 t/m 9)
+    // Get sector number (originally it's 0-8, so add 1 at the end to get 1-9) 
     case 2:
-      info = [ Math.floor(y / (room.mapHeight / 3)) * 3 + Math.floor(x / (room.mapWidth / 3)) ]
+      info = [ Math.floor(y / (room.mapHeight / 3)) * 3 + Math.floor(x / (room.mapWidth / 3)) + 1 ]
 
       break;
 

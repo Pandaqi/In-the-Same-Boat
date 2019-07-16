@@ -193,7 +193,7 @@ function disableForbiddenMoves() {
         }
     }
 
-    // check peddle levels (assuming current peddle stays constant)
+    // check peddle levels (assuming current sail stays constant)
     for(let i = -changeRange; i <= changeRange; i++) {
         let newSpeed = oldSpeed + (curSail - oldSail) + i;
 
@@ -837,15 +837,15 @@ export default function loadPlayInterface(num, cont) {
             // TO DO: Not used at the moment (might only be needed at the server)
             let detailSize = UPGRADE_EFFECT_DICT[2][serverInfo.roleStats[2].lvl].detail * 2 + 1;
 
-            // TO DO
             // this is the total size of the map (displayed on monitor)
             // it should be consistent across all devices
             let globalMapWidth = serverInfo.config.mapWidth;
             let globalMapHeight = serverInfo.config.mapHeight;
 
             // this is the tile size used for displaying the map on this device only (usually to make the squares bigger/more zoomed in)
-            // the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
-            let localTileSize = 120 - mapSize*5; 
+            // FIRST PARAMETER: the larger the map, the LESS zoomed in you are, thus tiles are SMALLER
+            // SECOND PARAMETER: however, the width of a player's screen can vary, and thus the canvas size can be larger than tiles allow => calculate the minimum tile size to fill the whole canvas
+            let localTileSize = Math.max(120 - mapSize*5, Math.ceil(maxWidth / mapSize) + 10)
 
             // Loop through our visible tiles
             // Make sure we center this around our ship!

@@ -37,10 +37,25 @@ class Menu extends Phaser.State {
       serverInfo.socket = io(serverInfo.SERVER_IP)
       let socket = serverInfo.socket
 
+      // Get the chosen game settings from the menu screen
+      let config = {}
+
+      // Skip preperation?
+      let prepSkip = document.getElementsByName('skipPreparation')
+      for(let i = 0; i < prepSkip.length; i++){
+          if(prepSkip[i].checked){
+              config.prepSkip = (prepSkip[i].value == 'yes') ? true : false;
+              break;
+          }
+      }
+      
+      // How long should turns be?
+      config.turnLength = document.getElementById('turnLength').value;
+
       // Creates game room on server
       socket.on('connect', () => {
         document.getElementById("err-message").innerHTML = 'Creating room ...'
-        socket.emit('new-room', {})
+        socket.emit('new-room', config)
       })
 
       // Once the room has been succesfully created

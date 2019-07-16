@@ -1,12 +1,12 @@
 {
   "name": "in-the-same-boat",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Be a pirate, together.",
   "main": "index.js",
   "scripts": {
     "build": "webpack --progress --colors",
-    "dev": "nodemon server/index.js --exec babel-node",
-    "start": "nodemon server/index.js"
+    "dev": "node server/index.js --exec babel-node",
+    "start": "node server/index.js"
   },
   "repository": {
     "type": "git",
