@@ -1097,7 +1097,7 @@ export default function loadPlayInterface(num, cont) {
                 // get new sail value: it's based on change, so the slider only knows the CHANGE in level, and we need to add the current value
                 let newSailValue = serverInfo.roleStats[3].oldSailLvl + v;
               
-                console.log("New sail value," newSailValue)
+                console.log("New sail value", newSailValue)
 
                 // if it's the same as our current value, don't do anything
                 if(serverInfo.roleStats[3].sailLvl == newSailValue) {
