@@ -221,6 +221,15 @@ h1 {
 
     position:relative;
     z-index:7;
+
+    /* disable text selection within all role interfaces */ 
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
 }
 
 .roleInterface {
@@ -467,7 +476,9 @@ p.captain-dockDeal img {
   position: absolute;
   box-sizing: border-box;
   line-height: 100px;
+
   pointer-events: none;
+  touch-action: none;
 }
 
 #sailor-speedCircle::after {
@@ -477,6 +488,9 @@ p.captain-dockDeal img {
   margin-top: -70px;
   opacity: 0.5;
   font-variant: small-caps;
+
+  pointer-events: none;
+  touch-action: none;
 }
 
 .sailor-rangeHintsVertical {

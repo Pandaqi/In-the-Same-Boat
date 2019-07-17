@@ -221,7 +221,50 @@ function disableForbiddenMoves() {
     // Debugging
     console.log("Allowed Sail Range", allowedSailRange);
     console.log("Allowed Peddle Range", allowedPeddleRange);
+}
 
+function sailorSlider(ev) {
+    let curEl = ev.target;
+
+    let tempRect = curEl.getBoundingClientRect(); 
+    let offset = {
+        top: tempRect.top + document.body.scrollTop,
+        left: tempRect.left + document.body.scrollLeft
+    }
+
+    // differentiate between mouse and touch movements (and get the right coordinates)
+    let coords = { x: ev.pageX, y: ev.pageY }
+    if(ev.type == 'touchmove' || ev.type == 'touchstart') {
+        coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY }
+    } else {
+        return;
+    }
+
+    let minValue = parseInt(curEl.min);
+    let fullValue = parseInt(curEl.max) - minValue;
+
+    // differentiate between the horizontal and vertical slider
+    let cors, percent, val;
+    if(curEl.id == "sailor-sailInput") {
+        cors = (coords.y - offset.top);
+        percent = cors / tempRect.height; 
+        val = - ( minValue + Math.round( fullValue * percent) ); // invert value, because slider is inverted
+    } else {
+        cors = (coords.x - offset.left); // get the X on the slider itself, by subtracting slider X coordinate by page X coordinate
+        percent = cors / tempRect.width; // get the percentage on the slider
+        val = minValue + Math.round( fullValue * percent); // value is minimum value, plus full width multiplied by the percentage (from the click)
+    }
+
+    console.log(offset);
+    console.log(tempRect.width, tempRect.height);
+    console.log(coords.x, cors, percent, val);
+
+    // set slider to new value
+    curEl.setAttribute('data-value', val)
+
+    // dispatch the event to update the shizzle
+    let ghostEvent = new CustomEvent("input");
+    curEl.dispatchEvent(ghostEvent);
 }
 
 /*
@@ -1073,14 +1116,20 @@ export default function loadPlayInterface(num, cont) {
             }
             sailorContainer.appendChild(rangeHint01);
 
+            vSlider.addEventListener('touchstart', sailorSlider);
+            vSlider.addEventListener('touchmove', sailorSlider);
+
             // If the slider was changed ...
             // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus
             // We want the latter, because we only send a signal when the user RELEASES the slider. Otherwise, we would send way too many (unnecessary) signals.
-            vSlider.addEventListener('change', function() {
+            vSlider.addEventListener('input', function(ev) {
                 console.log("Changing vertical (sail) slider")
               
                 let v = parseInt(this.value);
-              
+                if(this.hasAttribute('data-value') && v != this.getAttribute('data-value')) {
+                    v = parseInt( this.getAttribute('data-value') );
+                }
+
                 console.log("Value:", v);
 
                 let sailRange = serverInfo.roleStats[3].allowedSailRange;
@@ -1088,16 +1137,15 @@ export default function loadPlayInterface(num, cont) {
                 // if we go beyond our maximum input, snap back immediately
                 if(v < sailRange[0]) {
                     v = sailRange[0];
-                    this.value = v;
                 } else if(v > sailRange[1]) {
                     v = sailRange[1]
-                    this.value = v;
                 }
+                this.value = v;
 
                 // get new sail value: it's based on change, so the slider only knows the CHANGE in level, and we need to add the current value
                 let newSailValue = serverInfo.roleStats[3].oldSailLvl + v;
               
-                console.log("New sail value", newSailValue)
+                console.log("New sail value:", newSailValue)
 
                 // if it's the same as our current value, don't do anything
                 if(serverInfo.roleStats[3].sailLvl == newSailValue) {
@@ -1184,20 +1232,27 @@ export default function loadPlayInterface(num, cont) {
             }
             sailorContainer.appendChild(rangeHint11);
 
+            hSlider.addEventListener('touchstart', sailorSlider);
+            hSlider.addEventListener('touchmove', sailorSlider);
+
             // If the slider has changed ...
-            hSlider.addEventListener('change', function() {
+            hSlider.addEventListener('input', function(ev) {
                 let v = parseInt(this.value);
+
+                // override value if our touchstart/touchmove events found a different value
+                if(this.hasAttribute('data-value') && v != this.getAttribute('data-value')) {
+                    v = parseInt( this.getAttribute('data-value') );
+                }
 
                 let peddleRange = serverInfo.roleStats[3].allowedPeddleRange;
 
                 // if we go beyond our maximum input, snap back immediately
                 if(v < peddleRange[0]) {
                     v = peddleRange[0];
-                    this.value = v;
                 } else if(v > peddleRange[1]) {
                     v = peddleRange[1]
-                    this.value = v;
                 }
+                this.value = v;
 
                 // get new peddle value
                 let newPeddleValue = serverInfo.roleStats[3].oldPeddleLvl + v;
