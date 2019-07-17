@@ -1170,7 +1170,7 @@ function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
   if(!selfInflicted) {
     // if the attacker was a player ship, they receive a (feedback) message about the attack
     if(attacker.myUnitType == 0) {
-      attacker.errorMessages.push([6,0]);
+      attacker.attackInfo.hits++;
     }
 
     // if the victim was a player ship, they receive an (error) message about the attack
@@ -1192,10 +1192,9 @@ function dealDamage(room, obj, attacker, dmg, selfInflicted = false) {
     let uType = obj.myUnitType;
 
     // if the PLAYER killed something
-    // they should get a message
-    // right now, it's just a vague "You killed something! Check your resources for loot"
+    // they should get a message ("You destroyed a <unit type>"! Check your resources for loot")
     if(attacker.myUnitType == 0) {
-      attacker.errorMessages.push([7,0]);
+      attacker.errorMessages.push([7, uType]);
     }
 
     switch(uType) {
@@ -1800,6 +1799,8 @@ function finishTurn(room) {
     // stop firing (in the future)!
     curShip.willFire = false;
 
+    curShip.attackInfo = { hits: 0, shots: 0 }
+
     let ammo = curShip.cannons;
 
     // Set range based on level
@@ -1812,7 +1813,7 @@ function finishTurn(room) {
     // TO DO: Do an actual check (if cannoneer is in the game)
     let cannoneerInGame = false;
     if(!cannoneerInGame) {
-      ammo = [3,3,3,3];
+      ammo = [2,2,2,2];
     }
 
     // establish the ship angle
@@ -1826,6 +1827,8 @@ function finishTurn(room) {
       if(curAmmo <= 0) {
         continue;
       }
+
+      curShip.attackInfo.shots += curAmmo;
 
       // increase angle (each cannon represents a different side, 90 degrees rotated towards the previous)
       const angle = (baseAngle + c*90) * Math.PI / 180;
@@ -1847,13 +1850,13 @@ function finishTurn(room) {
 
           let tile = curRoom.map[tempY][tempX];
 
-          // if this tile has no units, nothing to do!
-          if(!tile.hasUnits) {
-            continue;
-
-          // if it's a dock, stop the bullet immediately
-          } else if(hasDock(tile) || hasCity(tile)) {
+          // if it's a dock or city, stop the bullet immediately          
+          if(hasDock(tile) || hasCity(tile)) {
             break;
+
+          // if this tile has no units, nothing to do here, continue to next bullet position!
+          } else if(!tile.hasUnits) {
+            continue;
 
           // if we're still here, this means there is something to hit
           // hit it, then break out of the loop (the bullet is finished)
@@ -1871,12 +1874,23 @@ function finishTurn(room) {
             for(let i = 0; i < tile.playerShips.length; i++) {
               dealDamage(curRoom, curRoom.playerShips[ tile.playerShips[i] ], curShip, 10);
             }
+
+            break;
           } 
         }
       }
 
       // set ammo to zero
       curShip.cannons[c] = 0;
+    }
+
+    // relay info about attacking
+    if(curShip.attackInfo.hits > 0) {
+      // if we hit at least something, send a congratulatory message, including how many shots we took and how many were succesful
+      curShip.errorMessages.push([6, [curShip.attackInfo.shots, curShip.attackInfo.hits] ]);      
+    } else {
+      // otherwise, send an insulting message about how the player couldn't hit anything!
+      curShip.errorMessages.push([16, 0]);
     }
 
   }
@@ -2222,7 +2236,7 @@ function createShip(index) {
   // if the cannoneer isn't in the game, set it to a fixed (near maximum) level
   let cannons = [2, -1, -1, -1], cannoneerLvl = 0, cannoneerInGame = false;
   if(!cannoneerInGame) {
-    cannons = [3, 3, 3, 3]
+    cannons = [2, 2, 2, 2]
     cannoneerLvl = 3;
   }
 

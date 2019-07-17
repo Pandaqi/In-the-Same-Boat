@@ -34,12 +34,14 @@ export default function loadErrorMessage(i) {
             break;
 
         case 6:
-            finalMsg = 'Your cannonball hit a target!';
+            finalMsg = 'You shot ' + param[0] + ' cannonballs, which hit ' + param[1] + ' times';
             msgVisualType = 1;
             break;
 
         case 7:
-            finalMsg = 'You killed something! Check your resources for loot.';
+            var unitTypes = ['player ship', 'monster', 'computer ship', 'dock', 'city'];
+
+            finalMsg = 'You destroyed a ' + unitTypes[param] + '! Check your resources for loot.';
             msgVisualType = 1;
             break;
 
@@ -99,6 +101,10 @@ export default function loadErrorMessage(i) {
 
         case 15:
             finalMsg = 'Unfortunately, there was no treasure here';
+            break;
+
+        case 16:
+            finalMsg = 'Oh boy, none of your attacks hit anything!'
             break;
 
     }

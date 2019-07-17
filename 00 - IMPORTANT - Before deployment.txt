@@ -1,16 +1,3 @@
-When testing the game locally, I need to change a few parameters to make it work well.
-
-When deploying the game, these need to be changed back.
-
-
-
-1) Set the SERVER_IP (in serverInfo) to the actual server 				(instead of localhost)
-
-2) Set "prepSkip" variable (on new rooms) to FALSE 						(it skips the preparation, which is useful in debugging, but not allowed in the real game)
-
-3) Build the app ourselves!
-
-
 For FINAL deployment:
 
 1) Re-enable the ROOM ID system 										(for unique room ids, instead of always "SHIP")

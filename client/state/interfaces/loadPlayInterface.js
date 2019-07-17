@@ -237,6 +237,8 @@ function sailorSlider(ev) {
     if(ev.type == 'touchmove' || ev.type == 'touchstart') {
         coords = { x: ev.touches[0].pageX, y: ev.touches[0].pageY }
     } else {
+        // in fact, just ignore this whole thing if we're not on a touchscreen
+        // the default behaviour of sliders should take over and should work fine
         return;
     }
 
