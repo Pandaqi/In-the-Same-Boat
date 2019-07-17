@@ -168,6 +168,7 @@ function disableForbiddenMoves() {
     let allowedSailRange = [0,0];
     let allowedPeddleRange = [0,0];
 
+
     // determine range of change
     const changeRange = Math.ceil( (serverInfo.roleStats[3].lvl + 1) / 4);
 
@@ -216,6 +217,10 @@ function disableForbiddenMoves() {
 
     serverInfo.roleStats[3].allowedSailRange = allowedSailRange;
     serverInfo.roleStats[3].allowedPeddleRange = allowedPeddleRange;
+  
+    // Debugging
+    console.log("Allowed Sail Range", allowedSailRange);
+    console.log("Allowed Peddle Range", allowedPeddleRange);
 
 }
 
@@ -1072,7 +1077,11 @@ export default function loadPlayInterface(num, cont) {
             // NOTE: "on input" happens immediately after the change, "on change" only when element loses focus
             // We want the latter, because we only send a signal when the user RELEASES the slider. Otherwise, we would send way too many (unnecessary) signals.
             vSlider.addEventListener('change', function() {
+                console.log("Changing vertical (sail) slider")
+              
                 let v = parseInt(this.value);
+              
+                console.log("Value:", v);
 
                 let sailRange = serverInfo.roleStats[3].allowedSailRange;
 
@@ -1087,6 +1096,8 @@ export default function loadPlayInterface(num, cont) {
 
                 // get new sail value: it's based on change, so the slider only knows the CHANGE in level, and we need to add the current value
                 let newSailValue = serverInfo.roleStats[3].oldSailLvl + v;
+              
+                console.log("New sail value," newSailValue)
 
                 // if it's the same as our current value, don't do anything
                 if(serverInfo.roleStats[3].sailLvl == newSailValue) {
@@ -1105,6 +1116,8 @@ export default function loadPlayInterface(num, cont) {
                 
                 // update forbidden moves
                 disableForbiddenMoves();
+              
+                console.log("End of vertical slider change");
             })
 
             // Horizontal slider for paddles
