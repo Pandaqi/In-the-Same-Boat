@@ -9,14 +9,13 @@
 const EVENT_DICT = {
 
 	"main": {
+		// new units (player, pirate, monster) enter the world
 		"new-player": ["New player!", [] ],
-
 		"pirate-born": ["Pirate @[0] started", [] ],
-
 		"new-monster-type": ["Monster @[0] sighted", [] ],
 
+		// random events (bad)
 		"natural-disaster": ["Natural disaster!", [] ],
-
 		"monster-rampage": ["Monster @[0] rampages!", []],
 	},
 
@@ -34,11 +33,19 @@ const EVENT_DICT = {
 		"trade-route": ["Player @[0] continues trade route", ["trade-route"] ],
 		"fish": ["Player @[0] fishes for resources/treasure", ["fish"] ],
 		"attack-ship": ["Player @[0] attacks a ship", [] ],
+		"ask-aid": ["Player @[0] asks resource aid", [] ],
+
+		// relationship events
+		"diplomacy": ["Player @[0] reached out to @[1] to increase friendship", [] ],
 
 		// timed events (with units dying or "ending", mostly)
 		"natural-disaster-end": ["Natural disaster ended", [] ],
 		"pirate-dies": ["Pirate @[0] died", [] ],
 		"monster-rampage-end": ["Monster @[0] rampage ended", []],
+		"war-ends": ["The war has ended", []],
+
+		// everything war-related
+		"start-war": ["Player @[0] started a war with @[1]", []],
 	},
 
 }
@@ -50,7 +57,9 @@ const CLUE_STRINGS = [
 	"The Treasure of @[name] should be @[0] tiles from the nearest island", // integer
 	"@[name] hid a treasure somewhere in sector @[0]", // sector number: 1 up to and including 9
 	"There are @[0] docks within a @[1] tile radius of @[name]'s treasure", // integer, integer 
-	"@[name]'s treasure is probably near @[dock][0]" // dock lookup => dock index
+	"@[name]'s treasure is probably near @[dock][0]", // dock lookup => dock index
+	"@[player][0] is currently closest to @[name]'s treasure!", // player lookup => player index
+
 ]
 
 /*
@@ -64,10 +73,6 @@ Hoeveel is de afstand naar <een andere belangrijke plek in de wereld>?
 /*
 
 TO DO:
-
-Make the explore function work
-Show the tiles it explores ( = the current territory of each player)
-When the explore function finds a place for a dock/city, place it immediately. (For testing now; there'll be resources later)
 
 REMEMBER: 
  => Check if a unit has an event planned. If not, set it to the default (explore/roam around)
@@ -185,8 +190,8 @@ var gameScene = new Phaser.Class({
     },
 
     preload: function() {
-    	this.mapWidth = 60;
-    	this.mapHeight = 30;
+    	this.mapWidth = 40;
+    	this.mapHeight = 20;
 
     	this.tileSize = Math.min(window.innerWidth / this.mapWidth, window.innerHeight / this.mapHeight);
 
@@ -295,9 +300,17 @@ var gameScene = new Phaser.Class({
 
 		this.allEventsNow = [];
 
+		/*** DISPLAY RELATIONSHIPS ***/
+		this.playerRelations = [];
+		for(let i = 0; i < this.maxPlayers; i++) {
+			let newText = this.add.text(20, i*50, 'Player ' + i + ': ');
+
+			this.playerRelations.push(newText);
+		}
+
 		// Every X ms, go to a new step within the timeline
 		this.simulationTimer = this.time.addEvent({
-		    delay: 5,                // ms
+		    delay: 500,                // ms
 		    callback: this.updateTimeline,
 		    //args: [],
 		    callbackScope: this,
@@ -312,6 +325,28 @@ var gameScene = new Phaser.Class({
 			c -= bound;
 		}
 		return c;
+	},
+
+	changeRelationship: function(num1, num2, delta) {
+		let p1 = this.unitsInWorld["players"][num1], p2 = this.unitsInWorld["players"][num2]
+
+		let threshold = -10;
+		if(!p1.atWar) {
+			p1.relations[num2] += delta;		
+		}
+
+		if(!p2.atWar) {
+			p2.relations[num1] += delta;
+		}
+
+		if(!p1.atWar && !p2.atWar) {
+			if(p1.relations[num2] <= threshold) {
+				p1.possibleEvents = ['start-war'];
+			} else if(p2.relations[num1] <= threshold) {
+				p2.possibleEvents = ['start-war'];
+			}
+		}
+			
 	},
 
 	placeSimUnit: function(obj, x, y) {
@@ -431,6 +466,38 @@ var gameScene = new Phaser.Class({
 
 		switch(ev) {
 
+			// START WAR
+			// Find allies (on both sides) and make them join in the fight
+			// TO DO: Pick a sub event (such as "repurpose all ships for fighting" or "grow army")
+			// TO DO: Tell pirates that there's a scramble going on
+			// Plan a timed event for ending the war
+			case 'start-war':
+				// go through all players, then through all their relations, and determine if they join the war
+				for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+					let p = this.unitsInWorld.players[i];
+					for(let j = 0; j < p.relations.length; j++) {
+						// don't start a war with ourselves
+						if(i == j) {
+							continue;
+						}
+
+						// if the relationship is below minimum, join the war
+						// I don't select "sides" => the relationship always shows who is fighting against who
+						if(p.relations[j] <= -10) {
+							p.atWar = true;
+							break;
+						}
+					}
+				}
+
+
+				// War automatically ends after X timesteps
+				// ROUND IT, because it checks if the timestap is exactly equal
+				let maxWarDuration = Math.round(10 + Math.random()*20);
+				this.timedEvents.push([this.timestep + maxWarDuration, null, null, 'war-ends']);
+
+				break;
+
 			// PIRATE DIES: Remove the pirate from the world
 			// For now, we just set to null. In the future, we might think about actually removing it.
 			// TO DO: Maybe the list of ships can be an obj, with the keys being the NAME of the ship
@@ -438,6 +505,30 @@ var gameScene = new Phaser.Class({
 				this.unitsInWorld[ ref.unitType ][ ref.unitIndex ] = null;
 
 				// TO DO: Call "placeSimUnit" with negative coordinates, before setting this obj to null?
+
+				break;
+
+			// THE WAR ENDS
+			// Repurpose all ships
+			// Reset all relationships to neutral (or even positive)
+			// Ensure people aren't too much at each other's throat from the get-go (there's enough room to explore/build)
+			case 'war-ends':
+
+				// go through all players
+				for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+					let p = this.unitsInWorld.players[i];
+
+					// ensure the player isn't at war anymore
+					p.atWar = false;
+
+					// reset any bad relationships to +5
+					// PROBLEM (??): it resets to extremely high numbers
+					for(let j = 0; j < p.relations.length; j++) {
+						if(p.relations[j] <= -10) {
+							this.changeRelationship(p.num, j,  (-p.relations[j] + 5) );
+						}
+					}
+				}
 
 				break;
 
@@ -457,7 +548,7 @@ var gameScene = new Phaser.Class({
 					mainUnit.resources -= cost;
 				} else {
 					// Plan events that generate more income
-					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship"]);
+					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship", "ask-aid"]);
 
 					eventSucceeded = false;
 				}
@@ -478,7 +569,7 @@ var gameScene = new Phaser.Class({
 					mainUnit.resources -= cost;
 				} else {
 					// Plan events that generate more income
-					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship"]);
+					obj.possibleEvents.push(...["explore", "start-trade-route", "fish", "attack-ship", "ask-aid"]);
 
 					eventSucceeded = false;
 				}
@@ -548,8 +639,24 @@ var gameScene = new Phaser.Class({
 					break;
 				}
 
+				// determine probability of player denying trade route
+				var prob = Math.random() * (this.unitsInWorld.players[obj.myPlayer].relations[pickPlayer.num] + 10);
+				if(prob <= 10) {
+					// failure; decrease relationships, don't start trade route
+					eventSucceeded = false;
+					obj.tradeRouteCounter = -1;
+					this.changeRelationship(obj.myPlayer, pickPlayer.num, -1);
+					break;
+				} else {
+					// succes; increase relationship!
+					// improve relationships with the person owning the dock
+					this.changeRelationship(obj.myPlayer, pickPlayer.num, 3);
+				}
+
 				// then get a random dock, and save it as the trade route destination
-				obj.tradeRoute[1] = pickPlayer.docks[ Math.floor( Math.random() * pickPlayer.docks.length )];					
+				obj.tradeRoute[1] = pickPlayer.docks[ Math.floor( Math.random() * pickPlayer.docks.length )];
+
+									
 				break;
 
 			// CONTINUE ON TRADE ROUTE
@@ -570,9 +677,6 @@ var gameScene = new Phaser.Class({
 				// move ship to that location
 				this.placeSimUnit(obj, obj.tradeRoute[obj.tradeRouteCounter].x, obj.tradeRoute[obj.tradeRouteCounter].y)
 
-				// TO DO: If a trade request is ignored, relations become worse
-				// TO DO: But if a trade route is succesful, relations strengthen
-
 				// if it's the home base, get resources
 				if(obj.tradeRouteCounter == 0) {
 					mainUnit.resources += 4;
@@ -586,6 +690,60 @@ var gameScene = new Phaser.Class({
 				mainUnit.resources += 2.5;
 
 				break;
+
+			// ASK AID
+			// If you don't have enough resources, others might lend you a hand
+			// Can increase or decrease relationships
+			case 'ask-aid':
+				// loop through all players
+				for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+					// if this player is not ourselves
+					if(i != obj.myPlayer) {
+						// ask for help
+						// probability of success depends on relationship
+						var prob = Math.random() * (this.unitsInWorld.players[obj.myPlayer].relations[i] + 10);
+						if(prob <= 10) {
+							// failure; decrease relationship
+							this.changeRelationship(obj.myPlayer, i, -0.5);
+						} else {
+							// success; increase relationship, give resources
+							this.changeRelationship(obj.myPlayer, i, 3)
+
+							var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
+							mainUnit.resources += 5;
+
+							break;
+						}
+
+					}
+				}
+
+				break;
+
+			// DIPLOMACY
+			// Find a random player, try to improve relationship with them
+			case 'diplomacy':
+				let randIndex = Math.floor( Math.random() * this.unitsInWorld.players.length);
+
+				if(randIndex == obj.num) {
+					// we can't improve relationships with ourself!
+					eventSucceeded = false;
+					break;
+				}
+
+				// try to become friends
+				// probability of success depends on relationship
+				var prob = Math.random() * (obj.relations[randIndex] + 10);
+				if(prob <= 10) {
+					// failure; decrease relationship
+					this.changeRelationship(obj.num, randIndex, -1);
+				} else {
+					// success; increase relationship
+					this.changeRelationship(obj.num, randIndex, 3);
+				}
+
+				break;
+
 
 			// ATTACK A SHIP
 			// The ship searches for a ship nearby, which is not their own/friendly, and attacks it
@@ -621,6 +779,9 @@ var gameScene = new Phaser.Class({
 									this.placeSimUnit(curUnit, -1, -1);
 
 									this.unitsInWorld.players[ curUnit.myPlayer ].myShips[ curUnit.num ] = null;
+
+									// change relationships: the one that's been attacked is angry!
+									this.changeRelationship(obj.myPlayer, curUnit.myPlayer, -3);
 								}
 							}
 
@@ -666,11 +827,33 @@ var gameScene = new Phaser.Class({
 					let tempTile = curPlayer.possibleTiles.splice(randIndex, 1)[0];
 					let actualTile = this.map[tempTile.y][tempTile.x];
 
-					// if this tile has another owner OR has a dock, don't explore it
+					// if this tile already has a DOCK or CITY, don't explore it
 					// but continue to the next tile, and reduce the incrementer (so we will explore enough tiles)
-					if( actualTile.owner >= 0 || actualTile.dock != null || actualTile.city != null) {
+					if(actualTile.dock != null || actualTile.city != null) {
 						i--;
 						continue;
+					}
+
+					if( actualTile.owner >= 0) {
+						// if the tile is owned by someone else, decrease relationships slightly
+						let owner = actualTile.owner;
+						if( owner != curPlayer.num ) {
+							this.changeRelationship(owner, curPlayer.num, -0.5);
+						} else {
+							i--;
+							continue;
+						}
+
+						// if we have almost nothing else to explore, take this territory!
+						// (we're out of space, but we always want to expand!)
+						// taking territory obviously has a higher penalty
+						if(curPlayer.possibleTiles.length <= 5) {
+							this.changeRelationship(owner, curPlayer.num, -2)
+						} else {
+							i--;
+							continue;
+						}
+						
 					}
 
 					// set this tile to be owned by this player now!
@@ -690,9 +873,7 @@ var gameScene = new Phaser.Class({
 						// ... try to own it!
 						// NOTE: In later versions, there will be different units that explore land
 						if(this.map[y][x].val < 0.2) {
-							if( this.map[y][x].owner < 0 && this.map[y][x].dock == null) {
-								curPlayer.possibleTiles.push({ x: x, y: y });
-							}
+							curPlayer.possibleTiles.push({ x: x, y: y });
 						} else {
 							landTiles++;
 						}
@@ -704,14 +885,9 @@ var gameScene = new Phaser.Class({
 					// if there's land (so we can build something) ...
 					// ... plan the event to build something
 					if(landTiles > 0) {
-						obj.possibleEvents.push("place-dock");
-						obj.possibleEvents.push("found-city");
+						obj.possibleEvents.push(...["place-dock", "found-city"]);
 						break;
 					}
-
-				    // TO DO: When checking surrounding tiles, we can check how many LAND tiles are among them
-				    // If there is at least one land tile, this sea tile becomes a possible place for a DOCK
-				    // If we find a land tile neighbouring a sea tile, this becomes a possible place for a COAST CITY
 				}
 
 				break;
@@ -737,89 +913,104 @@ var gameScene = new Phaser.Class({
 
 			// NEW PLAYER: A new player joins. Add him to the array of players, and give it some future events.
 			case 'new-player':
-			// get player num
-			num = this.unitsInWorld.players.length;
+				// get player num
+				num = this.unitsInWorld.players.length;
 
-			// if we already have enough players, stop here
-			if(num >= this.maxPlayers) {
-				eventSucceeded = false;
-				break;
-			}
-
-			// determine random starting position
-			// keep trying until we have a non-land tile
-			let startX, startY;
-			do {
-				startX = Math.floor( Math.random() * this.mapWidth);
-				startY = Math.floor( Math.random() * this.mapHeight);
-			} while( this.map[startY][startX].val >= 0.2 || this.map[startY][startX].owner >= 0);
-
-			// add player to array
-			const newPlayer = { num: num, myShips: [], possibleEvents: [], possibleTiles: [ {x: startX, y: startY }], docks: [], cities: [], resources: 8, myPlayer: num, myType: 'players' };
-
-			// give himself possible events
-			newPlayer.possibleEvents = possibleEvents
-
-			// add player to the world
-			this.unitsInWorld.players.push(newPlayer);
-
-			// NOTE: The first thing a player does, is build a new ship. So, that always happens in the "build-ship" event
-
-			// event strings (for logging)
-			//eventStrings = [num];
-			break;
-
-		// NEW PIRATE: A new pirate joins the game. Add him to the pirates array, and plan his death.
-		case 'pirate-born':
-			let piratesList = this.unitsInWorld.pirates;
-
-			num = piratesList.length;
-			// go through all pirates and insert pirate at first "null" position
-			// this ensures the array doesn't grow very large (with useless null values) over time
-			for(let i = 0; i < piratesList.length; i++) {
-				if(piratesList[i] == null) {
-					num = i;
+				// if we already have enough players, stop here
+				if(num >= this.maxPlayers) {
+					eventSucceeded = false;
 					break;
 				}
-			}
 
-			// create new pirate
-			// save possible follow-up events
-			// TO DO: Give pirates a name, ship name, place of birth/prefrence, position, strength, etc.
-			const newPirate = { num: num };
-			newPirate.possibleEvents = possibleEvents;
-			
-			this.unitsInWorld.pirates[num] = newPirate;
+				// determine random starting position
+				// keep trying until we have a non-land tile
+				let startX, startY;
+				do {
+					startX = Math.floor( Math.random() * this.mapWidth);
+					startY = Math.floor( Math.random() * this.mapHeight);
+				} while( this.map[startY][startX].val >= 0.2 || this.map[startY][startX].owner >= 0);
 
-			// Plan death (20 turns later, for now)
-			this.timedEvents.push([this.timestep + 20, 'pirates', num, 'pirate-dies']);
+				// add player to array
+				const newPlayer = { 
+					num: num, 
+					myShips: [], 
+					possibleEvents: [], 
+					possibleTiles: [ {x: startX, y: startY }], 
+					docks: [], 
+					cities: [], 
+					resources: 8, 
+					myPlayer: num, 
+					myType: 'players',
+				};
 
-			// event strings (for logging)
-			//eventStrings = [num];
-			break;
+				// set all relations to 0 (even for future players)
+				newPlayer.relations = new Array(this.maxPlayers).fill(0);
 
-		// NEW MONSTER: A new monster type has been discovered.
-		// Monsters don't really have a place in this simulation
-		// New TYPES are discovered. Every type just has ONE monster representing it. Once in a while, it goes on a rampage.
-		case 'new-monster-type':
-			num = this.unitsInWorld.monsters.length;
+				// give himself possible events
+				newPlayer.possibleEvents = possibleEvents
 
-			// if we already have enough monsters, stop here
-			if(num >= this.maxPlayers) {
-				eventSucceeded = false;
+				// add player to the world
+				this.unitsInWorld.players.push(newPlayer);
+
+				// NOTE: The first thing a player does, is build a new ship. So, that always happens in the "build-ship" event
+
+				// event strings (for logging)
+				//eventStrings = [num];
 				break;
-			}
 
-			// create new monster
-			// save possible follow-up events
-			const newMonster = { num: num };
-			newMonster.possibleEvents = possibleEvents;
-			this.unitsInWorld.monsters.push(newMonster)
+			// NEW PIRATE: A new pirate joins the game. Add him to the pirates array, and plan his death.
+			case 'pirate-born':
+				let piratesList = this.unitsInWorld.pirates;
 
-			// event strings (for logging)
-			//eventStrings = [num];
-			break;
+				num = piratesList.length;
+				// go through all pirates and insert pirate at first "null" position
+				// this ensures the array doesn't grow very large (with useless null values) over time
+				for(let i = 0; i < piratesList.length; i++) {
+					if(piratesList[i] == null) {
+						num = i;
+						break;
+					}
+				}
+
+				// create new pirate
+				// save possible follow-up events
+				// TO DO: Give pirates a name, ship name, place of birth/prefrence, position, strength, etc.
+				const newPirate = { num: num };
+				newPirate.possibleEvents = possibleEvents;
+				
+				this.unitsInWorld.pirates[num] = newPirate;
+
+				// Plan death (20 turns later, for now)
+				this.timedEvents.push([this.timestep + 20, 'pirates', num, 'pirate-dies']);
+
+				// event strings (for logging)
+				//eventStrings = [num];
+				break;
+
+			// NEW MONSTER: A new monster type has been discovered.
+			// Monsters don't really have a place in this simulation
+			// New TYPES are discovered. Every type just has ONE monster representing it. Once in a while, it goes on a rampage.
+			case 'new-monster-type':
+				num = this.unitsInWorld.monsters.length;
+
+				// if we already have enough monsters, stop here
+				if(num >= this.maxPlayers) {
+					eventSucceeded = false;
+					break;
+				}
+
+				// create new monster
+				// save possible follow-up events
+				const newMonster = { num: num };
+				newMonster.possibleEvents = possibleEvents;
+				this.unitsInWorld.monsters.push(newMonster)
+
+				// event strings (for logging)
+				//eventStrings = [num];
+				break;
 		}
+
+
 
 		return eventSucceeded;
 	},
@@ -855,17 +1046,29 @@ var gameScene = new Phaser.Class({
 			if(curEv[0] == this.timestep) {
 				// ... execute this event!
 				// index 1 = unit type; index 2 = unit number it relates to; index 3 = event key; 
-				let curUnit = this.unitsInWorld[ curEv[1] ][ curEv[2] ];
+				let curUnit, generalEvent = false;
+				if(curEv[1] == null || curEv[2] == null) {
+					curUnit = null;
+					generalEvent = true;
+				} else {
+					curUnit = this.unitsInWorld[ curEv[1] ][ curEv[2] ];
+				}
+
+				// log the event (debugging)
+				console.log("TIMED EVENT ||", curEv[3]);
+				
 				if(curUnit == null || curUnit == undefined) {
-					// unit doesn't exist anymore; do nothing
-					console.log("TIMED EVENT || Unit doesn't exist anymore; no further action");
+					// a general event will not have any unit attached
+					if(generalEvent) {
+						this.executeSubEventAction(curEv[3], {}, {});
+					} else {
+						// unit doesn't exist anymore; do nothing
+						//console.log("Unit doesn't exist anymore; no further action");
+					}
 				} else {
 					// execute the event (send the event name AND the object to which it pertains)
 					// In most cases, that just means an "end" condition: remove this unit or stop this "phase"
-					this.executeSubEventAction( curEv[3], curUnit, { unitType: curEv[1], unitIndex: curEv[2] } );
-
-					// log the event (debugging)
-					console.log("TIMED EVENT ||", curEv[3]);
+					this.executeSubEventAction( curEv[3], curUnit, { unitType: curEv[1], unitIndex: curEv[2] } );	
 				}
 
 				// remove event from array
@@ -883,15 +1086,24 @@ var gameScene = new Phaser.Class({
 			// a ship doesn't generate income by default, but always costs a little to maintain
 			//  => a ship might give income if it's part of a trade route OR if it destroys another ship
 			// ??
-			let income = (curPlayers[i].docks.length * 0.5) + (curPlayers[i].cities.length * 0.5) - (curPlayers[i].myShips.length*2);
+			let p = curPlayers[i];
+			let income = (p.docks.length * 0.5) + (p.cities.length * 0.5) - (p.myShips.length*2);
 			if(income <= 0) {
 				income = 1;
 			}
 
-			curPlayers[i].resources += income;
+			p.resources += income;
 
 			// the main player can always try to build a ship (after getting income)
-			curPlayers[i].possibleEvents.push("build-ship");
+			if(p.resources >= 8) {
+				p.possibleEvents.push("build-ship");				
+			}
+
+			// and if the player senses relationships aren't at their best, he can try a diplomatic action
+			// random, for now
+			if(Math.random() >= 0.5) {
+				p.possibleEvents.push("diplomacy");
+			}
 		}
 
 		// for each player, check possible events, pick one
@@ -900,6 +1112,9 @@ var gameScene = new Phaser.Class({
 			// execute one event on the player as a whole/group
 			// this is a general event like "start a war"
 			let curPlayer = curPlayers[i];
+
+			console.log(curPlayer.possibleEvents);
+
 			this.pickEvent(curPlayer);
 
 			// loop through all the ships that this player has
@@ -944,9 +1159,9 @@ var gameScene = new Phaser.Class({
 				// territory
 				if(curOwner >= 0) {
 					if(noDock) {
-						this.territoryGraphics.fillStyle(ownerColors[curOwner], 0.3);						
+						this.territoryGraphics.fillStyle(ownerColors[curOwner], 0.6);						
 					} else {
-						this.territoryGraphics.fillStyle(dockColors[curOwner], 0.3);
+						this.territoryGraphics.fillStyle(dockColors[curOwner], 0.6);
 					}
 
 					this.territoryGraphics.fillRect(x * this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
@@ -992,6 +1207,12 @@ var gameScene = new Phaser.Class({
 			this.timeGraphics.myTextSprites = [];
 		}
 
+		// update player relations
+		for(let i = 0; i < this.unitsInWorld["players"].length; i++) {
+			this.playerRelations[i].text = 'Player ' + i + ': ' + JSON.stringify( this.unitsInWorld["players"][i].relations );
+		}
+
+
 		// display text (that shows all events for this step)
 		/*
 		for(let a = 0; a < this.allEventsNow.length; a++) {
@@ -1012,8 +1233,6 @@ var gameScene = new Phaser.Class({
 		// arbitrary ending condition (time out after X number of steps)
 		if(this.timestep >= this.maxSteps) {
 			this.simulationTimer.remove();
-
-			this.placeTreasures();
 		}
 	},
 
@@ -1101,19 +1320,24 @@ var gameScene = new Phaser.Class({
 
 			// static replacements: a number that will never change
 			for(let a = 0; a < curClue.info.length; a++) {
-				clueString = clueString.replace( '@[' + a + ']', curClue.info);   				
+				clueString = clueString.replace( '@[' + a + ']', curClue.info[a]);   				
 			}
 
 			// dynamic replacements: looking up the name of a dock/city/island/whatever
 			// HANDY URL: https://stackoverflow.com/questions/29560913/javascript-regex-to-extract-variables
+			// HANDY URL: https://stackoverflow.com/questions/14213848/difference-between-and
 			
 			// TO DO: Don't replace by result[1], but get the actual parameter (curClue.info[ result[1] ]), and THEN get the actual dock with that
-			// TO DO: Obviously, don't replace by [[dockio replaco]]
 
-			var regex = new RegExp(/\@\[dock\]\[(\d+)\]/gi), result, out = [];
+			var regex = new RegExp(/\@\[(\w+?)\]\[(\d+?)\]/gi), result;
+			
 			while(result = regex.exec(clueString)) {
-			    clueString = clueString.replace("@[dock][" + result[1] + "]", "[[dockio replaco " + result[1] + " ]]")
+				let unitIndex = curClue.info[ result[2] ]; // result[2] holds an index only; this index refers to the part of the clue info that we need
+				let neededInfo = this.unitsInWorld[ result[1] ][ unitIndex ].name; // once we have the info, we can get the name of the unit
+
+			    clueString = clueString.replace("@[" + result[1] + "][" + result[2] + "]", "[[" + result[1] + "io replaco " + result[2] + " ]]")
 			}
+
 
 			console.log( clueString )
 		}
@@ -1121,8 +1345,18 @@ var gameScene = new Phaser.Class({
 
 	getClueInfo: function(x, y, num) {
 		switch(num) {
+			// return whether the treasure is in deep or shallow ocean
 			case 0:
+				let val = this.map[y][x].val;
+				if(val < -0.2) {
+					return ['deep']
+				}
+				return ['shallow'];
 
+				break;
+
+			// get distance to nearest island tile
+			case 1:
 				break;
 		}
 
