@@ -42,10 +42,12 @@ const EVENT_DICT = {
 		"natural-disaster-end": ["Natural disaster ended", [] ],
 		"pirate-dies": ["Pirate @[0] died", [] ],
 		"monster-rampage-end": ["Monster @[0] rampage ended", []],
-		"war-ends": ["The war has ended", []],
+		"war-ends": ["The war has ended", [] ],
 
 		// everything war-related
-		"start-war": ["Player @[0] started a war with @[1]", []],
+		"start-war": ["Player @[0] started a war with @[1]", [] ],
+		"join-war": ["Player @[0] joins the war", [] ],
+		"conquer": ["Player @[0]'s ship is conquering", ['conquer']],
 	},
 
 }
@@ -296,6 +298,7 @@ var gameScene = new Phaser.Class({
 		this.timedEvents = [];
 
 		this.maxPlayers = 3;
+		this.worldAtWar = false;
 		this.maxSteps = 100;
 
 		this.allEventsNow = [];
@@ -327,23 +330,50 @@ var gameScene = new Phaser.Class({
 		return c;
 	},
 
+	sinkShip: function(ship, attacker) {
+		// TO DO
+		// TO DO: I need different code for pirate ships ... meh
+		// For now, just destroy the ship, by setting it to null and removing it from the map (by setting it to negative coordinates)
+		this.placeSimUnit(ship, -1, -1);
+
+		console.log("SHIP SUNK || ", ship.name);
+
+		this.unitsInWorld.players[ ship.myPlayer ].myShips[ ship.num ] = null;
+
+		// change relationships: the one that's been attacked is angry!
+		this.changeRelationship(ship.myPlayer, attacker.myPlayer, -3);
+
+		// the loser loses resources
+		this.unitsInWorld.players[ ship.myPlayer ].resources -= 8;
+
+		// the winner gains a slight amount of resources
+		this.unitsInWorld.players[ attacker.myPlayer ].resources += 1;
+	},
+
+	clamp: function(min, val, max) {
+		return Math.min(Math.max(val, min), max);
+	},
+
 	changeRelationship: function(num1, num2, delta) {
 		let p1 = this.unitsInWorld["players"][num1], p2 = this.unitsInWorld["players"][num2]
 
 		let threshold = -10;
-		if(!p1.atWar) {
-			p1.relations[num2] += delta;		
+		p1.relations[num2] = this.clamp(-10, p1.relations[num2] + delta, 10);
+		p2.relations[num1] = this.clamp(-10, p2.relations[num1] + delta, 10);
+
+		if(p1.relations[num2] <= threshold) {	
+			if(!this.worldAtWar) {
+				p1.possibleEvents = ['start-war'];					
+			} else {
+				p1.possibleEvents = ['join-war'];
+			}	
 		}
 
-		if(!p2.atWar) {
-			p2.relations[num1] += delta;
-		}
-
-		if(!p1.atWar && !p2.atWar) {
-			if(p1.relations[num2] <= threshold) {
-				p1.possibleEvents = ['start-war'];
-			} else if(p2.relations[num1] <= threshold) {
-				p2.possibleEvents = ['start-war'];
+		if(p2.relations[num1] <= threshold) {
+			if(!this.worldAtWar) {
+				p2.possibleEvents = ['start-war'];					
+			} else {
+				p2.possibleEvents = ['join-war'];
 			}
 		}
 			
@@ -487,14 +517,46 @@ var gameScene = new Phaser.Class({
 							p.atWar = true;
 							break;
 						}
+
+						// if the relationship is above "friendly", we check if the person we're friendly with is at war
+						// if so, we join
+						if(p.relations[j] >= 5) {
+							if(this.unitsInWorld.players[j].atWar) {
+								p.atWar = true;
+								break;
+							}
+						}
 					}
 				}
 
+				// repurpose all player ships to conquer
+				for(let i = 0; i < this.unitsInWorld.players.length; i++) {
+					let p = this.unitsInWorld.players[i];
+					for(let s = 0; s < p.myShips.length; s++) {
+						p.myShips[s].possibleEvents = ['conquer'];
+					}
+				}
+
+				// set the world to be at war
+				this.worldAtWar = true;
 
 				// War automatically ends after X timesteps
 				// ROUND IT, because it checks if the timestap is exactly equal
 				let maxWarDuration = Math.round(10 + Math.random()*20);
 				this.timedEvents.push([this.timestep + maxWarDuration, null, null, 'war-ends']);
+
+				break;
+
+			// JOIN WAR
+			// There's already a war raging, but something happened that made someone else join in
+			// TO DO: WHAT ELSE HAPPENS HERE?! => also repurpose ships and stuff
+			case 'join-war':
+				obj.atWar = true;
+
+				// repurpose all player ships to conquer
+				for(let s = 0; s < obj.myShips.length; s++) {
+					obj.myShips[s].possibleEvents = ['conquer'];
+				}
 
 				break;
 
@@ -525,10 +587,13 @@ var gameScene = new Phaser.Class({
 					// PROBLEM (??): it resets to extremely high numbers
 					for(let j = 0; j < p.relations.length; j++) {
 						if(p.relations[j] <= -10) {
-							this.changeRelationship(p.num, j,  (-p.relations[j] + 5) );
+							this.changeRelationship(p.num, j, 15);
 						}
 					}
 				}
+
+				// end the general war in the world
+				this.worldAtWar = false;
 
 				break;
 
@@ -584,11 +649,23 @@ var gameScene = new Phaser.Class({
 				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
 				var cost = 8;
 				if(mainUnit.resources >= cost) {
-					let newShip = { name: "Queen Maxima's Revenge" };
+					// create new ship
+					let newShip = { 
+						name: "Queen Maxima's Revenge",
+						x: 0, 
+						y: 0, 
+						possibleEvents: [], 
+						myPlayer: ref.unitIndex, 
+						myType: 'players', 
+						canExplore: true, 
+						tradeRoute: [], 
+						tradeRouteCounter: -1 
+					};
 
-					// TO DO: Write general ship creation function for this??
-					mainUnit.myShips.push( { x: 0, y: 0, possibleEvents: [], myPlayer: ref.unitIndex, myType: 'players', canExplore: true, tradeRoute: [], tradeRouteCounter: -1 }  );
+					// push it onto the ships array (of the player that owns it)
+					mainUnit.myShips.push(newShip);
 
+					// subtract resources
 					mainUnit.resources -= cost;
 				} else {
 					// TO DO: Make events that generate more income
@@ -753,9 +830,15 @@ var gameScene = new Phaser.Class({
 			//  => worsen relationships because of the attack
 			//  => if the ship goes down, save it (the 5 ws: what/who/where/when/why?)
 			case 'attack-ship': 
-				let range = 5;
+				// determine if we should attack
+				// there are two cases in which we will attack: 
+				//  => we have a negative relationship with the other vessel
+				//  => we are really low on territory / resources
+				let range = 3;
 
 				// go through a square around the ship
+				let firstShip = null;
+				let foundEnemy = false;
 				for(let y = 0; y < range*2; y++) {
 					for(let x = 0; x < range*2; x++) {
 						let curTile = this.map[y][x];
@@ -773,24 +856,48 @@ var gameScene = new Phaser.Class({
 								}
 
 								if(curUnit.myPlayer != obj.myPlayer) {
-									// TO DO
-									// TO DO: I need different code for pirate ships ... meh
-									// For now, just destroy the ship, by setting it to null and removing it from the map (by setting it to negative coordinates)
-									this.placeSimUnit(curUnit, -1, -1);
+									// get relationship with this ship('s player)
+									let rel = this.unitsInWorld.players[ obj.myPlayer ].relations[ curUnit.myPlayer ];
 
-									this.unitsInWorld.players[ curUnit.myPlayer ].myShips[ curUnit.num ] = null;
-
-									// change relationships: the one that's been attacked is angry!
-									this.changeRelationship(obj.myPlayer, curUnit.myPlayer, -3);
+									if(rel < 0) {
+										firstShip = curUnit;
+										foundEnemy = true;
+										break;
+									} else if(firstShip == null) {
+										firstShip = curUnit;
+									}
 								}
 							}
-
-							//console.log("SHIP BATTLE || ", unitString);
-
-							break;
 						}
+
+						if(foundEnemy) { break; }
 					}
+					if(foundEnemy) { break; }
 				}
+
+				// if we have found a ship ...
+				if(firstShip != null) {
+					// if it's not an enemy, and we have no need to kill it, don't kill it!
+					if(!foundEnemy && this.unitsInWorld.players[ firstShip.myPlayer ].resources >= 2 && this.unitsInWorld.players[ firstShip.myPlayer ].possibleTiles.length >= 5) {
+						break;
+					}
+
+					// however, if any of the conditions apply, we should kill the darn unit
+					this.sinkShip(firstShip, obj);
+				}
+
+
+				break;
+
+			// CONQUER; arguably the most important action
+			// When at war, ships will be set to conquer
+			// This means they basically become 4X machines: 
+			// 1) they explore (looking for enemy stuff), 
+			// 2) they expand territory, 
+			// 3) they exploit (by taking over docks/cities, building more ships, getting resources, etc.)
+			// 4) they exterminate (by attacking all enemy things they see)
+			case 'conquer':
+
 
 				break;
 
