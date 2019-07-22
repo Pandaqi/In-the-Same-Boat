@@ -839,9 +839,10 @@ var gameScene = new Phaser.Class({
 				// go through a square around the ship
 				let firstShip = null;
 				let foundEnemy = false;
-				for(let y = 0; y < range*2; y++) {
-					for(let x = 0; x < range*2; x++) {
-						let curTile = this.map[y][x];
+				for(let y = -range; y < range; y++) {
+					for(let x = -range; x < range; x++) {
+						let tempX = this.wrapCoords(obj.x + x, this.mapWidth), tempY = this.wrapCoords(obj.y + y, this.mapHeight);
+						let curTile = this.map[tempY][tempX];
 
 						// if this tile has units
 						if(curTile.numUnits > 0) {
@@ -897,7 +898,81 @@ var gameScene = new Phaser.Class({
 			// 3) they exploit (by taking over docks/cities, building more ships, getting resources, etc.)
 			// 4) they exterminate (by attacking all enemy things they see)
 			case 'conquer':
+				var mainPlayer = this.unitsInWorld[obj.myPlayer];
 
+				// Phase 1: explore
+				// Phase 2: expand territory
+				let range = 3;
+				let possibleTargets = [];
+				let nextMove = null, nextMoveDist = 0;
+				for(let y = -range; y < range; y++) {
+					for(let x = -range; x < range; x++) {
+						// grab current tile
+						// (don't forget to WRAP COORDINATES)
+						let tempX = this.wrapCoords(obj.x + x, this.mapWidth), tempY = this.wrapCoords(obj.y + y, this.mapHeight);
+						let curTile = this.map[tempY][tempX];
+
+						// if we're at war with this player, take their territory
+						if(mainPlayer.relations[curTile.owner] <= -10) {
+							curTile.owner = mainPlayer.num;
+
+							// also, mark it as a possible next move, if it's further than the previous next move
+							let dist = Math.abs(x) + Math.abs(y);
+							if(dist > nextMoveDist) {
+								nextMoveDist = dist;
+								nextMove = { x: tempX, y: tempY };
+							}
+						}
+
+						// if there's at least one unit on this tile ...
+						if(curTile.numUnits > 0) {
+							let unitsHere = curTile.units;
+							for(let a = 0; a < unitsHere.length; a++) {
+								let tempUnit = unitsHere[a];
+								// if it's an enemy ship (relationship <= -10, can never be ourselves) ...
+								if(mainPlayer.relations[tempUnit.myPlayer] <= -10) {
+									// ... save it as a possible target
+									possibleUnits.push(tempUnit);
+								}
+							}
+						}
+					}
+				}
+
+				// Phase 3: Attack
+				// Pick a random unit out of possible units
+				if(possibleUnits.length > 0) {
+					let pickUnit = possibleUnits[Math.floor( Math.random() * possibleUnits.length )];
+
+					// Attack the unit!
+					// TO DO
+					// Just call sinkShip? Or add health property to ships, subtract health, and only call sinkShip if health <= 0?
+				}
+
+				// Phase 4: Move
+				
+				// If we found an enemy tile to conquer, go there
+				if(nextMove != null) {
+					this.placeSimUnit(obj, nextMove.x, nextMove.y);
+
+				// If no enemy tile was found, move to a random edge of our range
+				} else {
+					// Test tiles on the edge of our range, until we find a suitable one.
+					let moveX, moveY;
+					let tries = 0, maxTries = 10;
+					do {
+						moveX = this.wrapCoords(obj.x + (Math.round(Math.random()) * 2 - 1) * range, this.mapWidth);
+						moveY = this.wrapCoords(obj.y + (Math.round(Math.random()) * 2 - 1) * range, this.mapHeight);
+						tries++;
+					} while(this.map[moveY][moveX].val >= 0.2 && tries <= maxTries);
+
+					// if we found a suitable tile (without exceeding number of tries), move there
+					if(tries <= maxTries) {
+						this.placeSimUnit(obj, moveX, moveY);
+					}
+
+					// NOTE: If we found no suitable tile, we just stand still for now. Sooner or later, we will find a tile, or the war will end :p
+				}
 
 				break;
 
