@@ -330,6 +330,20 @@ var gameScene = new Phaser.Class({
 		return c;
 	},
 
+	dealSimDamage: function(obj, attacker, dmg) {
+		obj.health += dmg;
+
+		if(obj.health <= 0) {
+			// TO DO
+			// Check object type, call right function based on that
+			this.sinkShip(obj, attacker);
+
+			return true;
+		}
+
+		return false;
+	},
+
 	sinkShip: function(ship, attacker) {
 		// TO DO
 		// TO DO: I need different code for pirate ships ... meh
@@ -382,13 +396,6 @@ var gameScene = new Phaser.Class({
 	placeSimUnit: function(obj, x, y) {
 		let oldTile = this.map[obj.y][obj.x];
 
-		// negative numbers means this unit won't move to a new place!
-		if(x < 0 || y < 0) {
-			return;
-		}
-
-		let newTile = this.map[y][x];
-
 		// remove it from the old tile
 		if(oldTile.numUnits > 0 && ("myTileIndex" in obj)) {
 			// remove object from previous tile
@@ -403,6 +410,15 @@ var gameScene = new Phaser.Class({
 				oldTile.units = [];				
 			}
 		}
+
+		console.log(obj, x, y, oldTile.numUnits, oldTile.units);
+
+		// negative numbers means this unit won't move to a new place!
+		if(x < 0 || y < 0) {
+			return;
+		}
+
+		let newTile = this.map[y][x];
 
 		// otherwise, add it to the new tile
 		// update corresponding map tile
@@ -551,6 +567,12 @@ var gameScene = new Phaser.Class({
 			// There's already a war raging, but something happened that made someone else join in
 			// TO DO: WHAT ELSE HAPPENS HERE?! => also repurpose ships and stuff
 			case 'join-war':
+				// it's possible that the war ends, JUST before you want to join
+				if(!this.worldAtWar) {
+					break;
+				}
+
+				// be at war!
 				obj.atWar = true;
 
 				// repurpose all player ships to conquer
@@ -564,9 +586,10 @@ var gameScene = new Phaser.Class({
 			// For now, we just set to null. In the future, we might think about actually removing it.
 			// TO DO: Maybe the list of ships can be an obj, with the keys being the NAME of the ship
 			case 'pirate-dies':
-				this.unitsInWorld[ ref.unitType ][ ref.unitIndex ] = null;
+				var mainObject = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
 
-				// TO DO: Call "placeSimUnit" with negative coordinates, before setting this obj to null?
+				this.placeSimUnit(mainObject, -1, -1);
+				mainObject = null;
 
 				break;
 
@@ -583,8 +606,12 @@ var gameScene = new Phaser.Class({
 					// ensure the player isn't at war anymore
 					p.atWar = false;
 
+					// repurpose all ships (at least stop conquering)
+					for(let s = 0; s < p.myShips.length; s++) {
+						p.myShips[s].possibleEvents = [];
+					}
+
 					// reset any bad relationships to +5
-					// PROBLEM (??): it resets to extremely high numbers
 					for(let j = 0; j < p.relations.length; j++) {
 						if(p.relations[j] <= -10) {
 							this.changeRelationship(p.num, j, 15);
@@ -659,7 +686,9 @@ var gameScene = new Phaser.Class({
 						myType: 'players', 
 						canExplore: true, 
 						tradeRoute: [], 
-						tradeRouteCounter: -1 
+						tradeRouteCounter: -1,
+
+						health: Math.round( Math.random() * 10 + 5)
 					};
 
 					// push it onto the ships array (of the player that owns it)
@@ -834,7 +863,7 @@ var gameScene = new Phaser.Class({
 				// there are two cases in which we will attack: 
 				//  => we have a negative relationship with the other vessel
 				//  => we are really low on territory / resources
-				let range = 3;
+				var range = 3;
 
 				// go through a square around the ship
 				let firstShip = null;
@@ -898,19 +927,30 @@ var gameScene = new Phaser.Class({
 			// 3) they exploit (by taking over docks/cities, building more ships, getting resources, etc.)
 			// 4) they exterminate (by attacking all enemy things they see)
 			case 'conquer':
-				var mainPlayer = this.unitsInWorld[obj.myPlayer];
+				var mainPlayer = this.unitsInWorld.players[obj.myPlayer];
 
 				// Phase 1: explore
 				// Phase 2: expand territory
-				let range = 3;
+				var range = 3;
 				let possibleTargets = [];
 				let nextMove = null, nextMoveDist = 0;
+				outerLoop:
 				for(let y = -range; y < range; y++) {
 					for(let x = -range; x < range; x++) {
 						// grab current tile
 						// (don't forget to WRAP COORDINATES)
 						let tempX = this.wrapCoords(obj.x + x, this.mapWidth), tempY = this.wrapCoords(obj.y + y, this.mapHeight);
 						let curTile = this.map[tempY][tempX];
+
+						// if this is an island tile, ignore it
+						if(curTile.val >= 0.2) {
+							continue;
+						}
+
+						// if the territory is untaken, be sure to take it
+						if(curTile.owner < 0) {
+							curTile.owner = mainPlayer.num;
+						}
 
 						// if we're at war with this player, take their territory
 						if(mainPlayer.relations[curTile.owner] <= -10) {
@@ -929,10 +969,18 @@ var gameScene = new Phaser.Class({
 							let unitsHere = curTile.units;
 							for(let a = 0; a < unitsHere.length; a++) {
 								let tempUnit = unitsHere[a];
+								if(tempUnit == null) { continue; }
+
 								// if it's an enemy ship (relationship <= -10, can never be ourselves) ...
 								if(mainPlayer.relations[tempUnit.myPlayer] <= -10) {
 									// ... save it as a possible target
-									possibleUnits.push(tempUnit);
+									possibleTargets.push(tempUnit);
+
+									// if it's the same as our current target, we MUST pick that one!
+									if(obj.myTarget != null && tempUnit.myPlayer == obj.myTarget.myPlayer && tempUnit.num == obj.myTarget.num) {
+										possibleTargets = [obj.myTarget];
+										break outerLoop;
+									}
 								}
 							}
 						}
@@ -941,18 +989,24 @@ var gameScene = new Phaser.Class({
 
 				// Phase 3: Attack
 				// Pick a random unit out of possible units
-				if(possibleUnits.length > 0) {
-					let pickUnit = possibleUnits[Math.floor( Math.random() * possibleUnits.length )];
+				let targetDead, pickUnit;
+				if(possibleTargets.length > 0) {
+					pickUnit = possibleTargets[Math.floor( Math.random() * possibleTargets.length )];
 
 					// Attack the unit!
-					// TO DO
-					// Just call sinkShip? Or add health property to ships, subtract health, and only call sinkShip if health <= 0?
+					// Save whether our target is dead or not
+					// NOTE: dealSimDamage automatically sinks/destroys/transfers ownership is something dies
+					targetDead = this.dealSimDamage(pickUnit, obj, Math.round( -(Math.random() * 10 + 5) ));
 				}
 
 				// Phase 4: Move
+				obj.myTarget = null;
 				
+				// If our target is still alive, try hitting it again next turn (don't move now)
+				if(!targetDead) {
+					obj.myTarget = pickUnit;
 				// If we found an enemy tile to conquer, go there
-				if(nextMove != null) {
+				} else if(nextMove != null) {
 					this.placeSimUnit(obj, nextMove.x, nextMove.y);
 
 				// If no enemy tile was found, move to a random edge of our range
@@ -1157,7 +1211,7 @@ var gameScene = new Phaser.Class({
 				// create new pirate
 				// save possible follow-up events
 				// TO DO: Give pirates a name, ship name, place of birth/prefrence, position, strength, etc.
-				const newPirate = { num: num };
+				const newPirate = { num: num, x: 0, y: 0 };
 				newPirate.possibleEvents = possibleEvents;
 				
 				this.unitsInWorld.pirates[num] = newPirate;
