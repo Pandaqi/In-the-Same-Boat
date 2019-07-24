@@ -234,10 +234,18 @@ var gameScene = new Phaser.Class({
 
 		        let curVal = noise.perlin4(nx, ny, nz, nw);
 
-				this.map[y][x] = { val: curVal,  owner: -1, units: [], numUnits: 0, dock: null, city: null };
+				this.map[y][x] = { val: curVal,  owner: -1, units: [], numUnits: 0, dock: null, city: null, checked: false };
 			}
 		}
 	
+		/***
+
+			DISCOVER OCEANS
+
+		***/
+		this.detectOceans();
+
+
 
 		/*** CREATE MAP VISUALS ***/
 
@@ -251,6 +259,17 @@ var gameScene = new Phaser.Class({
 		this.territoryGraphics = this.add.graphics(0,0);
 
 		var popoutGraphics = this.add.graphics(0,0);
+
+		let oceanColors = [0xFF6633, 0xFFB399, 0xFF33FF, 0xFFFF99, 0x00B3E6, 
+		  0xE6B333, 0x3366E6, 0x999966, 0x99FF99, 0xB34D4D,
+		  0x80B300, 0x809900, 0xE6B3B3, 0x6680B3, 0x66991A, 
+		  0xFF99E6, 0xCCFF1A, 0xFF1A66, 0xE6331A, 0x33FFCC,
+		  0x66994D, 0xB366CC, 0x4D8000, 0xB33300, 0xCC80CC, 
+		  0x66664D, 0x991AFF, 0xE666FF, 0x4DB3FF, 0x1AB399,
+		  0xE666B3, 0x33991A, 0xCC9999, 0xB3B31A, 0x00E680, 
+		  0x4D8066, 0x809980, 0xE6FF80, 0x1AFF33, 0x999933,
+		  0xFF3380, 0xCCCC00, 0x66E64D, 0x4D80CC, 0x9900B3, 
+		  0xE64D66, 0x4DB380, 0xFF4D4D, 0x99E6E6, 0x6666FF];
 
 		// display the tiles
 		for (let y = 0; y < this.mapHeight; y++) {
@@ -285,8 +304,53 @@ var gameScene = new Phaser.Class({
 					popoutGraphics.fillRect(x*this.tileSize, ( y + 0.2) *this.tileSize, this.tileSize, this.tileSize*0.15);					
 				}
 
-				//this.add.text((x+0.5)*this.tileSize, (y+0.5)*this.tileSize, Math.round(curVal * 10)/10, { fontSize: 16 }).setOrigin(0.5);
+				// display ocean, if this tile is part of an ocean
+				if(this.map[y][x].ocean != null) {
+					// OCEAN NUMBER: this.add.text((x+0.5)*this.tileSize, (y+0.5)*this.tileSize, this.map[y][x].ocean, { fontSize: 16 }).setOrigin(0.5);
+
+					// OCEAN COLOR:
+					graphics.fillStyle(oceanColors[ this.map[y][x].ocean ], 0.8)
+					graphics.fillRect(x*this.tileSize, y*this.tileSize, this.tileSize, this.tileSize);
+				}
 			}
+		}
+
+		// display ocean titles
+		for(let o = 0; o < this.oceans.length; o++) {
+			let averageX = 0, averageY = 0, oceanSize = this.oceans[o].myTiles.length;
+			let wrapX = false, wrapY = false;
+
+			for(let t = 0; t < oceanSize; t++) {
+				let curTile = this.oceans[o].myTiles[t];
+
+				if(curTile[0] == 0 || curTile[0] == this.mapWidth) { wrapX = true; }
+				if(curTile[1] == 0 || curTile[1] == this.mapHeight) { wrapY = true; }
+
+				averageX += curTile[0];
+				averageY += curTile[1];
+			}
+
+			averageX /= oceanSize;
+			averageY /= oceanSize;
+
+			let edgeMargin = 1;
+			if(wrapX) {
+				if(averageX > 0.5*this.mapWidth) {
+					averageX = this.mapWidth - 3*edgeMargin;
+				} else {
+					averageX = 0 + 3*edgeMargin;
+				}
+			}
+			
+			if(wrapY) {
+				if(averageY > 0.5*this.mapHeight) {
+					averageY = this.mapHeight - edgeMargin;
+				} else {
+					averageY = 0 + edgeMargin;
+				}
+			}
+
+			this.add.text(averageX*this.tileSize, averageY*this.tileSize, this.oceans[o].name, { fontSize: 16, color: '#000' }).setOrigin(0.5);
 		}
 
 		/*** CREATE TIMELINE ***/
@@ -311,6 +375,9 @@ var gameScene = new Phaser.Class({
 			this.playerRelations.push(newText);
 		}
 
+		/*
+		SIMULATION TURNED OFF FOR NOW (testing ocean detection)
+
 		// Every X ms, go to a new step within the timeline
 		this.simulationTimer = this.time.addEvent({
 		    delay: 500,                // ms
@@ -319,6 +386,154 @@ var gameScene = new Phaser.Class({
 		    callbackScope: this,
 		    loop: true
 		});
+
+		*/
+	},
+
+	detectOceans: function() {
+		console.log("Detecting oceans");
+
+		// first, create a copy of the map
+		this.copyMap = [];
+		for(let y = 0; y < this.mapHeight; y++) {
+			this.copyMap[y] = [];
+			for(let x = 0; x < this.mapWidth; x++) {
+				this.copyMap[y][x] = 0;
+			}
+		}
+
+		let grownTiles = [];
+
+		// then, transfer the old map AND "grow" land tiles by 1 tile in each direction
+		// 1 = land, 0 = ocean
+		for(let y = 0; y < this.mapHeight; y++) {
+			for(let x = 0; x < this.mapWidth; x++) {
+				// if this tile is land ...
+				if(this.map[y][x].val >= 0.2) {
+					// ... save it as land in the copyMap
+					this.copyMap[y][x] = 1;
+
+					// ... then go through all neighbours; set them all to land (this is the "growing" part)
+					// we use HORIZONTAL, VERTICAL, and DIAGONAL!
+					const positions = [
+						[-1,0],[1,0],
+						[0,1],[0,-1],
+						[1,1],[-1,-1],[1,-1],[-1,1],
+
+						[-2,0],[2,0],
+						[0,2],[0,-2]
+
+						/*[-2,1],[-2,2],[-2,-1],[-2,-2],
+						[2,1],[2,2],[2,-1],[2,-2],
+						[1,2],[1,-2],[-1,2],[-1,-2],*/
+
+					];
+
+					for(let a = 0; a < positions.length; a++) {
+						let tempX = this.wrapCoords(x + positions[a][0], this.mapWidth);
+						let tempY = this.wrapCoords(y + positions[a][1], this.mapHeight);
+
+						this.copyMap[tempY][tempX] = 1;
+
+						// if this was originally ocean, save this tile
+						// later on, we give these tiles back, and turn them into the ocean that is nearest to them
+						if(this.map[tempY][tempX].val < 0.2) {
+							grownTiles.push([tempX,tempY]);
+						}
+					}
+				}
+			}
+		}
+
+		// create new list to hold all the oceans
+		this.oceans = [];
+
+		// now, discover oceans, using the same algorithm used for discovering islands
+		for(let y = 0; y < this.mapHeight; y++) {
+			for(let x = 0; x < this.mapWidth; x++) {
+				// if this tile is ocean, AND it hasn't been checked yet, start a new ocean!
+				if(this.copyMap[y][x] == 0 && !this.map[y][x].checked) {
+
+					// create new ocean
+					let oceanIndex = this.oceans.length;
+					this.oceans.push( { myTiles: [] } );
+
+					// explore this tile (which automatically leads to the whole island)
+					this.exploreOceanTile(x, y, oceanIndex)
+
+					// once we finished, we know the size of this ocean
+					// this helps determine the name (is it an ocean? a bay? a street?)
+					let type = 'ocean', oceanSize = this.oceans[oceanIndex].myTiles.length;
+					if(oceanSize <= 5) {
+						type = 'bay';
+					} else if(oceanSize <= 10) {
+						type = 'gulf'
+					} else if(oceanSize <= 40) {
+						type = 'sea';
+					}
+
+
+					this.oceans[oceanIndex].name = type + ' #' + oceanIndex;
+				}
+			}
+		}
+
+		// give back the grown tiles
+		for(let i = 0; i < grownTiles.length; i++) {
+			// find ocean value from neighbour tiles
+			const positions = [
+				[-1,0],[1,0],
+				[0,1],[0,-1],
+				[1,1],[-1,-1],[1,-1],[-1,1],
+			];
+
+			let x = grownTiles[i][0], y = grownTiles[i][1];
+
+			// if this tile already has an ocean assigned, we don't want to override it
+			if(this.map[y][x].ocean != null) { continue; }
+
+			// break after we find the first ocean value
+			let nearestOcean = -1;
+			for(let a = 0; a < positions.length; a++) {
+				let tempX = this.wrapCoords(x + positions[a][0], this.mapWidth);
+				let tempY = this.wrapCoords(y + positions[a][1], this.mapHeight);
+
+				if(this.map[tempY][tempX].ocean != null) {
+					nearestOcean = this.map[tempY][tempX].ocean;
+					break;
+				}
+			}
+
+			// set this tile to the nearest ocean
+			if(nearestOcean >= 0) {
+				this.map[y][x].ocean = nearestOcean;
+				this.oceans[nearestOcean].myTiles.push([x,y]);
+			}
+			
+		}
+	},
+
+	exploreOceanTile: function(x, y, oceanIndex) {
+	    // also save the tile in the island object, for quick reference
+	    this.oceans[oceanIndex].myTiles.push([x,y]);
+
+	    // mark this tile as checked
+	    this.map[y][x].checked = true;
+
+	    // save ocean index into tile
+	    this.map[y][x].ocean = oceanIndex;
+
+	    // check tiles left/right/top/bottom
+	    const positions = [[-1,0],[1,0],[0,1],[0,-1]]
+	    for(let a = 0; a < 4; a++) {
+			let tempX = this.wrapCoords(x + positions[a][0], this.mapWidth);
+			let tempY = this.wrapCoords(y + positions[a][1], this.mapHeight);
+
+			// if tile is an island, and hasn't been checked, explore it!
+			if(this.copyMap[tempY][tempX] == 0 && !this.map[tempY][tempX].checked) {
+				this.exploreOceanTile(tempX, tempY, oceanIndex)
+			}
+	    }
 	},
 
 	wrapCoords: function(c, bound) {
@@ -347,7 +562,7 @@ var gameScene = new Phaser.Class({
 	sinkShip: function(ship, attacker) {
 		// TO DO
 		// TO DO: I need different code for pirate ships ... meh
-		// For now, just destroy the ship, by setting it to null and removing it from the map (by setting it to negative coordinates)
+		// Destroy the ship, by setting it to null and removing it from the map (by setting it to negative coordinates)
 		this.placeSimUnit(ship, -1, -1);
 
 		console.log("SHIP SUNK || ", ship.name);
@@ -411,7 +626,7 @@ var gameScene = new Phaser.Class({
 			}
 		}
 
-		console.log(obj, x, y, oldTile.numUnits, oldTile.units);
+		//console.log(obj, x, y, oldTile.numUnits, oldTile.units);
 
 		// negative numbers means this unit won't move to a new place!
 		if(x < 0 || y < 0) {
@@ -632,7 +847,7 @@ var gameScene = new Phaser.Class({
 				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
 				var cost = 4;
 				if(mainUnit.resources >= cost) {
-					let newDock = { name: "Dockio", x: obj.x, y: obj.y };
+					let newDock = { name: "Dockio", x: obj.x, y: obj.y, index: mainUnit.docks.length };
 
 					this.map[ obj.y ][ obj.x ].dock = newDock;
 					mainUnit.docks.push(newDock);
@@ -653,7 +868,7 @@ var gameScene = new Phaser.Class({
 				var mainUnit = this.unitsInWorld[ ref.unitType ][ ref.unitIndex ];
 				var cost = 4;
 				if(mainUnit.resources >= cost) {
-					let newCity = { name: "Holymolyknoly", x: obj.x, y: obj.y };
+					let newCity = { name: "Holymolyknoly", x: obj.x, y: obj.y, index: mainUnit.cities.length };
 
 					this.map[ obj.y ][ obj.x ].city = newCity;
 					mainUnit.cities.push(newCity);
@@ -691,8 +906,20 @@ var gameScene = new Phaser.Class({
 						health: Math.round( Math.random() * 10 + 5)
 					};
 
+					// find first null position within ships array
+					// (if no null position, just put the ship at the end)
+					let tempIndex = mainUnit.myShips.length;
+					for(let s = 0; s < mainUnit.myShips.length; s++) {
+						if(mainUnit.myShips[s] == null) {
+							tempIndex = s;
+							break;
+						}
+					}
+
+					newShip.num = tempIndex;
+
 					// push it onto the ships array (of the player that owns it)
-					mainUnit.myShips.push(newShip);
+					mainUnit.myShips[tempIndex] = newShip;
 
 					// subtract resources
 					mainUnit.resources -= cost;
@@ -962,6 +1189,27 @@ var gameScene = new Phaser.Class({
 								nextMoveDist = dist;
 								nextMove = { x: tempX, y: tempY };
 							}
+
+							// if there's a dock or city on this position => transfer it to us ...
+							if(curTile.dock != null) {
+								// remove from old player
+								this.unitsInWorld.players[curTile.owner].docks.splice(curTile.dock.index, 1);
+
+								// update index
+								curTile.dock.index = mainPlayer.docks.length;
+
+								// add to new player
+								mainPlayer.docks.push(curTile.dock);
+							} else if(curTile.city != null) {
+								// remove from old player
+								this.unitsInWorld.players[curTile.owner].cities.splice(curTile.city.index, 1);
+
+								// update index
+								curTile.city.index = mainPlayer.cities.length;
+
+								// add to new player
+								mainPlayer.cities.push(curTile.city);
+							}
 						}
 
 						// if there's at least one unit on this tile ...
@@ -977,7 +1225,8 @@ var gameScene = new Phaser.Class({
 									possibleTargets.push(tempUnit);
 
 									// if it's the same as our current target, we MUST pick that one!
-									if(obj.myTarget != null && tempUnit.myPlayer == obj.myTarget.myPlayer && tempUnit.num == obj.myTarget.num) {
+									// NOTE: If we have a LIVING current TARGET, and it matches the tempUnit
+									if(obj.myTarget != null && obj.myTarget.health > 0 && (tempUnit.myPlayer == obj.myTarget.myPlayer && tempUnit.num == obj.myTarget.num)) {
 										possibleTargets = [obj.myTarget];
 										break outerLoop;
 									}
@@ -1013,7 +1262,7 @@ var gameScene = new Phaser.Class({
 				} else {
 					// Test tiles on the edge of our range, until we find a suitable one.
 					let moveX, moveY;
-					let tries = 0, maxTries = 10;
+					let tries = 0, maxTries = 30;
 					do {
 						moveX = this.wrapCoords(obj.x + (Math.round(Math.random()) * 2 - 1) * range, this.mapWidth);
 						moveY = this.wrapCoords(obj.y + (Math.round(Math.random()) * 2 - 1) * range, this.mapHeight);
@@ -1022,6 +1271,7 @@ var gameScene = new Phaser.Class({
 
 					// if we found a suitable tile (without exceeding number of tries), move there
 					if(tries <= maxTries) {
+						console.log("Moving to edge of range");
 						this.placeSimUnit(obj, moveX, moveY);
 					}
 
@@ -1409,6 +1659,7 @@ var gameScene = new Phaser.Class({
 		for(let i = 0; i < this.unitsInWorld.players.length; i++) {
 			let pShips = this.unitsInWorld.players[i].myShips;
 			for(let a = 0; a < pShips.length; a++) {
+				if(pShips[a] == null) { continue; }
 				this.territoryGraphics.fillStyle(shipColors[i], 1);
 				this.territoryGraphics.fillRect(pShips[a].x * this.tileSize, pShips[a].y * this.tileSize, this.tileSize, this.tileSize);
 			}
@@ -1445,7 +1696,14 @@ var gameScene = new Phaser.Class({
 
 		// update player relations
 		for(let i = 0; i < this.unitsInWorld["players"].length; i++) {
-			this.playerRelations[i].text = 'Player ' + i + ': ' + JSON.stringify( this.unitsInWorld["players"][i].relations );
+			let p = this.unitsInWorld["players"][i];
+
+			let numShips = 0;
+			for(let s = 0; s < p.myShips.length; s++) {
+				if(p.myShips[s] != null) { numShips++; }
+			}
+
+			this.playerRelations[i].text = 'Player ' + i + ': ' + JSON.stringify( p.relations ) + '  #ships: ' + numShips;
 		}
 
 
