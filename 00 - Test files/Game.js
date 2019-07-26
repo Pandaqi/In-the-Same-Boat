@@ -323,8 +323,8 @@ var gameScene = new Phaser.Class({
 			for(let t = 0; t < oceanSize; t++) {
 				let curTile = this.oceans[o].myTiles[t];
 
-				if(curTile[0] == 0 || curTile[0] == this.mapWidth) { wrapX = true; }
-				if(curTile[1] == 0 || curTile[1] == this.mapHeight) { wrapY = true; }
+				if(curTile[0] == 0 || curTile[0] == (this.mapWidth - 1)) { wrapX = true; }
+				if(curTile[1] == 0 || curTile[1] == (this.mapHeight - 1)) { wrapY = true; }
 
 				averageX += curTile[0];
 				averageY += curTile[1];
@@ -460,20 +460,6 @@ var gameScene = new Phaser.Class({
 
 					// explore this tile (which automatically leads to the whole island)
 					this.exploreOceanTile(x, y, oceanIndex)
-
-					// once we finished, we know the size of this ocean
-					// this helps determine the name (is it an ocean? a bay? a street?)
-					let type = 'ocean', oceanSize = this.oceans[oceanIndex].myTiles.length;
-					if(oceanSize <= 5) {
-						type = 'bay';
-					} else if(oceanSize <= 10) {
-						type = 'gulf'
-					} else if(oceanSize <= 40) {
-						type = 'sea';
-					}
-
-
-					this.oceans[oceanIndex].name = type + ' #' + oceanIndex;
 				}
 			}
 		}
@@ -510,6 +496,42 @@ var gameScene = new Phaser.Class({
 				this.oceans[nearestOcean].myTiles.push([x,y]);
 			}
 			
+		}
+
+		// name the oceans
+		let preNames = ['Atlantic', 'Pirate', 'Great', 'Dangerous', 'Black', 'Red', 'Purple', 'Yellow', 'Magic', 'Dancing', 
+						'Cooperation', 'Dead'];
+		let postNames = ['Thieves', 'Beggars', 'Treasure', 'Pirates', 'Islands', 'Ships', 'War', 'Gold', 'Singers', 'Dwarves', 
+						 'Dragons', 'Clouds', 'Stars', 'Lions', 'Beauty', 'Adventure', 'Cooperation'];
+
+		for(let o = 0; o < this.oceans.length; o++) {
+			// we know the size of this ocean
+			// this helps determine the name (is it an ocean? a bay? a street?)
+			let type = 'Ocean', oceanSize = this.oceans[o].myTiles.length;
+			if(oceanSize <= 5) {
+				type = 'Bay';
+			} else if(oceanSize <= 10) {
+				type = 'Strait'
+			} else if(oceanSize <= 20) {
+				type = 'Gulf'
+			} else if(oceanSize <= 40) {
+				type = 'Sea';
+			}
+
+			let name;
+			if(Math.random() >= 0.7) {
+				// a pre name!
+				name = preNames[Math.floor( Math.random() * preNames.length )] + ' ' + type;
+
+				if(Math.random() >= 0.7) {
+					name = 'The ' + name;
+				}
+			} else {
+				// a post name!
+				name = type + ' of ' + postNames[Math.floor( Math.random() * postNames.length )]
+			}
+
+			this.oceans[o].name = name;
 		}
 	},
 
